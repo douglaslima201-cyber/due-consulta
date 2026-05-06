@@ -1102,9 +1102,13 @@ def listar_jobs():
 def health():
     return jsonify({"status": "ok", "version": "1.0.0"})
 
+from piscofins import bp as piscofins_bp
+app.register_blueprint(piscofins_bp)
+
 if __name__ == "__main__":
     init_db()
     print("=" * 60)
     print("  DUE Consulta Backend — Rodando em http://localhost:5000")
+    print("  PIS/COFINS Análise    — /api/piscofins/upload")
     print("=" * 60)
     app.run(host="0.0.0.0", port=5000, debug=False)

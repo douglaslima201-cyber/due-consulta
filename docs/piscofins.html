@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Análise PIS/COFINS — Rumo Brasil</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --db1:#060D1A;--db2:#0C1625;--db3:#122035;--db4:#1A2E48;--db5:#243D5E;
+  --blue:#1D4ED8;--blue-l:#3B82F6;
+  --orange:#F97316;--orange-l:#FB923C;--orange-d:#EA580C;
+  --white:#FFFFFF;--g1:#E8EDF5;--g2:#A8B8CC;--g3:#6B7D94;--g4:#3D5068;
+  --green:#22C55E;--green-d:#16A34A;
+  --yellow:#F59E0B;--red:#EF4444;--purple:#8B5CF6;
+  --mono:'JetBrains Mono',monospace;--sans:'Inter',sans-serif;
+  --r:10px;--r2:16px;--r3:20px;
+}
+html{scroll-behavior:smooth;}
+body{font-family:var(--sans);background:var(--db1);color:var(--white);overflow-x:hidden;line-height:1.6;min-height:100vh;}
+::-webkit-scrollbar{width:5px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:rgba(139,92,246,.35);border-radius:3px;}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:200;height:64px;display:flex;align-items:center;padding:0 48px;background:rgba(6,13,26,.92);backdrop-filter:blur(24px);border-bottom:1px solid rgba(139,92,246,.15);}
+.nav-brand{display:flex;align-items:center;gap:12px;}
+.nav-icon{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--purple),#7C3AED);display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 4px 16px rgba(139,92,246,.35);}
+.nav-name{font-size:15px;font-weight:700;letter-spacing:-.02em;}
+.nav-name span{color:var(--purple);}
+.nav-right{margin-left:auto;display:flex;align-items:center;gap:16px;}
+.nav-back{font-size:13px;color:var(--g3);text-decoration:none;display:flex;align-items:center;gap:6px;transition:color .2s;}
+.nav-back:hover{color:var(--white);}
+.nav-tag{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--g3);background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);padding:4px 12px;border-radius:100px;}
+
+/* BACKGROUND */
+.hero-bg{position:fixed;inset:0;pointer-events:none;z-index:0;background:radial-gradient(ellipse 70% 50% at 30% 20%,rgba(139,92,246,.07) 0%,transparent 60%),radial-gradient(ellipse 60% 50% at 80% 80%,rgba(34,197,94,.04) 0%,transparent 60%);}
+.hero-grid{position:fixed;inset:0;pointer-events:none;z-index:0;background-image:linear-gradient(rgba(139,92,246,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(139,92,246,.03) 1px,transparent 1px);background-size:56px 56px;mask-image:radial-gradient(ellipse 100% 100% at 50% 0%,black 30%,transparent 100%);}
+
+/* LAYOUT */
+.page{position:relative;z-index:1;max-width:1360px;margin:0 auto;padding:80px 48px 80px;}
+
+/* HEADER */
+.pg-header{padding-top:48px;margin-bottom:48px;}
+.pg-eyebrow{display:inline-flex;align-items:center;gap:8px;background:rgba(139,92,246,.08);border:1px solid rgba(139,92,246,.2);border-radius:100px;padding:5px 14px;margin-bottom:20px;font-size:11px;font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--purple);}
+.pg-eyebrow::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--purple);}
+h1.pg-title{font-size:clamp(28px,4vw,48px);font-weight:800;letter-spacing:-.04em;line-height:1.05;margin-bottom:12px;}
+h1.pg-title .hl{background:linear-gradient(135deg,var(--purple),#A78BFA);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.pg-sub{font-size:15px;color:var(--g2);max-width:580px;line-height:1.7;}
+
+/* UPLOAD ZONE */
+.upload-zone{background:var(--db2);border:2px dashed rgba(139,92,246,.3);border-radius:var(--r3);padding:60px 40px;text-align:center;cursor:pointer;transition:all .25s;position:relative;overflow:hidden;}
+.upload-zone:hover,.upload-zone.drag{border-color:rgba(139,92,246,.7);background:rgba(139,92,246,.05);}
+.upload-icon{font-size:48px;margin-bottom:16px;display:block;}
+.upload-title{font-size:20px;font-weight:700;margin-bottom:8px;}
+.upload-sub{font-size:14px;color:var(--g3);margin-bottom:24px;}
+.upload-hint{font-size:12px;color:var(--g4);font-family:var(--mono);}
+#file-input{display:none;}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:10px 22px;border-radius:var(--r);font-size:13px;font-weight:600;font-family:var(--sans);cursor:pointer;border:none;text-decoration:none;transition:all .2s;}
+.btn-purple{background:linear-gradient(135deg,var(--purple),#7C3AED);color:var(--white);box-shadow:0 4px 16px rgba(139,92,246,.3);}
+.btn-purple:hover{transform:translateY(-1px);box-shadow:0 6px 24px rgba(139,92,246,.45);}
+.btn-green{background:linear-gradient(135deg,var(--green),var(--green-d));color:var(--white);box-shadow:0 4px 16px rgba(34,197,94,.25);}
+.btn-green:hover{transform:translateY(-1px);box-shadow:0 6px 24px rgba(34,197,94,.4);}
+.btn-ghost{background:rgba(255,255,255,.05);color:var(--g2);border:1px solid rgba(255,255,255,.09);}
+.btn-ghost:hover{background:rgba(255,255,255,.09);color:var(--white);}
+.btn-sm{padding:7px 14px;font-size:12px;}
+.btn-orange{background:linear-gradient(135deg,var(--orange),var(--orange-d));color:var(--white);box-shadow:0 4px 16px rgba(249,115,22,.25);}
+.btn-orange:hover{transform:translateY(-1px);box-shadow:0 6px 24px rgba(249,115,22,.4);}
+
+/* LOADING */
+#loading{display:none;text-align:center;padding:40px;}
+.spinner{width:40px;height:40px;border:3px solid rgba(139,92,246,.2);border-top-color:var(--purple);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* RESULTS — hidden until analysis */
+#results{display:none;}
+
+/* DIVIDER */
+.dvd{height:1px;background:linear-gradient(90deg,transparent,rgba(139,92,246,.15),transparent);margin:48px 0;}
+
+/* SECTION HEADER */
+.sec-hd{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:20px;}
+.sec-lbl{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--purple);margin-bottom:6px;}
+h2.sec-ttl{font-size:20px;font-weight:700;letter-spacing:-.02em;}
+
+/* KPI GRID */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-bottom:40px;}
+.kpi{background:var(--db2);border:1px solid rgba(255,255,255,.07);border-radius:var(--r2);padding:24px;position:relative;overflow:hidden;}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;border-radius:var(--r2) var(--r2) 0 0;}
+.kpi-purple::before{background:linear-gradient(90deg,var(--purple),#A78BFA);}
+.kpi-green::before{background:linear-gradient(90deg,var(--green),var(--green-d));}
+.kpi-yellow::before{background:linear-gradient(90deg,var(--yellow),#D97706);}
+.kpi-blue::before{background:linear-gradient(90deg,var(--blue),var(--blue-l));}
+.kpi-red::before{background:linear-gradient(90deg,var(--red),#DC2626);}
+.kpi-label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--g3);font-family:var(--mono);margin-bottom:10px;}
+.kpi-value{font-size:28px;font-weight:800;letter-spacing:-.03em;line-height:1;}
+.kpi-sub{font-size:12px;color:var(--g3);margin-top:6px;}
+.kpi-icon{position:absolute;right:20px;top:20px;font-size:22px;opacity:.3;}
+
+/* CHART GRID */
+.chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:40px;}
+.chart-card{background:var(--db2);border:1px solid rgba(255,255,255,.07);border-radius:var(--r2);padding:24px;}
+.chart-card h3{font-size:14px;font-weight:600;color:var(--g2);margin-bottom:20px;}
+.chart-wrap{position:relative;height:260px;}
+
+/* TOP OPORTUNIDADES */
+.opp-list{display:flex;flex-direction:column;gap:8px;margin-bottom:40px;}
+.opp-item{background:var(--db2);border:1px solid rgba(255,255,255,.06);border-radius:var(--r);padding:14px 18px;display:grid;grid-template-columns:1fr auto auto;gap:16px;align-items:center;}
+.opp-item:hover{border-color:rgba(139,92,246,.2);background:var(--db3);}
+.opp-desc{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.opp-conta{font-size:11px;color:var(--g3);font-family:var(--mono);margin-top:2px;}
+.opp-credito{font-size:16px;font-weight:700;color:var(--green);white-space:nowrap;}
+.opp-credito span{font-size:11px;font-weight:400;color:var(--g3);}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:100px;font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;font-family:var(--mono);white-space:nowrap;}
+.b-sim{background:rgba(34,197,94,.1);color:var(--green);border:1px solid rgba(34,197,94,.2);}
+.b-possivel{background:rgba(245,158,11,.1);color:var(--yellow);border:1px solid rgba(245,158,11,.2);}
+.b-nao{background:rgba(239,68,68,.1);color:var(--red);border:1px solid rgba(239,68,68,.2);}
+.b-baixo{background:rgba(34,197,94,.08);color:var(--green);border:1px solid rgba(34,197,94,.15);}
+.b-medio{background:rgba(245,158,11,.08);color:var(--yellow);border:1px solid rgba(245,158,11,.15);}
+.b-alto{background:rgba(239,68,68,.08);color:var(--red);border:1px solid rgba(239,68,68,.15);}
+
+/* TABLE */
+.table-toolbar{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap;}
+.search-box{flex:1;min-width:200px;position:relative;}
+.search-box input{width:100%;background:var(--db3);border:1px solid rgba(255,255,255,.09);border-radius:var(--r);padding:9px 14px 9px 38px;font-size:13px;color:var(--white);font-family:var(--sans);outline:none;transition:border-color .2s;}
+.search-box input:focus{border-color:rgba(139,92,246,.4);}
+.search-box input::placeholder{color:var(--g4);}
+.search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:14px;color:var(--g4);}
+.filter-sel{background:var(--db3);border:1px solid rgba(255,255,255,.09);border-radius:var(--r);padding:9px 14px;font-size:12px;color:var(--g2);font-family:var(--sans);outline:none;cursor:pointer;}
+.filter-sel:focus{border-color:rgba(139,92,246,.4);}
+
+.table-wrap{background:var(--db2);border:1px solid rgba(255,255,255,.07);border-radius:var(--r2);overflow:hidden;}
+table{width:100%;border-collapse:collapse;font-size:12px;}
+thead{background:var(--db3);}
+th{padding:12px 14px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--g3);font-family:var(--mono);font-weight:500;border-bottom:1px solid rgba(255,255,255,.06);white-space:nowrap;}
+td{padding:11px 14px;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:top;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:rgba(139,92,246,.04);}
+.td-conta{font-family:var(--mono);font-size:11px;color:var(--g3);white-space:nowrap;}
+.td-desc{max-width:260px;}
+.td-valor{text-align:right;font-family:var(--mono);white-space:nowrap;}
+.td-credito{text-align:right;font-family:var(--mono);color:var(--green);white-space:nowrap;}
+.td-base{font-size:11px;color:var(--g3);max-width:200px;line-height:1.4;}
+.td-comment{font-size:11px;color:var(--g3);max-width:240px;line-height:1.4;}
+.td-toggle{cursor:pointer;user-select:none;}
+.row-detail{display:none;background:rgba(139,92,246,.04);}
+.row-detail td{padding:10px 14px 16px;border-bottom:1px solid rgba(255,255,255,.04);}
+.detail-box{background:var(--db3);border-left:3px solid var(--purple);border-radius:0 var(--r) var(--r) 0;padding:12px 16px;font-size:12px;color:var(--g2);line-height:1.6;}
+.detail-box strong{color:var(--white);display:block;margin-bottom:4px;}
+
+/* EXPORT BAR */
+.export-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:24px;}
+
+/* DISCLAIMER */
+.disclaimer{background:rgba(245,158,11,.05);border:1px solid rgba(245,158,11,.2);border-radius:var(--r2);padding:20px 24px;margin-top:40px;display:flex;gap:14px;align-items:flex-start;}
+.disc-icon{font-size:20px;flex-shrink:0;margin-top:2px;}
+.disc-title{font-size:13px;font-weight:600;color:var(--yellow);margin-bottom:4px;}
+.disc-text{font-size:12px;color:var(--g3);line-height:1.6;}
+
+/* PRINT */
+@media print{
+  nav,.export-bar,.table-toolbar,.upload-zone,.disclaimer,#loading,.hero-bg,.hero-grid{display:none!important;}
+  body{background:#fff;color:#000;}
+  .kpi,.chart-card,.table-wrap,.opp-item{background:#f9f9f9;border:1px solid #ddd;}
+  .kpi-value,.kpi-label,.sec-ttl,.chart-card h3{color:#000;}
+  .td-conta,.td-base,.td-comment,.opp-conta{color:#555;}
+}
+
+@media(max-width:900px){
+  nav{padding:0 20px;}
+  .page{padding:80px 20px 40px;}
+  .chart-grid{grid-template-columns:1fr;}
+  .opp-item{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<div class="hero-bg"></div>
+<div class="hero-grid"></div>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-brand">
+    <div class="nav-icon">📊</div>
+    <div class="nav-name">Análise PIS/COFINS <span>Balancete</span></div>
+  </div>
+  <div class="nav-right">
+    <a class="nav-back" href="portal.html">← Portal</a>
+    <span class="nav-tag">Regime Não Cumulativo</span>
+  </div>
+</nav>
+
+<div class="page">
+
+  <!-- CABEÇALHO -->
+  <div class="pg-header">
+    <div class="pg-eyebrow">Análise Tributária</div>
+    <h1 class="pg-title">PIS/COFINS — <span class="hl">Balancete</span></h1>
+    <p class="pg-sub">Faça upload do balancete em Excel e receba em segundos uma análise completa de oportunidades de crédito, riscos fiscais e base legal fundamentada.</p>
+  </div>
+
+  <!-- UPLOAD -->
+  <div id="upload-section">
+    <div class="upload-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+      <span class="upload-icon">📁</span>
+      <div class="upload-title">Arraste o balancete aqui</div>
+      <div class="upload-sub">ou clique para selecionar o arquivo</div>
+      <button class="btn btn-purple" onclick="event.stopPropagation();document.getElementById('file-input').click()">Selecionar arquivo .xlsx</button>
+      <p class="upload-hint" style="margin-top:16px;">Colunas esperadas: Conta Contábil · Descrição · Valor (R$)</p>
+      <input type="file" id="file-input" accept=".xlsx" onchange="handleFileSelect(event)"/>
+    </div>
+
+    <!-- INSTRUÇÕES -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1px;background:rgba(255,255,255,.05);border-radius:var(--r2);overflow:hidden;border:1px solid rgba(255,255,255,.06);margin-top:20px;">
+      <div style="background:var(--db2);padding:22px 20px;display:flex;align-items:flex-start;gap:12px;">
+        <span style="font-size:18px;flex-shrink:0;margin-top:2px;">📋</span>
+        <div><div style="font-size:13px;font-weight:600;margin-bottom:4px;">Formato aceito</div><div style="font-size:12px;color:var(--g3);line-height:1.5;">Planilha .xlsx com colunas de conta, descrição e valor do saldo</div></div>
+      </div>
+      <div style="background:var(--db2);padding:22px 20px;display:flex;align-items:flex-start;gap:12px;">
+        <span style="font-size:18px;flex-shrink:0;margin-top:2px;">⚖️</span>
+        <div><div style="font-size:13px;font-weight:600;margin-bottom:4px;">Base jurídica</div><div style="font-size:12px;color:var(--g3);line-height:1.5;">Leis 10.637/2002 e 10.833/2003 + jurisprudência STJ (REsp 1.221.170)</div></div>
+      </div>
+      <div style="background:var(--db2);padding:22px 20px;display:flex;align-items:flex-start;gap:12px;">
+        <span style="font-size:18px;flex-shrink:0;margin-top:2px;">🔒</span>
+        <div><div style="font-size:13px;font-weight:600;margin-bottom:4px;">Dados locais</div><div style="font-size:12px;color:var(--g3);line-height:1.5;">Análise 100% local. Nenhum dado enviado a servidores externos</div></div>
+      </div>
+      <div style="background:var(--db2);padding:22px 20px;display:flex;align-items:flex-start;gap:12px;">
+        <span style="font-size:18px;flex-shrink:0;margin-top:2px;">📤</span>
+        <div><div style="font-size:13px;font-weight:600;margin-bottom:4px;">Export disponível</div><div style="font-size:12px;color:var(--g3);line-height:1.5;">Baixe o relatório completo em Excel formatado para apresentação</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOADING -->
+  <div id="loading">
+    <div class="spinner"></div>
+    <div style="font-size:14px;color:var(--g3);">Analisando balancete...</div>
+    <div style="font-size:12px;color:var(--g4);margin-top:4px;font-family:var(--mono);">Aplicando motor de regras tributárias PIS/COFINS</div>
+  </div>
+
+  <!-- RESULTS -->
+  <div id="results">
+
+    <div class="dvd"></div>
+
+    <!-- ARQUIVO -->
+    <div id="file-bar" style="display:flex;align-items:center;gap:12px;margin-bottom:32px;background:var(--db2);border:1px solid rgba(139,92,246,.2);border-radius:var(--r);padding:12px 18px;">
+      <span style="font-size:18px;">📊</span>
+      <div>
+        <div style="font-size:13px;font-weight:600;" id="file-bar-name">—</div>
+        <div style="font-size:11px;color:var(--g3);font-family:var(--mono);" id="file-bar-lines">—</div>
+      </div>
+      <div style="margin-left:auto;display:flex;gap:8px;">
+        <button class="btn btn-ghost btn-sm" onclick="resetar()">Nova análise</button>
+      </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="sec-hd">
+      <div><div class="sec-lbl">Visão Geral</div><h2 class="sec-ttl">Resumo executivo</h2></div>
+    </div>
+    <div class="kpi-grid">
+      <div class="kpi kpi-purple">
+        <div class="kpi-icon">📋</div>
+        <div class="kpi-label">Total Analisado</div>
+        <div class="kpi-value" id="k-total">—</div>
+        <div class="kpi-sub" id="k-linhas">— contas</div>
+      </div>
+      <div class="kpi kpi-green">
+        <div class="kpi-icon">✅</div>
+        <div class="kpi-label">Base Elegível (Confirmado)</div>
+        <div class="kpi-value" id="k-elegivel">—</div>
+        <div class="kpi-sub" id="k-pct">— do total</div>
+      </div>
+      <div class="kpi kpi-yellow">
+        <div class="kpi-icon">🔎</div>
+        <div class="kpi-label">Base com Potencial</div>
+        <div class="kpi-value" id="k-possivel">—</div>
+        <div class="kpi-sub">Pendente de confirmação</div>
+      </div>
+      <div class="kpi kpi-green">
+        <div class="kpi-icon">💰</div>
+        <div class="kpi-label">Crédito Confirmado (9,25%)</div>
+        <div class="kpi-value" id="k-credito-certo">—</div>
+        <div class="kpi-sub">PIS 1,65% + COFINS 7,6%</div>
+      </div>
+      <div class="kpi kpi-yellow">
+        <div class="kpi-icon">⚡</div>
+        <div class="kpi-label">Crédito Total Potencial</div>
+        <div class="kpi-value" id="k-credito-total">—</div>
+        <div class="kpi-sub">Confirmado + Possível</div>
+      </div>
+      <div class="kpi kpi-red">
+        <div class="kpi-icon">⚠️</div>
+        <div class="kpi-label">Exposição de Risco Alto</div>
+        <div class="kpi-value" id="k-risco-alto">—</div>
+        <div class="kpi-sub">Base com risco de autuação</div>
+      </div>
+    </div>
+
+    <!-- CHARTS -->
+    <div class="dvd"></div>
+    <div class="sec-hd">
+      <div><div class="sec-lbl">Dashboards</div><h2 class="sec-ttl">Visualizações</h2></div>
+    </div>
+    <div class="chart-grid">
+      <div class="chart-card">
+        <h3>Créditos PIS/COFINS por Tipo</h3>
+        <div class="chart-wrap"><canvas id="chart-credito"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h3>Distribuição de Risco (por valor)</h3>
+        <div class="chart-wrap"><canvas id="chart-risco"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h3>Elegibilidade por Volume (R$)</h3>
+        <div class="chart-wrap"><canvas id="chart-elegibilidade"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h3>Top 8 Categorias — Crédito Potencial</h3>
+        <div class="chart-wrap"><canvas id="chart-categorias"></canvas></div>
+      </div>
+    </div>
+
+    <!-- TOP OPORTUNIDADES -->
+    <div class="dvd"></div>
+    <div class="sec-hd">
+      <div><div class="sec-lbl">Oportunidades</div><h2 class="sec-ttl">Ranking de maiores créditos</h2></div>
+    </div>
+    <div class="opp-list" id="opp-list"></div>
+
+    <!-- ANÁLISE DETALHADA -->
+    <div class="dvd"></div>
+    <div class="sec-hd">
+      <div><div class="sec-lbl">Detalhamento</div><h2 class="sec-ttl">Análise linha a linha</h2></div>
+    </div>
+
+    <div class="table-toolbar">
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" placeholder="Buscar conta ou descrição..." id="search-input" oninput="filtrarTabela()"/>
+      </div>
+      <select class="filter-sel" id="filter-eligible" onchange="filtrarTabela()">
+        <option value="">Todos — Elegibilidade</option>
+        <option value="SIM">✅ Elegível (SIM)</option>
+        <option value="POSSÍVEL">🔎 Possível</option>
+        <option value="NÃO">❌ Não Elegível</option>
+      </select>
+      <select class="filter-sel" id="filter-risk" onchange="filtrarTabela()">
+        <option value="">Todos — Risco</option>
+        <option value="BAIXO">🟢 Baixo</option>
+        <option value="MÉDIO">🟡 Médio</option>
+        <option value="ALTO">🔴 Alto</option>
+      </select>
+    </div>
+
+    <div class="table-wrap">
+      <table id="main-table">
+        <thead>
+          <tr>
+            <th>Conta</th>
+            <th>Descrição</th>
+            <th style="text-align:right">Valor R$</th>
+            <th>Categoria</th>
+            <th>Elegibilidade</th>
+            <th style="text-align:right">Crédito R$</th>
+            <th>Risco</th>
+            <th>Base Legal</th>
+            <th style="width:28px"></th>
+          </tr>
+        </thead>
+        <tbody id="table-body"></tbody>
+      </table>
+    </div>
+    <div id="table-count" style="font-size:11px;color:var(--g4);font-family:var(--mono);margin-top:8px;text-align:right;"></div>
+
+    <!-- EXPORT -->
+    <div class="export-bar">
+      <button class="btn btn-green" id="btn-excel" onclick="exportarExcel()">⬇ Baixar Excel</button>
+      <button class="btn btn-ghost" onclick="window.print()">🖨 Imprimir / PDF</button>
+    </div>
+
+    <!-- DISCLAIMER -->
+    <div class="disclaimer">
+      <span class="disc-icon">⚠️</span>
+      <div>
+        <div class="disc-title">Análise indicativa — validação especializada obrigatória</div>
+        <div class="disc-text">Esta ferramenta aplica um motor de regras tributárias baseado na legislação vigente (Leis 10.637/2002 e 10.833/2003) e na jurisprudência do STJ (REsp 1.221.170 — Tema 779). Os resultados são indicativos e não substituem a análise de um especialista tributário. Antes de aproveitar qualquer crédito junto à Receita Federal, recomenda-se validação detalhada, especialmente nas categorias marcadas como "POSSÍVEL", que possuem controvérsia na RFB ou no CARF.</div>
+      </div>
+    </div>
+
+  </div><!-- /results -->
+</div><!-- /page -->
+
+<script>
+const API = 'http://localhost:5000/api/piscofins';
+let currentAnalysisId = null;
+let allRows = [];
+let charts = {};
+
+// ── Drag & drop ──────────────────────────────────────────────────────────────
+const dz = document.getElementById('drop-zone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag'));
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.classList.remove('drag');
+  const f = e.dataTransfer.files[0];
+  if (f) processFile(f);
+});
+
+function handleFileSelect(e) {
+  const f = e.target.files[0];
+  if (f) processFile(f);
+}
+
+async function processFile(file) {
+  if (!file.name.endsWith('.xlsx')) {
+    alert('Por favor, envie um arquivo .xlsx');
+    return;
+  }
+  document.getElementById('upload-section').style.display = 'none';
+  document.getElementById('loading').style.display = 'block';
+
+  const fd = new FormData();
+  fd.append('file', file);
+
+  try {
+    const res = await fetch(`${API}/upload`, { method: 'POST', body: fd });
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || 'Erro na análise');
+    renderResults(data);
+  } catch (err) {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('upload-section').style.display = 'block';
+    alert(`Erro: ${err.message}\n\nVerifique se o backend está rodando em localhost:5000`);
+  }
+}
+
+// ── Formatação ───────────────────────────────────────────────────────────────
+function fmt(v) {
+  if (!v && v !== 0) return '—';
+  return 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function fmtShort(v) {
+  const n = Number(v);
+  if (n >= 1e6) return 'R$ ' + (n / 1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return 'R$ ' + (n / 1e3).toFixed(0) + 'k';
+  return fmt(n);
+}
+
+// ── Render principal ─────────────────────────────────────────────────────────
+function renderResults(data) {
+  currentAnalysisId = data.analysis_id;
+  allRows = data.rows;
+  const s = data.summary;
+
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('results').style.display = 'block';
+
+  document.getElementById('file-bar-name').textContent = data.filename || 'Balancete';
+  document.getElementById('file-bar-lines').textContent = `${s.total_linhas} linhas analisadas · Gerado em ${new Date().toLocaleString('pt-BR')}`;
+
+  // KPIs
+  document.getElementById('k-total').textContent = fmtShort(s.total_analisado);
+  document.getElementById('k-linhas').textContent = `${s.total_linhas} contas`;
+  document.getElementById('k-elegivel').textContent = fmtShort(s.total_elegivel);
+  document.getElementById('k-pct').textContent = `${s.pct_aproveitamento}% do total`;
+  document.getElementById('k-possivel').textContent = fmtShort(s.total_possivel);
+  document.getElementById('k-credito-certo').textContent = fmtShort(s.credito_certo);
+  document.getElementById('k-credito-total').textContent = fmtShort(s.credito_total_potencial);
+  document.getElementById('k-risco-alto').textContent = fmtShort(data.risk_distribution['ALTO'] || 0);
+
+  renderCharts(data);
+  renderOportunidades(data.top_oportunidades);
+  renderTable(allRows);
+}
+
+// ── Charts ────────────────────────────────────────────────────────────────────
+const PALETTE = ['#8B5CF6','#22C55E','#F59E0B','#3B82F6','#EF4444','#EC4899','#14B8A6','#F97316','#A78BFA','#6EE7B7'];
+
+function makeChart(id, type, labels, datasets, opts = {}) {
+  const ctx = document.getElementById(id).getContext('2d');
+  if (charts[id]) charts[id].destroy();
+  charts[id] = new Chart(ctx, {
+    type,
+    data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: '#A8B8CC', font: { size: 11 }, boxWidth: 12 } },
+        tooltip: { callbacks: { label: ctx => ' ' + fmtShort(ctx.raw) } }
+      },
+      scales: type === 'bar' ? {
+        x: { ticks: { color: '#6B7D94', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,.04)' } },
+        y: { ticks: { color: '#6B7D94', font: { size: 10 }, callback: v => fmtShort(v) }, grid: { color: 'rgba(255,255,255,.04)' } }
+      } : {},
+      ...opts
+    }
+  });
+}
+
+function renderCharts(data) {
+  // 1. Créditos por tipo
+  const byType = data.by_credit_type;
+  const typeLabels = Object.keys(byType).filter(k => k !== 'N/A' && byType[k].credito > 0);
+  const typeVals = typeLabels.map(k => byType[k].credito);
+  makeChart('chart-credito', 'bar', typeLabels, [{
+    data: typeVals, backgroundColor: PALETTE.slice(0, typeLabels.length),
+    borderRadius: 6, borderSkipped: false
+  }], { plugins: { legend: { display: false } } });
+
+  // 2. Risco
+  const rd = data.risk_distribution;
+  makeChart('chart-risco', 'doughnut',
+    ['Baixo', 'Médio', 'Alto'],
+    [{ data: [rd['BAIXO'] || 0, rd['MÉDIO'] || 0, rd['ALTO'] || 0], backgroundColor: ['#22C55E', '#F59E0B', '#EF4444'], borderWidth: 0, hoverOffset: 8 }],
+    { cutout: '65%', plugins: { legend: { position: 'bottom' } } }
+  );
+
+  // 3. Elegibilidade por volume
+  const simVal = data.summary.total_elegivel;
+  const posVal = data.summary.total_possivel;
+  const naoVal = data.summary.total_analisado - simVal - posVal;
+  makeChart('chart-elegibilidade', 'pie',
+    ['Elegível (SIM)', 'Possível', 'Não elegível'],
+    [{ data: [simVal, posVal, naoVal < 0 ? 0 : naoVal], backgroundColor: ['#22C55E', '#F59E0B', '#6B7D94'], borderWidth: 0, hoverOffset: 8 }],
+    { plugins: { legend: { position: 'bottom' } } }
+  );
+
+  // 4. Top 8 categorias por crédito
+  const cats = Object.entries(data.by_category)
+    .filter(([, v]) => v.credito > 0)
+    .sort((a, b) => b[1].credito - a[1].credito)
+    .slice(0, 8);
+  const catLabels = cats.map(([k]) => k.length > 20 ? k.slice(0, 18) + '…' : k);
+  const catVals = cats.map(([, v]) => v.credito);
+  makeChart('chart-categorias', 'bar', catLabels, [{
+    data: catVals, backgroundColor: '#8B5CF6',
+    borderRadius: 6, borderSkipped: false
+  }], { indexAxis: 'y', plugins: { legend: { display: false } } });
+}
+
+// ── Oportunidades ─────────────────────────────────────────────────────────────
+function renderOportunidades(opps) {
+  const el = document.getElementById('opp-list');
+  if (!opps || opps.length === 0) {
+    el.innerHTML = '<div style="color:var(--g4);font-size:13px;padding:16px;">Nenhuma oportunidade identificada.</div>';
+    return;
+  }
+  el.innerHTML = opps.map((o, i) => `
+    <div class="opp-item">
+      <div>
+        <div class="opp-desc">${i + 1}. ${esc(o.descricao) || '—'}</div>
+        <div class="opp-conta">${esc(o.conta)} · ${esc(o.category)}</div>
+      </div>
+      <span class="badge ${o.eligible === 'SIM' ? 'b-sim' : 'b-possivel'}">${o.eligible}</span>
+      <div class="opp-credito">${fmt(o.credit_value)}<br><span>${o.credit_type}</span></div>
+    </div>
+  `).join('');
+}
+
+// ── Tabela ────────────────────────────────────────────────────────────────────
+function renderTable(rows) {
+  const tbody = document.getElementById('table-body');
+  tbody.innerHTML = rows.map((r, i) => `
+    <tr class="data-row" data-eligible="${r.eligible}" data-risk="${r.risk}" data-search="${(r.conta + r.descricao + r.category).toLowerCase()}">
+      <td class="td-conta td-toggle" onclick="toggleDetail(${i})">${esc(r.conta)}</td>
+      <td class="td-desc td-toggle" onclick="toggleDetail(${i})">${esc(r.descricao)}</td>
+      <td class="td-valor">${fmt(r.valor)}</td>
+      <td style="font-size:12px;color:var(--g2)">${esc(r.category)}</td>
+      <td><span class="badge ${eligBadge(r.eligible)}">${r.eligible}</span></td>
+      <td class="td-credito">${r.credit_value > 0 ? fmt(r.credit_value) : '—'}</td>
+      <td><span class="badge ${riskBadge(r.risk)}">${r.risk}</span></td>
+      <td class="td-base">${esc(r.legal_basis)}</td>
+      <td style="text-align:center;color:var(--g4);cursor:pointer;user-select:none;" onclick="toggleDetail(${i})" id="tog-${i}">▸</td>
+    </tr>
+    <tr class="row-detail" id="detail-${i}">
+      <td colspan="9">
+        <div class="detail-box">
+          <strong>Comentário técnico</strong>${esc(r.comment)}
+          <div style="margin-top:8px;display:flex;gap:16px;flex-wrap:wrap;">
+            <span style="font-size:11px;color:var(--g4);">Tipo: <strong style="color:var(--g2)">${esc(r.credit_type)}</strong></span>
+            <span style="font-size:11px;color:var(--g4);">Fundamento: <strong style="color:var(--g2)">${esc(r.law_type)}</strong></span>
+          </div>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+  atualizarContador(rows.length, rows.length);
+}
+
+function toggleDetail(i) {
+  const det = document.getElementById(`detail-${i}`);
+  const tog = document.getElementById(`tog-${i}`);
+  const open = det.style.display === 'table-row';
+  det.style.display = open ? 'none' : 'table-row';
+  tog.textContent = open ? '▸' : '▾';
+}
+
+function filtrarTabela() {
+  const q = document.getElementById('search-input').value.toLowerCase();
+  const fe = document.getElementById('filter-eligible').value;
+  const fr = document.getElementById('filter-risk').value;
+  const rows = document.querySelectorAll('.data-row');
+  let visible = 0;
+  rows.forEach(row => {
+    const matchQ = !q || row.dataset.search.includes(q);
+    const matchE = !fe || row.dataset.eligible === fe;
+    const matchR = !fr || row.dataset.risk === fr;
+    const show = matchQ && matchE && matchR;
+    row.style.display = show ? '' : 'none';
+    const detId = row.querySelector('[id^="tog-"]')?.id?.replace('tog-', '');
+    if (detId) document.getElementById(`detail-${detId}`).style.display = 'none';
+    if (show) visible++;
+  });
+  atualizarContador(visible, rows.length);
+}
+
+function atualizarContador(vis, tot) {
+  document.getElementById('table-count').textContent = `Exibindo ${vis} de ${tot} contas`;
+}
+
+// ── Export ────────────────────────────────────────────────────────────────────
+async function exportarExcel() {
+  if (!currentAnalysisId) return;
+  const btn = document.getElementById('btn-excel');
+  btn.textContent = '⏳ Gerando...';
+  btn.disabled = true;
+  try {
+    const res = await fetch(`${API}/download/excel/${currentAnalysisId}`);
+    if (!res.ok) throw new Error('Erro ao gerar Excel');
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `analise_piscofins_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    alert('Erro ao exportar: ' + e.message);
+  } finally {
+    btn.textContent = '⬇ Baixar Excel';
+    btn.disabled = false;
+  }
+}
+
+// ── Reset ─────────────────────────────────────────────────────────────────────
+function resetar() {
+  currentAnalysisId = null;
+  allRows = [];
+  document.getElementById('file-input').value = '';
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('upload-section').style.display = 'block';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function esc(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+function eligBadge(e) {
+  return e === 'SIM' ? 'b-sim' : e === 'NÃO' ? 'b-nao' : 'b-possivel';
+}
+function riskBadge(r) {
+  return r === 'BAIXO' ? 'b-baixo' : r === 'ALTO' ? 'b-alto' : 'b-medio';
+}
+</script>
+</body>
+</html>
