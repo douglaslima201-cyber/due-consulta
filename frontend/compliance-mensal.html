@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>PISCO — Análise Tributária | Rumo Brasil</title>
+<script src="https://cdn.jsdelivr.net/npm/react@18/umd/react.development.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@300;400;600;700;800&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet"/>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --navy: #1a2035;
+  --navy2: #222a40;
+  --orange: #e8611a;
+  --orange2: #f07330;
+  --green: #2ecc71;
+  --green2: #27ae60;
+  --red: #e74c3c;
+  --yellow: #f39c12;
+  --bg: #f0f2f5;
+  --bg2: #ffffff;
+  --border: #dde2ea;
+  --text: #1a2035;
+  --text2: #5a6478;
+  --text3: #9aa3b5;
+  --teal: #1abc9c;
+  --blue: #3498db;
+  --shadow: 0 2px 8px rgba(0,0,0,0.08);
+  --shadow2: 0 4px 16px rgba(0,0,0,0.12);
+}
+html, body { height: 100%; background: var(--bg); font-family: 'Nunito Sans', sans-serif; font-size: 13px; color: var(--text); }
+#root { display: flex; flex-direction: column; min-height: 100vh; }
+
+/* ── HEADER ── */
+.header {
+  background: var(--navy);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 24px; height: 52px; flex-shrink: 0;
+}
+.header-brand { display: flex; align-items: center; gap: 12px; }
+.brand-logo {
+  width: 36px; height: 36px; background: var(--orange); border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Nunito', sans-serif; font-size: 18px; font-weight: 900; color: #fff; letter-spacing: -1px;
+}
+.brand-title { font-size: 16px; font-weight: 800; color: #fff; letter-spacing: -0.3px; }
+.brand-title span { color: var(--orange2); }
+.header-sub { font-size: 11px; color: rgba(255,255,255,0.45); margin-top: 1px; }
+.header-right { display: flex; align-items: center; gap: 10px; }
+.header-badge {
+  background: rgba(232,97,26,0.25); border: 1px solid rgba(232,97,26,0.5);
+  color: var(--orange2); padding: 5px 12px; border-radius: 6px; font-size: 11px; font-weight: 700;
+  display: flex; align-items: center; gap: 6px;
+}
+.back-btn {
+  color: rgba(255,255,255,.6); font-size: 12px; font-weight: 500;
+  text-decoration: none; background: rgba(255,255,255,.07);
+  border: 1px solid rgba(255,255,255,.12);
+  padding: 5px 12px; border-radius: 6px;
+  transition: all .15s; white-space: nowrap;
+}
+.back-btn:hover { background: rgba(255,255,255,.13); color: #fff; }
+
+/* ── TAB BAR ── */
+.tab-bar {
+  background: var(--navy2); border-bottom: 3px solid var(--orange);
+  display: flex; align-items: center; padding: 0 16px; gap: 2px; flex-shrink: 0;
+}
+.tab-bar-item {
+  padding: 10px 18px; font-size: 12px; font-weight: 700; cursor: pointer;
+  color: rgba(255,255,255,0.5); display: flex; align-items: center; gap: 7px;
+  border-bottom: 3px solid transparent; margin-bottom: -3px; transition: all 0.15s;
+  user-select: none; white-space: nowrap;
+}
+.tab-bar-item:hover { color: rgba(255,255,255,0.8); }
+.tab-bar-item.active { color: #fff; border-bottom-color: var(--orange); }
+.tab-bar-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+/* ── LAYOUT ── */
+.app-body { display: flex; flex: 1; overflow: hidden; min-height: 0; }
+.sidebar { width: 300px; min-width: 300px; background: var(--bg2); border-right: 1px solid var(--border); overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+.main-area { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+
+/* ── SIDEBAR SECTIONS ── */
+.s-section { }
+.s-section-title {
+  font-size: 10px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase;
+  color: var(--orange); margin-bottom: 10px; display: flex; align-items: center; gap: 6px;
+}
+.s-section-title::before { content: ''; display: block; width: 3px; height: 12px; background: var(--orange); border-radius: 2px; }
+.field-row { display: flex; gap: 8px; }
+.field { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+.field label { font-size: 11px; color: var(--text2); font-weight: 700; }
+.field input, .field select {
+  border: 1px solid var(--border); border-radius: 5px; padding: 7px 10px;
+  font-family: inherit; font-size: 13px; color: var(--text); background: var(--bg);
+  outline: none; transition: border 0.15s; width: 100%;
+}
+.field input:focus, .field select:focus { border-color: var(--orange); background: #fff; }
+.field input[type=number] { font-family: 'Nunito Sans', monospace; }
+
+/* Toggle buttons */
+.toggle-group { display: flex; gap: 0; border-radius: 6px; overflow: hidden; border: 1px solid var(--border); }
+.toggle-btn {
+  flex: 1; padding: 8px 6px; font-size: 12px; font-weight: 700; cursor: pointer;
+  background: var(--bg); border: none; color: var(--text2); transition: all 0.15s;
+  font-family: inherit; text-align: center; user-select: none;
+}
+.toggle-btn:not(:last-child) { border-right: 1px solid var(--border); }
+.toggle-btn.active { background: var(--orange); color: #fff; }
+.toggle-btn.active-teal { background: var(--teal); color: #fff; }
+.toggle-btn.active-blue { background: var(--blue); color: #fff; }
+
+/* Upload button */
+.upload-area {
+  border: 2px dashed var(--border); border-radius: 8px; padding: 16px; text-align: center;
+  cursor: pointer; transition: all 0.15s; background: var(--bg);
+}
+.upload-area:hover { border-color: var(--orange); background: rgba(232,97,26,0.04); }
+.upload-area-icon { font-size: 22px; margin-bottom: 6px; }
+.upload-area-text { font-size: 12px; color: var(--text2); font-weight: 600; }
+.upload-area-sub { font-size: 10px; color: var(--text3); margin-top: 3px; }
+
+/* ── ALERT BANNER ── */
+.alert-banner {
+  border-radius: 7px; padding: 10px 14px; font-size: 12px; font-weight: 600;
+  display: flex; align-items: center; gap: 8px; border: 1px solid;
+}
+.alert-banner.danger { background: #fdf2f2; border-color: #f5c6c6; color: #c0392b; }
+.alert-banner.success { background: #f0fdf4; border-color: #a7f3d0; color: #166534; }
+.alert-banner.info { background: #eff6ff; border-color: #bfdbfe; color: #1d4ed8; }
+.alert-banner.warning { background: #fffbeb; border-color: #fcd34d; color: #92400e; }
+
+/* ── INNER TABS ── */
+.inner-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); background: var(--bg2); border-radius: 8px 8px 0 0; overflow: hidden; }
+.inner-tab {
+  padding: 10px 18px; font-size: 12px; font-weight: 700; cursor: pointer;
+  color: var(--text2); border-bottom: 2px solid transparent; margin-bottom: -1px;
+  transition: all 0.15s; display: flex; align-items: center; gap: 6px;
+  user-select: none; white-space: nowrap;
+}
+.inner-tab:hover { color: var(--text); background: var(--bg); }
+.inner-tab.active { color: var(--orange); border-bottom-color: var(--orange); background: #fff; }
+.inner-tab.active-teal { color: var(--teal); border-bottom-color: var(--teal); background: #fff; }
+.inner-tab.active-blue { color: var(--blue); border-bottom-color: var(--blue); background: #fff; }
+.inner-tab.active-green { color: var(--green2); border-bottom-color: var(--green2); background: #fff; }
+
+/* ── RESULT CARDS ── */
+.result-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.result-card {
+  border-radius: 8px; padding: 18px 22px; border: 1px solid;
+  position: relative; overflow: hidden;
+}
+.result-card.orange { background: rgba(248,113,26,0.05); border-color: rgba(232,97,26,0.25); }
+.result-card.green  { background: rgba(46,204,113,0.06); border-color: rgba(46,204,113,0.3); }
+.result-card.blue   { background: rgba(52,152,219,0.06); border-color: rgba(52,152,219,0.25); }
+.result-card.teal   { background: rgba(26,188,156,0.06); border-color: rgba(26,188,156,0.25); }
+.rc-label { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+.rc-label.orange { color: var(--orange); }
+.rc-label.green  { color: var(--green2); }
+.rc-label.blue   { color: var(--blue); }
+.rc-label.teal   { color: var(--teal); }
+.rc-value { font-size: 28px; font-weight: 900; font-family: 'Nunito', sans-serif; letter-spacing: -1px; }
+.rc-value.orange { color: var(--orange); }
+.rc-value.green  { color: var(--green2); }
+.rc-value.blue   { color: var(--blue); }
+.rc-value.teal   { color: var(--teal); }
+.rc-sub { font-size: 11px; color: var(--text2); margin-top: 4px; }
+
+/* ── DETAIL TABLE ── */
+.detail-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.detail-header { padding: 12px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.detail-title { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text2); display: flex; align-items: center; gap: 7px; }
+.detail-title::before { content: ''; width: 3px; height: 13px; background: var(--orange); border-radius: 2px; display: block; }
+.detail-body { padding: 0; }
+.detail-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 9px 18px; border-bottom: 1px solid rgba(0,0,0,0.04); font-size: 13px;
+}
+.detail-row:last-child { border-bottom: none; }
+.detail-row.total { background: rgba(232,97,26,0.05); border-top: 2px solid rgba(232,97,26,0.2); }
+.detail-row.total .dr-label { font-weight: 800; color: var(--text); }
+.detail-row.sub { background: var(--bg); }
+.dr-label { color: var(--text2); }
+.dr-value { font-weight: 700; color: var(--text); font-family: 'Nunito Sans', monospace; }
+.dr-value.orange { color: var(--orange); }
+.dr-value.green  { color: var(--green2); }
+.dr-value.red    { color: var(--red); }
+.dr-value.teal   { color: var(--teal); }
+.dr-value.blue   { color: var(--blue); }
+.formula-box {
+  background: rgba(232,97,26,0.07); border: 1px solid rgba(232,97,26,0.15);
+  border-radius: 6px; padding: 10px 18px; margin: 10px 18px;
+  font-size: 12px; color: var(--text2); display: flex; align-items: center; justify-content: space-between;
+  font-family: 'Courier New', monospace;
+}
+.formula-result { font-size: 14px; font-weight: 800; color: var(--orange); }
+
+/* ── BADGE ── */
+.badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 800; letter-spacing: 0.3px; }
+.badge-orange { background: rgba(232,97,26,0.15); color: var(--orange); }
+.badge-green  { background: rgba(46,204,113,0.15); color: var(--green2); }
+.badge-blue   { background: rgba(52,152,219,0.15); color: var(--blue); }
+.badge-teal   { background: rgba(26,188,156,0.15); color: var(--teal); }
+.badge-red    { background: rgba(231,76,60,0.12); color: var(--red); }
+.badge-yellow { background: rgba(243,156,18,0.15); color: var(--yellow); }
+
+/* ── DATA TABLE ── */
+.data-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.data-table th { padding: 8px 14px; text-align: left; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text3); border-bottom: 2px solid var(--border); background: var(--bg); white-space: nowrap; }
+.data-table td { padding: 9px 14px; border-bottom: 1px solid var(--border); color: var(--text2); }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: rgba(232,97,26,0.03); }
+.data-table .num { text-align: right; font-family: 'Nunito Sans', monospace; font-weight: 600; }
+.data-table .total-row td { font-weight: 800; color: var(--text); background: rgba(232,97,26,0.05); border-top: 2px solid rgba(232,97,26,0.2); }
+
+/* Metrics row */
+.metrics-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.metric-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; border-top: 3px solid; }
+.metric-box.orange { border-top-color: var(--orange); }
+.metric-box.green  { border-top-color: var(--green2); }
+.metric-box.blue   { border-top-color: var(--blue); }
+.metric-box.teal   { border-top-color: var(--teal); }
+.metric-box.red    { border-top-color: var(--red); }
+.mb-label { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text3); margin-bottom: 6px; }
+.mb-value { font-size: 18px; font-weight: 900; font-family: 'Nunito', sans-serif; letter-spacing: -0.5px; }
+.mb-value.orange { color: var(--orange); }
+.mb-value.green  { color: var(--green2); }
+.mb-value.blue   { color: var(--blue); }
+.mb-value.teal   { color: var(--teal); }
+.mb-value.red    { color: var(--red); }
+.mb-sub { font-size: 10px; color: var(--text3); margin-top: 3px; }
+
+/* Charts */
+.charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.chart-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.chart-header { padding: 10px 16px; border-bottom: 1px solid var(--border); font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text2); }
+.chart-body { padding: 16px; }
+
+/* Comparison bars */
+.comp-row { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; }
+.comp-label { font-size: 11px; color: var(--text2); width: 130px; flex-shrink: 0; font-weight: 600; }
+.comp-bar-wrap { flex: 1; height: 8px; background: var(--bg); border-radius: 4px; overflow: hidden; }
+.comp-bar { height: 100%; border-radius: 4px; transition: width 0.6s ease; }
+.comp-val { font-size: 11px; font-weight: 700; min-width: 90px; text-align: right; font-family: 'Nunito Sans', monospace; }
+
+/* AI chat */
+.ai-messages { height: 320px; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; background: var(--bg); }
+.msg-ai { display: flex; gap: 8px; }
+.msg-user { display: flex; gap: 8px; flex-direction: row-reverse; }
+.msg-av { width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; flex-shrink: 0; }
+.msg-av.ai { background: var(--orange); color: #fff; }
+.msg-av.user { background: var(--navy); color: #fff; }
+.msg-bub { padding: 9px 13px; border-radius: 10px; max-width: 85%; font-size: 12px; line-height: 1.6; }
+.msg-ai .msg-bub { background: #fff; border: 1px solid var(--border); color: var(--text); }
+.msg-user .msg-bub { background: var(--orange); color: #fff; }
+.ai-input-row { padding: 10px 14px; border-top: 1px solid var(--border); display: flex; gap: 8px; background: #fff; }
+.ai-inp { flex: 1; border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; font-family: inherit; font-size: 12px; outline: none; }
+.ai-inp:focus { border-color: var(--orange); }
+.btn-send { background: var(--orange); border: none; color: #fff; border-radius: 6px; padding: 8px 14px; cursor: pointer; font-family: inherit; font-weight: 700; font-size: 12px; }
+.btn-send:hover { background: var(--orange2); }
+.ai-loading { display: flex; gap: 3px; padding: 4px; }
+.ai-loading span { width: 5px; height: 5px; border-radius: 50%; background: var(--text3); animation: bl 1.2s infinite; }
+.ai-loading span:nth-child(2) { animation-delay: 0.2s; }
+.ai-loading span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes bl { 0%,80%,100%{opacity:.3} 40%{opacity:1} }
+
+/* Scrollbars */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* IRPJ Simulator */
+.sim-field { margin-bottom: 12px; }
+.sim-label { font-size: 11px; font-weight: 700; color: var(--text2); margin-bottom: 4px; display: block; }
+.sim-input { width: 100%; border: 1px solid var(--border); border-radius: 5px; padding: 8px 10px; font-family: inherit; font-size: 13px; outline: none; }
+.sim-input:focus { border-color: var(--blue); }
+
+.no-data { color: var(--text3); text-align: center; padding: 40px; font-size: 13px; font-weight: 600; }
+
+/* points list */
+.point-row { display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.point-row:last-child { border-bottom: none; }
+.point-num { width: 24px; height: 24px; border-radius: 50%; background: var(--orange); color: #fff; font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+.point-body { flex: 1; }
+.point-title { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 3px; }
+.point-meta { font-size: 11px; color: var(--text2); display: flex; gap: 12px; }
+
+@media (max-width: 900px) { .app-body { flex-direction: column; } .sidebar { width: 100%; min-width: 0; } .metrics-row { grid-template-columns: 1fr 1fr; } .charts-grid { grid-template-columns: 1fr; } .result-cards { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useRef, useEffect } = React;
+
+const fmt = (n, d=2) => n == null || isNaN(n) ? '—' : new Intl.NumberFormat('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d }).format(n);
+const brl = n => n == null || isNaN(n) ? '—' : 'R$ ' + fmt(n);
+const pct = n => n == null || isNaN(n) ? '—' : fmt(n, 2) + '%';
+
+function parseWorkbook(wb) {
+  const s = {};
+  wb.SheetNames.forEach(n => { s[n] = XLSX.utils.sheet_to_json(wb.Sheets[n], { header: 1, defval: null }); });
+  return s;
+}
+function extractData(sheets) {
+  const ap = sheets['Resumo_Apuração'] || [];
+  const pt = sheets['Resumo_Pontos'] || [];
+  const cl = sheets['CHECK-LIST (2)'] || [];
+  let company = '', cnpj = '', period = '';
+  for (const row of ap) {
+    const f = (row||[]).filter(Boolean).map(v=>String(v).trim());
+    for (const v of f) {
+      if (v.includes('TRANSPORTES') || v.includes('LTDA')) company = v;
+      if (v.startsWith('CNPJ:')) cnpj = v;
+      if (v.startsWith('Período:')) period = v.replace('Período:','').trim();
+    }
+    if (company) break;
+  }
+  const debitos=[], creditos=[];
+  let inD=false, inC=false, saldoEmp=0, saldoRumo=0, ganho=0;
+  for (const row of ap) {
+    if (!row || !row.some(Boolean)) continue;
+    const cells = row.map(v=>v!=null?String(v).trim():'');
+    const j = cells.join('|');
+    if (j.includes('RECEITAS') && j.includes('ALÍQUOTA')) { inD=true; inC=false; continue; }
+    if (j.includes('CUSTOS E DESPESAS') && j.includes('ALÍQUOTA')) { inC=true; inD=false; continue; }
+    if (j.includes('SALDO CREDOR APURADO PELA EMPRESA')) { for(const v of row) if(typeof v==='number'){saldoEmp=v;break;} continue; }
+    if (j.includes('SALDO CREDOR APURADO PELA RUMO')) { for(const v of row) if(typeof v==='number'){saldoRumo=v;break;} continue; }
+    if (j.includes('GANHO EFETIVO')) { for(const v of row) if(typeof v==='number'){ganho=v;break;} continue; }
+    if ((inD||inC) && !j.includes('TOTAL') && !j.includes('APURAÇÃO')) {
+      const label = cells.find(c=>c.length>2&&!['NaN','0'].includes(c)&&isNaN(Number(c)));
+      const nums = row.filter(v=>typeof v==='number');
+      if (label && nums.length>=2) {
+        const obj = { label, aliquota:nums[0], bcEmp:nums[1], valEmp:nums[2]||0, bcRumo:nums[3]||nums[1], valRumo:nums[4]||nums[2]||0 };
+        if (inD) debitos.push(obj); else creditos.push(obj);
+      }
+    }
+  }
+  const pontos=[];
+  let inP=false;
+  for (const row of pt) {
+    if (!row||!row.some(Boolean)) continue;
+    const cells = row.map(v=>v!=null?String(v).trim():'');
+    if (cells.some(c=>c==='Nº') && cells.some(c=>c==='ANÁLISE')) { inP=true; continue; }
+    if (inP) {
+      const nums=row.filter(v=>typeof v==='number');
+      const strs=cells.filter(c=>c&&isNaN(Number(c))&&c.length>1);
+      if (nums.length>=1&&strs.length>=1) pontos.push({ num:nums[0], analise:strs[0]||'', conclusao:strs[1]||'', valorBase:nums[1]||0, valorPisco:nums[2]||0 });
+    }
+  }
+  const checkItems=[];
+  let curSec='';
+  for (const row of cl) {
+    if (!row||!row.some(Boolean)) continue;
+    const cells=row.map(v=>v!=null?String(v).trim():'');
+    const j=cells.join(' ');
+    if (j.includes('DÉBITOS')&&j.includes('REVISÃO')) { curSec='DÉBITOS'; continue; }
+    if (j.includes('CRÉDITOS')&&j.includes('REVISÃO')) { curSec='CRÉDITOS'; continue; }
+    if (j.includes('APURAÇÃO')&&j.includes('CONSOLIDAÇÃO')) { curSec='APURAÇÃO'; continue; }
+    const status=cells.find(c=>c==='Finalizado'||c==='Otimização'||c==='Pendente');
+    const item=cells.find(c=>c.length>3&&!['NaN','Finalizado','Otimização','Pendente','DOUGLAS','RUMO'].includes(c)&&isNaN(Number(c))&&!c.startsWith('CNPJ')&&!c.startsWith('CNAE')&&!c.startsWith('Período')&&!c.startsWith('Objetivo')&&!c.includes('CHECK-LIST'));
+    const nums=row.filter(v=>typeof v==='number');
+    if (status&&item) checkItems.push({ section:curSec, item, status, valorOp:nums[0]||0, valorPisco:nums[1]||0, obs:cells.filter(c=>c.length>15&&isNaN(Number(c))).slice(-1)[0]||'' });
+  }
+  return { company:company||'Empresa', cnpj, period, debitos, creditos, pontos, checkItems, saldoEmp, saldoRumo, ganho };
+}
+
+function BarChart({ id, data, color, height=200 }) {
+  const ref = useRef(null);
+  const ch = useRef(null);
+  useEffect(() => {
+    if (!ref.current||!data.length) return;
+    if (ch.current) ch.current.destroy();
+    ch.current = new Chart(ref.current, {
+      type: 'bar',
+      data: { labels: data.map(d=>d.label), datasets: [{ data: data.map(d=>d.value), backgroundColor: color+'bb', borderColor: color, borderWidth: 1, borderRadius: 4 }] },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => 'R$ ' + fmt(c.raw) } } },
+        scales: {
+          x: { ticks: { color: '#9aa3b5', font: { size: 10 }, maxRotation: 35 }, grid: { display: false }, border: { color: '#dde2ea' } },
+          y: { ticks: { color: '#9aa3b5', font: { size: 10 }, callback: v => v>=1e6?(v/1e6).toFixed(1)+'M':v>=1e3?(v/1e3).toFixed(0)+'K':v }, grid: { color: '#f0f2f5' }, border: { display: false } }
+        }
+      }
+    });
+    return () => ch.current?.destroy();
+  }, [data, id, color]);
+  return <div style={{ position:'relative', height }}><canvas ref={ref} id={id} role="img" aria-label="Gráfico de barras"/></div>;
+}
+
+function AIChat({ data }) {
+  const [msgs, setMsgs] = useState([{ r:'ai', t:'Olá! Sou o assistente tributário PISCO. Posso analisar os dados de PIS/COFINS, identificar riscos, oportunidades e responder qualquer dúvida sobre a apuração. Como posso ajudar?' }]);
+  const [inp, setInp] = useState('');
+  const [loading, setLoading] = useState(false);
+  const endRef = useRef(null);
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [msgs]);
+
+  const send = async () => {
+    if (!inp.trim() || loading) return;
+    const q = inp.trim(); setInp(''); setLoading(true);
+    setMsgs(p => [...p, { r:'user', t:q }]);
+    const ctx = data ? `Empresa: ${data.company} | ${data.cnpj} | Período: ${data.period}
+Ganho efetivo: R$ ${fmt(data.ganho)} | Saldo credor empresa: R$ ${fmt(data.saldoEmp)} | Saldo credor revisado: R$ ${fmt(data.saldoRumo)}
+Pontos: ${data.pontos.map(p=>`${p.analise} (${p.conclusao}) base=${fmt(p.valorBase)} pisco=${fmt(p.valorPisco)}`).join('; ')}
+Débitos: ${data.debitos.map(d=>`${d.label} BC=${fmt(d.bcEmp)} val=${fmt(d.valEmp)}`).join('; ')}
+Créditos: ${data.creditos.map(d=>`${d.label} BC=${fmt(d.bcEmp)} val=${fmt(d.valEmp)}`).join('; ')}` : 'Nenhum arquivo carregado.';
+    try {
+      const r = await fetch('https://api.anthropic.com/v1/messages', { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:1000,
+          system:`Você é especialista tributário brasileiro (PIS, COFINS, IRPJ, CSLL). Responda em português, de forma objetiva e técnica. Dados: ${ctx}`,
+          messages: [{ role:'user', content:q }] }) });
+      const d = await r.json();
+      setMsgs(p => [...p, { r:'ai', t: d.content?.map(c=>c.text||'').join('')||'Erro.' }]);
+    } catch { setMsgs(p => [...p, { r:'ai', t:'Erro de conexão.' }]); }
+    setLoading(false);
+  };
+  return (
+    <div>
+      <div className="ai-messages">
+        {msgs.map((m,i)=>(<div key={i} className={m.r==='ai'?'msg-ai':'msg-user'}><div className={`msg-av ${m.r}`}>{m.r==='ai'?'P':'U'}</div><div className="msg-bub">{m.t}</div></div>))}
+        {loading&&<div className="msg-ai"><div className="msg-av ai">P</div><div className="msg-bub"><div className="ai-loading"><span/><span/><span/></div></div></div>}
+        <div ref={endRef}/>
+      </div>
+      <div className="ai-input-row">
+        <input className="ai-inp" value={inp} onChange={e=>setInp(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')send();}} placeholder="Pergunte sobre os dados tributários..."/>
+        <button className="btn-send" onClick={send}>Enviar</button>
+      </div>
+    </div>
+  );
+}
+
+function PisTab({ data, subTab, setSubTab }) {
+  if (!data) return <div className="no-data">Carregue uma planilha para visualizar os dados de PIS/COFINS.</div>;
+  const totDebitoBC = data.debitos.reduce((s,d)=>s+(d.bcEmp||0),0);
+  const totDebitoVal = data.debitos.reduce((s,d)=>s+(d.valEmp||0),0);
+  const totCreditoBC = data.creditos.reduce((s,d)=>s+(d.bcEmp||0),0);
+  const totCreditoVal = data.creditos.reduce((s,d)=>s+(d.valEmp||0),0);
+  const debChartData = data.debitos.filter(d=>d.valEmp>0).map(d=>({ label:d.label.substring(0,16), value:d.valEmp }));
+  const creChartData = data.creditos.filter(d=>d.valEmp>0).map(d=>({ label:d.label.substring(0,16), value:d.valEmp }));
+  const maxComp = Math.max(data.saldoEmp, data.saldoRumo, 1);
+  const subtabs = ['Piso Mínimo', 'Composição', 'Cenários', 'Tributação', 'IA'];
+  const activeClass = (t) => subTab === t ? 'inner-tab active' : 'inner-tab';
+
+  return (
+    <div>
+      {data.ganho > 0 &&
+        <div className="alert-banner success" style={{marginBottom:12}}>
+          ✅ Ganho efetivo de <strong>{brl(data.ganho)}</strong> identificado na revisão PISCO. Saldo credor revisado para {brl(data.saldoRumo)}.
+        </div>
+      }
+      <div style={{ background:'#fff', borderRadius:'8px 8px 0 0', border:'1px solid var(--border)', borderBottom:'none' }}>
+        <div className="inner-tabs">
+          {subtabs.map(t => <div key={t} className={activeClass(t)} onClick={()=>setSubTab(t)}>{t}</div>)}
+        </div>
+      </div>
+      <div style={{ background:'#fff', border:'1px solid var(--border)', borderTop:'none', borderRadius:'0 0 8px 8px', padding:16, marginBottom:12 }}>
+        {subTab === 'Piso Mínimo' && (
+          <div>
+            <div className="result-cards" style={{marginBottom:14}}>
+              <div className="result-card orange">
+                <div className="rc-label orange">📊 SALDO CREDOR EMPRESA</div>
+                <div className="rc-value orange">{brl(data.saldoEmp)}</div>
+                <div className="rc-sub">Apuração original da empresa</div>
+              </div>
+              <div className="result-card green">
+                <div className="rc-label green">✅ SALDO CREDOR REVISADO (PISCO)</div>
+                <div className="rc-value green">{brl(data.saldoRumo)}</div>
+                <div className="rc-sub">+{pct(data.saldoEmp > 0 ? (data.ganho/data.saldoEmp)*100 : 0)} acima da apuração empresa</div>
+              </div>
+            </div>
+            <div className="detail-card">
+              <div className="detail-header">
+                <div className="detail-title">DETALHAMENTO DA APURAÇÃO</div>
+                <span className="badge badge-orange">APURAÇÃO NÃO CUMULATIVA</span>
+              </div>
+              <div className="detail-body">
+                <div className="detail-row sub"><span className="dr-label">Total Débito (Base)</span><span className="dr-value orange">{brl(totDebitoBC)}</span></div>
+                <div className="detail-row sub"><span className="dr-label">Total Débito Apurado</span><span className="dr-value orange">{brl(totDebitoVal)}</span></div>
+                <div className="detail-row sub"><span className="dr-label">Total Crédito (Base)</span><span className="dr-value teal">{brl(totCreditoBC)}</span></div>
+                <div className="detail-row sub"><span className="dr-label">Total Crédito Apurado</span><span className="dr-value teal">{brl(totCreditoVal)}</span></div>
+                <div className="detail-row sub"><span className="dr-label">Saldo credor empresa</span><span className="dr-value">{brl(data.saldoEmp)}</span></div>
+                <div className="detail-row total"><span className="dr-label">Saldo credor revisado (PISCO)</span><span className="dr-value green">{brl(data.saldoRumo)}</span></div>
+              </div>
+              <div className="formula-box">
+                <span>Crédito Total − Débito Total = Saldo Credor</span>
+                <span className="formula-result">{brl(data.saldoRumo)}</span>
+              </div>
+            </div>
+          </div>
+        )}
+        {subTab === 'Composição' && (
+          <div>
+            <div className="charts-grid">
+              <div className="chart-card">
+                <div className="chart-header">Débitos por Natureza</div>
+                <div className="chart-body"><BarChart id="pis-deb" data={debChartData} color="#e8611a"/></div>
+              </div>
+              <div className="chart-card">
+                <div className="chart-header">Créditos por Tipo</div>
+                <div className="chart-body"><BarChart id="pis-cre" data={creChartData} color="#1abc9c"/></div>
+              </div>
+            </div>
+          </div>
+        )}
+        {subTab === 'Cenários' && (
+          <div>
+            <div style={{ marginBottom: 14 }}>
+              <div className="chart-header" style={{ padding:'0 0 10px', borderBottom:'1px solid var(--border)', marginBottom:12 }}>Comparativo Empresa vs PISCO Revisado</div>
+              <div className="comp-row">
+                <div className="comp-label">Saldo Credor Empresa</div>
+                <div className="comp-bar-wrap"><div className="comp-bar" style={{ width:(data.saldoEmp/maxComp*100)+'%', background:'var(--orange)' }}/></div>
+                <div className="comp-val" style={{ color:'var(--orange)' }}>{brl(data.saldoEmp)}</div>
+              </div>
+              <div className="comp-row">
+                <div className="comp-label">Saldo Credor PISCO</div>
+                <div className="comp-bar-wrap"><div className="comp-bar" style={{ width:(data.saldoRumo/maxComp*100)+'%', background:'var(--green2)' }}/></div>
+                <div className="comp-val" style={{ color:'var(--green2)' }}>{brl(data.saldoRumo)}</div>
+              </div>
+            </div>
+            <div className="detail-card">
+              <div className="detail-header"><div className="detail-title">PONTOS IDENTIFICADOS</div></div>
+              <div className="detail-body" style={{ padding:'0 18px' }}>
+                {data.pontos.map((p,i)=>(
+                  <div key={i} className="point-row">
+                    <div className="point-num">{i+1}</div>
+                    <div className="point-body">
+                      <div className="point-title">{p.analise}</div>
+                      <div className="point-meta">
+                        <span className={`badge ${p.conclusao==='Otimização'?'badge-blue':'badge-yellow'}`}>{p.conclusao}</span>
+                        <span>Base: {brl(p.valorBase)}</span>
+                        <span style={{color:'var(--green2)',fontWeight:700}}>PISCO: {brl(p.valorPisco)}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+        {subTab === 'Tributação' && (
+          <div>
+            <div className="metrics-row" style={{marginBottom:14}}>
+              <div className="metric-box orange"><div className="mb-label">Total Débito</div><div className="mb-value orange">{brl(totDebitoVal)}</div></div>
+              <div className="metric-box teal"><div className="mb-label">Total Crédito</div><div className="mb-value teal">{brl(totCreditoVal)}</div></div>
+              <div className="metric-box green"><div className="mb-label">Saldo Credor</div><div className="mb-value green">{brl(data.saldoRumo)}</div></div>
+              <div className="metric-box blue"><div className="mb-label">Ganho Efetivo</div><div className="mb-value blue">{brl(data.ganho)}</div></div>
+            </div>
+            <div className="detail-card" style={{marginBottom:12}}>
+              <div className="detail-header"><div className="detail-title">DETALHAMENTO — DÉBITOS</div></div>
+              <div className="detail-body">
+                <table className="data-table">
+                  <thead><tr><th>Natureza da Receita</th><th className="num">Alíquota</th><th className="num">Base Empresa</th><th className="num">Valor Empresa</th><th className="num">Base PISCO</th><th className="num">Valor PISCO</th></tr></thead>
+                  <tbody>
+                    {data.debitos.map((d,i)=>(
+                      <tr key={i}><td>{d.label}</td><td className="num">{d.aliquota?(d.aliquota*100).toFixed(4)+'%':'—'}</td><td className="num">{brl(d.bcEmp)}</td><td className="num">{brl(d.valEmp)}</td><td className="num">{brl(d.bcRumo)}</td><td className="num">{brl(d.valRumo)}</td></tr>
+                    ))}
+                    <tr className="total-row"><td>TOTAL</td><td/><td className="num">{brl(totDebitoBC)}</td><td className="num">{brl(totDebitoVal)}</td><td className="num">{brl(data.debitos.reduce((s,d)=>s+(d.bcRumo||0),0))}</td><td className="num">{brl(data.debitos.reduce((s,d)=>s+(d.valRumo||0),0))}</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div className="detail-card">
+              <div className="detail-header"><div className="detail-title">DETALHAMENTO — CRÉDITOS</div></div>
+              <div className="detail-body">
+                <table className="data-table">
+                  <thead><tr><th>Tipo de Custo/Despesa</th><th className="num">Alíquota</th><th className="num">Base Empresa</th><th className="num">Valor Empresa</th><th className="num">Base PISCO</th><th className="num">Valor PISCO</th></tr></thead>
+                  <tbody>
+                    {data.creditos.map((d,i)=>(
+                      <tr key={i}><td>{d.label}</td><td className="num">{d.aliquota?(d.aliquota*100).toFixed(4)+'%':'—'}</td><td className="num">{brl(d.bcEmp)}</td><td className="num">{brl(d.valEmp)}</td><td className="num">{brl(d.bcRumo)}</td><td className="num">{brl(d.valRumo)}</td></tr>
+                    ))}
+                    <tr className="total-row"><td>TOTAL</td><td/><td className="num">{brl(totCreditoBC)}</td><td className="num">{brl(totCreditoVal)}</td><td className="num">{brl(data.creditos.reduce((s,d)=>s+(d.bcRumo||0),0))}</td><td className="num">{brl(data.creditos.reduce((s,d)=>s+(d.valRumo||0),0))}</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+        {subTab === 'IA' && (
+          <div className="detail-card">
+            <div className="detail-header"><div className="detail-title">ASSISTENTE IA — ANÁLISE TRIBUTÁRIA</div><span className="badge badge-orange">Powered by Claude</span></div>
+            <AIChat data={data}/>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function IRPJTab() {
+  const [receita, setReceita] = useState(32000000);
+  const [lucro, setLucro] = useState(4800000);
+  const [subTab, setSubTab] = useState('Simulador');
+  const lucroPresBC = receita * 0.08;
+  const irpjPres = lucroPresBC * 0.15 + Math.max(0, lucroPresBC - 60000) * 0.10;
+  const csllPres = receita * 0.12 * 0.09;
+  const totPres = irpjPres + csllPres;
+  const irpjReal = lucro * 0.15 + Math.max(0, lucro - 240000) * 0.10;
+  const csllReal = lucro * 0.09;
+  const totReal = irpjReal + csllReal;
+  const eco = totPres - totReal;
+  const melhor = eco > 0 ? 'Lucro Real' : 'Lucro Presumido';
+  const maxVal = Math.max(totPres, totReal, 1);
+  const chartData = [{ label:'IRPJ Presumido', value:irpjPres },{ label:'CSLL Presumido', value:csllPres },{ label:'IRPJ Real', value:irpjReal },{ label:'CSLL Real', value:csllReal }];
+  const subtabs = ['Simulador', 'Comparativo', 'Tributação'];
+  const activeClass = (t) => subTab === t ? 'inner-tab active-blue' : 'inner-tab';
+
+  return (
+    <div>
+      <div style={{ background:'#fff', borderRadius:'8px 8px 0 0', border:'1px solid var(--border)', borderBottom:'none' }}>
+        <div className="inner-tabs">{subtabs.map(t=><div key={t} className={activeClass(t)} onClick={()=>setSubTab(t)}>{t}</div>)}</div>
+      </div>
+      <div style={{ background:'#fff', border:'1px solid var(--border)', borderTop:'none', borderRadius:'0 0 8px 8px', padding:16 }}>
+        {subTab === 'Simulador' && (
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
+            <div>
+              <div style={{ marginBottom:14 }}>
+                <div className="chart-header" style={{ padding:'0 0 10px', borderBottom:'1px solid var(--border)', marginBottom:12 }}>Parâmetros de Simulação</div>
+                <div className="sim-field"><label className="sim-label">Receita Bruta Anual (R$)</label><input className="sim-input" type="number" value={receita} onChange={e=>setReceita(+e.target.value)}/></div>
+                <div className="sim-field"><label className="sim-label">Lucro Real Estimado (R$)</label><input className="sim-input" type="number" value={lucro} onChange={e=>setLucro(+e.target.value)}/></div>
+                <div className="sim-field"><label className="sim-label">Margem Líquida</label><input className="sim-input" readOnly value={receita>0?pct((lucro/receita)*100):'—'}/></div>
+              </div>
+            </div>
+            <div>
+              <div className="result-cards">
+                <div className="result-card blue">
+                  <div className="rc-label blue">💡 LUCRO PRESUMIDO</div>
+                  <div className="rc-value blue">{brl(totPres)}</div>
+                  <div className="rc-sub">IRPJ {brl(irpjPres)} + CSLL {brl(csllPres)}</div>
+                </div>
+                <div className="result-card teal">
+                  <div className="rc-label teal">📊 LUCRO REAL</div>
+                  <div className="rc-value teal">{brl(totReal)}</div>
+                  <div className="rc-sub">IRPJ {brl(irpjReal)} + CSLL {brl(csllReal)}</div>
+                </div>
+              </div>
+              <div className="alert-banner" style={{ marginTop:12, ...(eco>0?{background:'#f0fdf4',borderColor:'#a7f3d0',color:'#166534'}:{background:'#eff6ff',borderColor:'#bfdbfe',color:'#1d4ed8'}) }}>
+                💡 Regime recomendado: <strong>{melhor}</strong> — economia de {brl(Math.abs(eco))}
+              </div>
+            </div>
+          </div>
+        )}
+        {subTab === 'Comparativo' && (
+          <div>
+            <div className="comp-row" style={{marginBottom:10}}>
+              <div className="comp-label">Lucro Presumido</div>
+              <div className="comp-bar-wrap"><div className="comp-bar" style={{ width:Math.min(100,totPres/maxVal*100)+'%', background:'var(--blue)' }}/></div>
+              <div className="comp-val" style={{color:'var(--blue)'}}>{brl(totPres)}</div>
+            </div>
+            <div className="comp-row" style={{marginBottom:16}}>
+              <div className="comp-label">Lucro Real</div>
+              <div className="comp-bar-wrap"><div className="comp-bar" style={{ width:Math.min(100,totReal/maxVal*100)+'%', background:'var(--teal)' }}/></div>
+              <div className="comp-val" style={{color:'var(--teal)'}}>{brl(totReal)}</div>
+            </div>
+            <BarChart id="irpj-chart" data={chartData} color="#3498db"/>
+          </div>
+        )}
+        {subTab === 'Tributação' && (
+          <div>
+            <div className="metrics-row">
+              <div className="metric-box blue"><div className="mb-label">IRPJ Presumido</div><div className="mb-value blue">{brl(irpjPres)}</div></div>
+              <div className="metric-box blue"><div className="mb-label">CSLL Presumido</div><div className="mb-value blue">{brl(csllPres)}</div></div>
+              <div className="metric-box teal"><div className="mb-label">IRPJ Real</div><div className="mb-value teal">{brl(irpjReal)}</div></div>
+              <div className="metric-box teal"><div className="mb-label">CSLL Real</div><div className="mb-value teal">{brl(csllReal)}</div></div>
+            </div>
+            <div className="detail-card" style={{marginTop:14}}>
+              <div className="detail-header"><div className="detail-title">MEMÓRIA DE CÁLCULO — LUCRO PRESUMIDO</div></div>
+              <div className="detail-body">
+                <div className="detail-row sub"><span className="dr-label">Receita bruta</span><span className="dr-value">{brl(receita)}</span></div>
+                <div className="detail-row sub"><span className="dr-label">Base de cálculo (8% × receita)</span><span className="dr-value blue">{brl(lucroPresBC)}</span></div>
+                <div className="detail-row sub"><span className="dr-label">IRPJ (15% × base)</span><span className="dr-value blue">{brl(lucroPresBC*0.15)}</span></div>
+                <div className="detail-row sub"><span className="dr-label">Adicional (10% sobre excedente)</span><span className="dr-value blue">{brl(Math.max(0,lucroPresBC-60000)*0.10)}</span></div>
+                <div className="detail-row sub"><span className="dr-label">CSLL (9% × 12% × receita)</span><span className="dr-value blue">{brl(csllPres)}</span></div>
+                <div className="detail-row total"><span className="dr-label">TOTAL LUCRO PRESUMIDO</span><span className="dr-value blue">{brl(totPres)}</span></div>
+              </div>
+              <div className="formula-box">
+                <span>(Base × 15%) + Adicional + CSLL =</span>
+                <span className="formula-result" style={{color:'var(--blue)'}}>{brl(totPres)}</span>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ICMSTab() {
+  const [subTab, setSubTab] = useState('Por UF');
+  const mockUF = [
+    { uf:'SP', ent:12500000, sai:8900000, al:12 },{ uf:'PR', ent:9800000, sai:15200000, al:12 },
+    { uf:'SC', ent:7300000, sai:6100000, al:12 },{ uf:'RS', ent:5600000, sai:7800000, al:12 },
+    { uf:'MG', ent:4200000, sai:3900000, al:12 },{ uf:'RJ', ent:3100000, sai:2800000, al:12 },
+  ];
+  const subtabs = ['Por UF', 'Entradas vs Saídas', 'Alertas'];
+  const activeClass = (t) => subTab === t ? 'inner-tab active-green' : 'inner-tab';
+  const chartData = mockUF.map(u=>({ label:u.uf, value:u.sai }));
+  const maxV = Math.max(...mockUF.flatMap(u=>[u.ent,u.sai]));
+
+  return (
+    <div>
+      <div className="alert-banner warning" style={{marginBottom:12}}>
+        ⚠ Dados demonstrativos. Carregue uma planilha com dados de ICMS para análise real por UF e CFOP.
+      </div>
+      <div style={{ background:'#fff', borderRadius:'8px 8px 0 0', border:'1px solid var(--border)', borderBottom:'none' }}>
+        <div className="inner-tabs">{subtabs.map(t=><div key={t} className={activeClass(t)} onClick={()=>setSubTab(t)}>{t}</div>)}</div>
+      </div>
+      <div style={{ background:'#fff', border:'1px solid var(--border)', borderTop:'none', borderRadius:'0 0 8px 8px', padding:16 }}>
+        {subTab === 'Por UF' && (
+          <div>
+            <div className="metrics-row" style={{marginBottom:14}}>
+              <div className="metric-box orange"><div className="mb-label">Total Entradas</div><div className="mb-value orange">{brl(mockUF.reduce((s,u)=>s+u.ent,0))}</div></div>
+              <div className="metric-box green"><div className="mb-label">Total Saídas</div><div className="mb-value green">{brl(mockUF.reduce((s,u)=>s+u.sai,0))}</div></div>
+              <div className="metric-box blue"><div className="mb-label">UFs Ativas</div><div className="mb-value blue">{mockUF.length}</div></div>
+              <div className="metric-box teal"><div className="mb-label">Maior Volume</div><div className="mb-value teal">PR</div></div>
+            </div>
+            <BarChart id="icms-uf" data={chartData} color="#2ecc71"/>
+          </div>
+        )}
+        {subTab === 'Entradas vs Saídas' && (
+          <div>
+            {mockUF.map((u,i)=>(
+              <div key={i} style={{marginBottom:12}}>
+                <div style={{fontSize:11,fontWeight:800,color:'var(--text2)',marginBottom:5}}>{u.uf}</div>
+                <div className="comp-row" style={{marginBottom:4}}>
+                  <div className="comp-label" style={{fontSize:11,width:80}}>Entradas</div>
+                  <div className="comp-bar-wrap"><div className="comp-bar" style={{width:(u.ent/maxV*100)+'%',background:'var(--blue)'}}/></div>
+                  <div className="comp-val" style={{fontSize:11,color:'var(--blue)'}}>{(u.ent/1e6).toFixed(1)}M</div>
+                </div>
+                <div className="comp-row">
+                  <div className="comp-label" style={{fontSize:11,width:80}}>Saídas</div>
+                  <div className="comp-bar-wrap"><div className="comp-bar" style={{width:(u.sai/maxV*100)+'%',background:'var(--green2)'}}/></div>
+                  <div className="comp-val" style={{fontSize:11,color:'var(--green2)'}}>{(u.sai/1e6).toFixed(1)}M</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        {subTab === 'Alertas' && (
+          <div style={{display:'flex',flexDirection:'column',gap:10}}>
+            {[{type:'info',icon:'ℹ',title:'Alíquota interestadual padrão 12%',desc:'Todas as operações registradas com alíquota de 12%. Verificar se há operações com consumidor final (DIFAL).'},{type:'warning',icon:'⚠',title:'PR: saídas > entradas',desc:'Estado do Paraná apresenta volume de saídas 55% maior que entradas. Verificar possível acúmulo de crédito.'},{type:'success',icon:'✅',title:'Nenhuma inconsistência de CFOP',desc:'Todos os CFOPs verificados estão dentro do padrão esperado para transporte rodoviário.'}].map((a,i)=>(
+              <div key={i} className={`alert-banner ${a.type}`}>
+                <span>{a.icon}</span>
+                <div><strong>{a.title}</strong><div style={{fontWeight:400,marginTop:2}}>{a.desc}</div></div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function App() {
+  const [activeModule, setActiveModule] = useState('PIS e COFINS');
+  const [pisSubTab, setPisSubTab] = useState('Piso Mínimo');
+  const [data, setData] = useState(null);
+  const [fileName, setFileName] = useState('');
+  const [toast, setToast] = useState(null);
+  const fileRef = useRef(null);
+
+  const [tipoOp, setTipoOp] = useState('Não Cumulativo');
+  const [tipoContrat, setTipoContrat] = useState('Composição/Caminhão');
+  const [margem, setMargem] = useState(10);
+  const [baseMargem, setBaseMargem] = useState('Custo Total');
+  const [diarias, setDiarias] = useState(0);
+  const [seguro, setSeguro] = useState(0);
+  const [gris, setGris] = useState(0);
+  const [taxaAdm, setTaxaAdm] = useState(0);
+  const [adValorem, setAdValorem] = useState(0);
+  const [outros, setOutros] = useState(0);
+
+  const showToast = msg => { setToast(msg); setTimeout(()=>setToast(null),3000); };
+
+  const handleFile = f => {
+    if (!f) return;
+    const r = new FileReader();
+    r.onload = e => {
+      try {
+        const wb = XLSX.read(e.target.result, { type:'array' });
+        const sheets = parseWorkbook(wb);
+        const d = extractData(sheets);
+        setData(d); setFileName(f.name);
+        showToast('✓ ' + f.name + ' carregado!');
+      } catch(err) { showToast('Erro: '+err.message); }
+    };
+    r.readAsArrayBuffer(f);
+  };
+
+  const modules = [
+    { id:'PIS e COFINS', dot:'#e8611a' },
+    { id:'IRPJ e CSLL', dot:'#1abc9c' },
+    { id:'ICMS', dot:'#f39c12' },
+  ];
+
+  const sidebarSub = data?.period || 'Nenhum arquivo carregado';
+  const sidebarCompany = data?.company || '—';
+
+  return (
+    <div id="root">
+      {/* HEADER */}
+      <div className="header">
+        <div className="header-brand">
+          <div className="brand-logo">P</div>
+          <div>
+            <div className="brand-title">PISCO <span>Brasil</span></div>
+            <div className="header-sub">
+              {data ? `${data.cnpj} · ${data.company} · Período: ${data.period}` : 'Compliance Mensal · Análise Tributária PIS/COFINS · IRPJ/CSLL · ICMS'}
+            </div>
+          </div>
+        </div>
+        <div className="header-right">
+          <a className="back-btn" href="portal.html">← Portal Enterprise</a>
+          <div className="header-badge">
+            📅 {data ? `Período: ${data.period}` : `Atualizado ${new Date().toLocaleDateString('pt-BR')}`}
+          </div>
+        </div>
+      </div>
+
+      {/* TAB BAR */}
+      <div className="tab-bar">
+        {modules.map(m => (
+          <div key={m.id} className={`tab-bar-item ${activeModule===m.id?'active':''}`} onClick={()=>{ setActiveModule(m.id); if(m.id==='PIS e COFINS') setPisSubTab('Piso Mínimo'); }}>
+            <div className="tab-bar-dot" style={{ background: activeModule===m.id ? m.dot : '#555' }}/>
+            {m.id}
+          </div>
+        ))}
+      </div>
+
+      {/* BODY */}
+      <div className="app-body">
+        {/* SIDEBAR */}
+        <div className="sidebar">
+          <div className="s-section">
+            <div className="s-section-title">Dados da Operação</div>
+            <div className="field" style={{marginBottom:10}}>
+              <label>Empresa</label>
+              <input value={sidebarCompany} readOnly style={{background:'#f8f9fa',color:'var(--text2)'}}/>
+            </div>
+            <div className="field" style={{marginBottom:10}}>
+              <label>Período de Competência</label>
+              <input value={sidebarSub} readOnly style={{background:'#f8f9fa',color:'var(--text2)'}}/>
+            </div>
+            {data && (
+              <div className="field" style={{marginBottom:10}}>
+                <label>Ganho Efetivo Identificado</label>
+                <input value={brl(data.ganho)} readOnly style={{background:'#f0fdf4',color:'var(--green2)',fontWeight:700}}/>
+              </div>
+            )}
+          </div>
+
+          <div className="s-section">
+            <div className="s-section-title">Tipo de Apuração</div>
+            <div className="toggle-group" style={{marginBottom:10}}>
+              {['Não Cumulativo','Cumulativo'].map(t=>(
+                <div key={t} className={`toggle-btn ${tipoOp===t?'active':''}`} onClick={()=>setTipoOp(t)}>{t}</div>
+              ))}
+            </div>
+            <div className="toggle-group">
+              {['Composição/Caminhão','Só Cavalo'].map(t=>(
+                <div key={t} className={`toggle-btn ${tipoContrat===t?'active':''}`} onClick={()=>setTipoContrat(t)}>{t}</div>
+              ))}
+            </div>
+          </div>
+
+          <div className="s-section">
+            <div className="s-section-title">Composição</div>
+            <div className="field-row">
+              <div className="field">
+                <label>Margem de Lucro (%)</label>
+                <input type="number" value={margem} onChange={e=>setMargem(e.target.value)}/>
+              </div>
+            </div>
+            <div className="toggle-group" style={{marginTop:8}}>
+              {['Custo Total','Só Piso'].map(t=>(
+                <div key={t} className={`toggle-btn ${baseMargem===t?'active':''}`} onClick={()=>setBaseMargem(t)}>{t}</div>
+              ))}
+            </div>
+          </div>
+
+          <div className="s-section">
+            <div className="s-section-title">Custos Adicionais</div>
+            <div className="field-row" style={{marginBottom:8}}>
+              <div className="field"><label>Diárias (R$)</label><input type="number" value={diarias} onChange={e=>setDiarias(e.target.value)}/></div>
+              <div className="field"><label>Seguro Carga (R$)</label><input type="number" value={seguro} onChange={e=>setSeguro(e.target.value)}/></div>
+            </div>
+            <div className="field-row" style={{marginBottom:8}}>
+              <div className="field"><label>GRIS/Risco (R$)</label><input type="number" value={gris} onChange={e=>setGris(e.target.value)}/></div>
+              <div className="field"><label>Taxa Adm. (R$)</label><input type="number" value={taxaAdm} onChange={e=>setTaxaAdm(e.target.value)}/></div>
+            </div>
+            <div className="field-row">
+              <div className="field"><label>Ad Valorem (R$)</label><input type="number" value={adValorem} onChange={e=>setAdValorem(e.target.value)}/></div>
+              <div className="field"><label>Outros (R$)</label><input type="number" value={outros} onChange={e=>setOutros(e.target.value)}/></div>
+            </div>
+          </div>
+
+          <div className="s-section">
+            <div className="s-section-title">Arquivo de Dados</div>
+            <div className="upload-area" onClick={()=>fileRef.current.click()}>
+              <div className="upload-area-icon">📊</div>
+              <div className="upload-area-text">{fileName || 'Arraste ou clique para upload'}</div>
+              <div className="upload-area-sub">.xlsx · .xls · .csv</div>
+            </div>
+            <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" style={{display:'none'}} onChange={e=>{ handleFile(e.target.files[0]); e.target.value=''; }}/>
+          </div>
+        </div>
+
+        {/* MAIN */}
+        <div className="main-area">
+          {activeModule === 'PIS e COFINS' && <PisTab data={data} subTab={pisSubTab} setSubTab={setPisSubTab}/>}
+          {activeModule === 'IRPJ e CSLL' && <IRPJTab/>}
+          {activeModule === 'ICMS' && <ICMSTab/>}
+        </div>
+      </div>
+
+      {toast && <div style={{ position:'fixed', bottom:20, right:20, background:data?'#f0fdf4':'#fff', border:'1px solid var(--border)', borderRadius:8, padding:'10px 16px', fontSize:12, fontWeight:700, color:data?'var(--green2)':'var(--text)', boxShadow:'var(--shadow2)', zIndex:9999 }}>{toast}</div>}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>

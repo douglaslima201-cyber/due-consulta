@@ -324,7 +324,7 @@ footer{
     <p class="hero-sub">Hub centralizado com todas as ferramentas e calculadoras desenvolvidas para a Rumo Brasil. Acesse rapidamente qualquer solução, acompanhe o status e gerencie suas consultas.</p>
     <div class="hero-stats">
       <div class="hst"><div class="hst-n" id="total-tools">5</div><div class="hst-l">Ferramentas</div></div>
-      <div class="hst"><div class="hst-n" id="live-tools">3</div><div class="hst-l">Ativas</div></div>
+      <div class="hst"><div class="hst-n" id="live-tools">4</div><div class="hst-l">Ativas</div></div>
       <div class="hst"><div class="hst-n">100%</div><div class="hst-l">Local & seguro</div></div>
     </div>
   </div>
@@ -414,22 +414,23 @@ footer{
     </div>
 
     <!-- Compliance Mensal -->
-    <div class="card soon">
-      <div class="card-bar" style="background:linear-gradient(90deg,var(--green),#16A34A);"></div>
+    <div class="card active" onclick="abrirFerramenta('compliance-mensal.html')" title="Acessar PISCO — Compliance Mensal">
+      <div class="card-bar" style="background:linear-gradient(90deg,var(--green),#16A34A);opacity:1;"></div>
       <div class="card-head">
         <div class="card-icon ci-green">✅</div>
-        <span class="badge b-soon">Em breve</span>
+        <span class="badge b-live">Ativa</span>
       </div>
-      <div class="card-title">Compliance Mensal</div>
-      <div class="card-desc">Dashboard de compliance mensal com verificação automática de obrigações fiscais, trabalhistas e regulatórias. Alertas de prazos e geração de relatórios consolidados.</div>
+      <div class="card-title">Compliance Mensal — PISCO</div>
+      <div class="card-desc">Análise tributária mensal PIS/COFINS com revisão não cumulativa, comparativo empresa vs. PISCO, simulador IRPJ/CSLL (Lucro Presumido vs. Real) e análise ICMS por UF.</div>
       <div class="card-tags">
-        <span class="tag">Compliance</span>
-        <span class="tag">Fiscal</span>
-        <span class="tag">Relatórios</span>
+        <span class="tag">PIS/COFINS</span>
+        <span class="tag">IRPJ</span>
+        <span class="tag">ICMS</span>
+        <span class="tag">IA</span>
       </div>
       <div class="card-foot">
-        <span class="card-meta">Em desenvolvimento</span>
-        <button class="btn btn-ghost btn-sm" disabled style="opacity:.4;cursor:not-allowed">Em breve</button>
+        <span class="card-meta">Assistente Claude integrado</span>
+        <button class="btn btn-orange btn-sm" onclick="event.stopPropagation();abrirFerramenta('compliance-mensal.html')">Acessar →</button>
       </div>
     </div>
 
@@ -495,14 +496,15 @@ footer{
         <a class="btn btn-orange btn-sm" href="jcp.html">Abrir →</a>
       </div>
     </div>
-    <div class="rec-item" style="opacity:.5;">
+    <div class="rec-item">
       <div class="rec-ic ci-green">✅</div>
       <div>
-        <div class="rec-name">Compliance Mensal</div>
-        <div class="rec-time">Em desenvolvimento</div>
+        <div class="rec-name">Compliance Mensal — PISCO</div>
+        <div class="rec-time">PIS/COFINS · IRPJ/CSLL · ICMS · IA integrada</div>
       </div>
       <div class="rec-right">
-        <span class="badge b-soon">Em breve</span>
+        <span class="badge b-live">Online</span>
+        <a class="btn btn-orange btn-sm" href="compliance-mensal.html">Abrir →</a>
       </div>
     </div>
   </div>
