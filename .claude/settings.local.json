@@ -22,7 +22,11 @@
       "Bash(python -c \"from flask import Flask; from piscofins import bp; print\\('imports OK'\\)\")",
       "Bash(netstat -ano)",
       "Bash(findstr \":5000\")",
-      "Bash(curl -s http://localhost:5000/api/piscofins/health)"
+      "Bash(curl -s http://localhost:5000/api/piscofins/health)",
+      "Bash(curl -s http://localhost:5000/api/health)",
+      "Bash(curl -s -X POST http://localhost:5000/api/piscofins/upload -F \"file=@C:\\\\Users\\\\Douglas Lima\\\\Desktop\\\\Demandas\\\\PeD\\\\Claude Code\\\\Averbações\\\\due-consulta\\\\due-consulta\\\\backend\\\\requirements.txt\")",
+      "Bash(curl -s -I -X OPTIONS \"http://localhost:5000/api/piscofins/upload\" -H \"Origin: null\" -H \"Access-Control-Request-Method: POST\")",
+      "Bash(python -m py_compile main.py)"
     ]
   },
   "hooks": {

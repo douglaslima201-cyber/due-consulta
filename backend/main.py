@@ -1105,10 +1105,26 @@ def health():
 from piscofins import bp as piscofins_bp
 app.register_blueprint(piscofins_bp)
 
+# Serve static docs so browsers don't hit file:// CORS restrictions
+_DOCS_DIR = str(_BASE_DIR.parent / "docs")
+
+@app.route("/")
+def serve_index():
+    return send_file(str(Path(_DOCS_DIR) / "portal.html"))
+
+@app.route("/<path:filename>")
+def serve_docs(filename):
+    from flask import abort
+    filepath = Path(_DOCS_DIR) / filename
+    if filepath.suffix in (".html", ".css", ".js", ".png", ".svg", ".ico") and filepath.exists():
+        return send_file(str(filepath))
+    abort(404)
+
 if __name__ == "__main__":
     init_db()
     print("=" * 60)
     print("  DUE Consulta Backend — Rodando em http://localhost:5000")
-    print("  PIS/COFINS Análise    — /api/piscofins/upload")
+    print("  Portal                — http://localhost:5000/portal.html")
+    print("  PIS/COFINS            — http://localhost:5000/piscofins.html")
     print("=" * 60)
     app.run(host="0.0.0.0", port=5000, debug=False)
