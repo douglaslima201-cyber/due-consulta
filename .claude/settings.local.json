@@ -7,7 +7,26 @@
       "Bash(gh --version)",
       "Bash(git init *)",
       "Bash(git config *)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git commit -m *)",
+      "Bash(git commit --allow-empty-message *)",
+      "Bash(gh repo *)",
+      "Bash(git push *)",
+      "Bash(git status *)",
+      "Bash(git log *)"
+    ]
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"c:/Users/Douglas Lima/Desktop/Demandas/PeD/Claude Code/Averbações/due-consulta/due-consulta\" && git add . && git diff --cached --quiet || git commit -m \"Atualização automática via Claude Code\" && git push"
+          }
+        ]
+      }
     ]
   }
 }
