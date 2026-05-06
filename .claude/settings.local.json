@@ -14,7 +14,9 @@
       "Bash(git push *)",
       "Bash(git status *)",
       "Bash(git log *)",
-      "Bash(gh api *)"
+      "Bash(gh api *)",
+      "Bash(git mv *)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('Status:', d.get\\('status'\\)\\); print\\('URL:', d.get\\('html_url'\\)\\)\")"
     ]
   },
   "hooks": {
