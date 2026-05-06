@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calculadora de Frete ANTT — Rumo Brasil</title>
+<style>
+:root {
+  --navy:    #0D1B2A;
+  --navy2:   #152336;
+  --navy3:   #1C2F44;
+  --orange:  #E8611A;
+  --orange2: #FF7B38;
+  --orange3: #FFF0E8;
+  --white:   #FFFFFF;
+  --g50:     #F7F8FA;
+  --g100:    #ECEEF2;
+  --g200:    #D8DCE5;
+  --g400:    #8C95A6;
+  --g600:    #4A5568;
+  --g800:    #1A202C;
+  --green:   #2ECC71;
+  --green2:  #1A7A42;
+  --red:     #E53E3E;
+  --yellow:  #D4930A;
+  --r: 8px;
+  --sh: 0 1px 4px rgba(0,0,0,.10), 0 4px 16px rgba(0,0,0,.07);
+  --sh2: 0 2px 20px rgba(0,0,0,.15);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--g50);color:var(--g800);font-family:'Segoe UI',system-ui,sans-serif;font-size:13px;min-height:100vh;}
+
+/* ─── TOPBAR ─── */
+.topbar{
+  background:var(--navy);
+  border-bottom:2px solid var(--orange);
+  height:58px;display:flex;align-items:center;
+  padding:0 24px;gap:16px;
+  position:sticky;top:0;z-index:200;
+  box-shadow:var(--sh2);
+}
+.logo-area{display:flex;align-items:center;gap:12px;}
+.logo-img{
+  height:36px;width:auto;
+  display:flex;align-items:center;
+}
+.logo-img svg{height:36px;width:auto;}
+.topbar-divider{width:1px;height:28px;background:rgba(255,255,255,.15);}
+.topbar-title{color:var(--white);}
+.topbar-title h1{font-size:14px;font-weight:700;letter-spacing:.3px;}
+.topbar-title p{font-size:10px;color:var(--g400);margin-top:1px;}
+.topbar-badge{
+  margin-left:auto;
+  background:rgba(232,97,26,.18);
+  border:1px solid rgba(232,97,26,.4);
+  color:#FFA96E;font-size:10px;font-weight:600;
+  padding:3px 10px;border-radius:20px;white-space:nowrap;
+}
+.back-btn{
+  color:rgba(255,255,255,.6);font-size:12px;font-weight:500;
+  text-decoration:none;background:rgba(255,255,255,.07);
+  border:1px solid rgba(255,255,255,.12);
+  padding:5px 12px;border-radius:6px;
+  transition:all .15s;white-space:nowrap;
+}
+.back-btn:hover{background:rgba(255,255,255,.13);color:var(--white);}
+
+/* ─── MODE TABS (top nav) ─── */
+.mode-bar{
+  background:var(--navy2);
+  border-bottom:1px solid rgba(255,255,255,.08);
+  display:flex;padding:0 24px;gap:2px;
+}
+.mode-tab{
+  padding:9px 18px;font-size:12px;font-weight:600;
+  color:rgba(255,255,255,.45);cursor:pointer;
+  border-bottom:2px solid transparent;margin-bottom:-1px;
+  transition:all .15s;
+}
+.mode-tab:hover{color:rgba(255,255,255,.75);}
+.mode-tab.active{color:var(--orange2);border-bottom-color:var(--orange);}
+
+/* ─── LAYOUT ─── */
+.page{display:grid;grid-template-columns:360px 1fr;min-height:calc(100vh - 98px);}
+
+/* ─── SIDEBAR ─── */
+.sidebar{
+  background:var(--white);
+  border-right:1px solid var(--g200);
+  padding:18px 16px;
+  overflow-y:auto;
+}
+
+.sec-lbl{
+  font-size:10px;font-weight:700;text-transform:uppercase;
+  letter-spacing:1.2px;color:var(--orange);
+  margin:16px 0 8px;
+  display:flex;align-items:center;gap:6px;
+}
+.sec-lbl:first-child{margin-top:0;}
+.sec-lbl::after{content:'';flex:1;height:1px;background:var(--g100);}
+
+.form-group{margin-bottom:9px;}
+label{display:block;font-size:11px;color:var(--g600);margin-bottom:3px;font-weight:500;}
+select,input[type=number],input[type=text]{
+  width:100%;background:var(--g50);
+  border:1px solid var(--g200);color:var(--g800);
+  padding:7px 9px;border-radius:6px;font-size:12px;outline:none;
+  transition:border .15s,box-shadow .15s;
+}
+select:focus,input:focus{
+  border-color:var(--orange);background:var(--white);
+  box-shadow:0 0 0 3px rgba(232,97,26,.1);
+}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+.add-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
+
+.tog{display:flex;border-radius:6px;overflow:hidden;border:1px solid var(--g200);}
+.tbtn{
+  flex:1;padding:6px 4px;
+  background:var(--g50);color:var(--g600);
+  font-size:11px;font-weight:500;border:none;cursor:pointer;
+  transition:all .12s;text-align:center;
+}
+.tbtn:not(:last-child){border-right:1px solid var(--g200);}
+.tbtn.on{background:var(--orange);color:var(--white);font-weight:700;}
+.tbtn:hover:not(.on){background:var(--g100);}
+
+.calc-btn{
+  width:100%;padding:12px;
+  background:linear-gradient(135deg,var(--orange),#C04E10);
+  color:var(--white);border:none;border-radius:7px;
+  font-size:13px;font-weight:700;cursor:pointer;
+  margin-top:14px;letter-spacing:.4px;
+  box-shadow:0 3px 12px rgba(232,97,26,.3);
+  transition:opacity .15s,transform .1s,box-shadow .15s;
+}
+.calc-btn:hover{opacity:.92;box-shadow:0 5px 20px rgba(232,97,26,.4);}
+.calc-btn:active{transform:scale(.98);}
+
+/* ─── ROTAS ─── */
+.trecho-list{display:flex;flex-direction:column;gap:8px;margin-bottom:10px;}
+.trecho-card{
+  background:var(--g50);border:1px solid var(--g200);
+  border-radius:7px;padding:10px 10px 8px;
+  position:relative;
+}
+.trecho-num{
+  position:absolute;top:8px;left:10px;
+  width:20px;height:20px;border-radius:50%;
+  background:var(--orange);color:var(--white);
+  font-size:10px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;
+}
+.trecho-inner{padding-left:28px;}
+.trecho-del{
+  position:absolute;top:8px;right:8px;
+  width:20px;height:20px;border:none;background:transparent;
+  color:var(--g400);cursor:pointer;font-size:14px;
+  display:flex;align-items:center;justify-content:center;
+  border-radius:4px;transition:background .12s,color .12s;
+}
+.trecho-del:hover{background:var(--red);color:var(--white);}
+.add-trecho{
+  width:100%;padding:7px;
+  background:var(--g50);border:1px dashed var(--g200);
+  color:var(--g400);font-size:11px;font-weight:600;
+  border-radius:6px;cursor:pointer;
+  transition:all .12s;
+}
+.add-trecho:hover{border-color:var(--orange);color:var(--orange);background:var(--orange3);}
+
+/* ─── MAIN ─── */
+.main{padding:20px;overflow-y:auto;}
+
+/* ─── CARDS ─── */
+.rcard{
+  background:var(--white);border:1px solid var(--g200);
+  border-radius:var(--r);padding:16px 18px;
+  margin-bottom:12px;box-shadow:var(--sh);
+}
+.rcard.hl{border-left:3px solid var(--orange);}
+.rcard.ok{border-left:3px solid var(--green);}
+.rcard.err{border-left:3px solid var(--red);}
+.rcard.warn{border-left:3px solid var(--yellow);}
+
+.rlbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--g400);margin-bottom:3px;}
+.rval{font-size:24px;font-weight:800;color:var(--orange);line-height:1.1;}
+.rval.green{color:var(--green2);}
+.rsub{font-size:11px;color:var(--g400);margin-top:3px;}
+
+.drow{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:6px 0;border-bottom:1px solid var(--g100);font-size:12px;
+}
+.drow:last-child{border:none;}
+.drow .dl{color:var(--g600);}
+.drow .dv{font-weight:600;color:var(--g800);}
+.drow .dv.acc{color:var(--orange);}
+.drow .dv.red{color:var(--red);}
+
+.formula{
+  background:var(--orange3);border:1px solid #F5C6A0;
+  border-radius:6px;padding:9px 12px;margin-top:8px;
+  display:flex;justify-content:space-between;align-items:center;
+  font-size:11px;
+}
+.formula span{color:var(--g600);font-family:monospace;}
+.formula strong{font-size:13px;color:var(--orange);font-weight:800;}
+
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px;}
+
+.alrt{
+  padding:9px 13px;border-radius:7px;
+  font-size:11px;font-weight:500;
+  display:flex;align-items:flex-start;gap:7px;
+  margin-bottom:9px;
+}
+.alrt.warn{background:#FFF8E6;border:1px solid #F5C842;color:#7A5900;}
+.alrt.err {background:#FFECEC;border:1px solid #F5A0A0;color:#7A0000;}
+.alrt.ok  {background:#EDFFF4;border:1px solid #8FD4A8;color:#1A5E30;}
+.alrt.info{background:var(--orange3);border:1px solid #F5C6A0;color:#7A3000;}
+
+/* ─── TABS ─── */
+.tab-bar{display:flex;gap:1px;border-bottom:2px solid var(--g200);margin-bottom:14px;}
+.tab{
+  padding:8px 15px;font-size:11px;font-weight:600;
+  color:var(--g400);cursor:pointer;
+  border-bottom:2px solid transparent;margin-bottom:-2px;
+  border-radius:5px 5px 0 0;transition:all .12s;
+}
+.tab:hover{color:var(--orange);background:var(--orange3);}
+.tab.active{color:var(--orange);border-bottom-color:var(--orange);background:var(--white);}
+
+/* ─── TABLE ─── */
+.ctab{width:100%;border-collapse:collapse;font-size:12px;}
+.ctab th{
+  background:var(--g50);color:var(--g400);
+  font-size:10px;text-transform:uppercase;letter-spacing:.8px;
+  padding:8px 11px;text-align:left;
+  border-bottom:2px solid var(--g200);
+}
+.ctab td{padding:8px 11px;border-bottom:1px solid var(--g100);}
+.ctab tr:last-child td{border:none;font-weight:700;color:var(--orange);font-size:13px;background:var(--orange3);}
+.ctab .pct{color:var(--g400);font-size:10px;}
+.ctab .sub{color:var(--g400);font-size:10px;}
+
+/* ─── ROTA RESULT ROWS ─── */
+.trecho-result{
+  background:var(--g50);border:1px solid var(--g200);
+  border-left:3px solid var(--orange);
+  border-radius:7px;padding:10px 14px;
+  margin-bottom:8px;
+}
+.tr-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
+.tr-title{font-size:12px;font-weight:700;color:var(--g800);}
+.tr-piso{font-size:14px;font-weight:800;color:var(--orange);}
+.tr-detail{font-size:10px;color:var(--g400);}
+
+/* ─── BAR ─── */
+.bbar{height:8px;background:var(--g100);border-radius:4px;overflow:hidden;display:flex;margin:8px 0;}
+.bseg{height:100%;transition:width .4s;}
+.bleg{display:flex;flex-wrap:wrap;gap:10px;font-size:10px;color:var(--g400);margin-bottom:14px;}
+
+/* ─── SCENARIO ─── */
+.scen-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;}
+.scen-card{background:var(--g50);border:1px solid var(--g200);border-radius:7px;padding:11px;text-align:center;}
+.sc-lbl{font-size:9px;color:var(--g400);text-transform:uppercase;letter-spacing:.8px;}
+.sc-val{font-size:16px;font-weight:800;margin:5px 0;}
+.sc-diff{font-size:10px;}
+
+.tag{display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700;text-transform:uppercase;margin-left:5px;}
+.tag.a{background:var(--orange3);color:var(--orange);border:1px solid #F5C6A0;}
+.tag.b{background:#F0EEFF;color:#6B4FBB;border:1px solid #C8B8F0;}
+.tag.c{background:#EDFFF4;color:#1A6B3A;border:1px solid #8FD4A8;}
+.tag.d{background:#FFF8E6;color:#7A5900;border:1px solid #F5C842;}
+
+.ph{text-align:center;padding:64px 20px;color:var(--g400);}
+.ph .ico{font-size:48px;margin-bottom:14px;opacity:.35;}
+.ph h3{font-size:15px;font-weight:600;margin-bottom:7px;}
+
+/* ─── TOTAL STRIP ─── */
+.total-strip{
+  background:var(--navy);color:var(--white);
+  border-radius:8px;padding:14px 18px;
+  display:flex;justify-content:space-between;align-items:center;
+  margin-bottom:12px;
+}
+.total-strip .t-lbl{font-size:11px;color:rgba(255,255,255,.6);}
+.total-strip .t-val{font-size:22px;font-weight:800;color:var(--orange2);}
+.total-strip .t-sub{font-size:10px;color:rgba(255,255,255,.45);margin-top:2px;}
+
+@media(max-width:860px){
+  .page{grid-template-columns:1fr;}
+  .sidebar{border-right:none;border-bottom:1px solid var(--g200);}
+  .grid3,.scen-grid{grid-template-columns:1fr 1fr;}
+  .mode-bar{overflow-x:auto;white-space:nowrap;}
+}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="logo-area">
+    <div class="logo-img">
+      <svg viewBox="0 0 210 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="2" y="2" width="40" height="40" rx="7" fill="#E8611A"/>
+        <rect x="11" y="11" width="5" height="22" rx="2" fill="white"/>
+        <path d="M16 11 H24 Q31 11 31 18 Q31 25 24 25 H16" stroke="white" stroke-width="4.5" fill="none" stroke-linejoin="round"/>
+        <line x1="24" y1="25" x2="31" y2="33" stroke="white" stroke-width="4.5" stroke-linecap="round"/>
+        <text x="52" y="28" font-family="'Segoe UI',Arial,sans-serif" font-size="20" font-weight="800" fill="#FFFFFF" letter-spacing="-0.3">Rumo</text>
+        <text x="113" y="28" font-family="'Segoe UI',Arial,sans-serif" font-size="20" font-weight="800" fill="#E8611A" letter-spacing="-0.3">Brasil</text>
+      </svg>
+    </div>
+    <div class="topbar-divider"></div>
+    <div class="topbar-title">
+      <h1>Calculadora de Piso Mínimo de Frete</h1>
+      <p>Portaria SUROC nº 4 · 20/03/2026 · Diesel S10 R$ 7,35/L · Res. ANTT 5.867/2020</p>
+    </div>
+  </div>
+  <a class="back-btn" href="portal.html">← Portal P&D</a>
+  <div class="topbar-badge">⛽ Atualizado 20/03/2026</div>
+</div>
+
+<!-- MODE BAR -->
+<div class="mode-bar">
+  <div class="mode-tab active" onclick="setMode('simples',this)">🚛 Trecho Simples</div>
+  <div class="mode-tab" onclick="setMode('roteiro',this)">🗺️ Roteirização (Múltiplos Trechos)</div>
+</div>
+
+<div class="page">
+  <!-- ═══ SIDEBAR ═══ -->
+  <div class="sidebar">
+
+    <!-- ── MODO SIMPLES ── -->
+    <div id="inp-simples">
+      <div class="sec-lbl">📦 Dados da Operação</div>
+      <div class="form-group">
+        <label>Tipo de Carga</label>
+        <select id="s-tipoCarga">
+          <option value="">Selecione o tipo de carga...</option>
+          <option value="granel_solido">Granel Sólido</option>
+          <option value="granel_liquido">Granel Líquido</option>
+          <option value="frigorificada">Frigorificada ou Aquecida</option>
+          <option value="conteinerizada">Conteinerizada</option>
+          <option value="carga_geral">Carga Geral</option>
+          <option value="neogranel">Neogranel</option>
+          <option value="perigosa_gs">Perigosa (Granel Sólido)</option>
+          <option value="perigosa_gl">Perigosa (Granel Líquido)</option>
+          <option value="perigosa_frig">Perigosa (Frigorificada/Aquecida)</option>
+          <option value="perigosa_cont">Perigosa (Conteinerizada)</option>
+          <option value="perigosa_cg">Perigosa (Carga Geral)</option>
+          <option value="granel_pressurizado">Carga Granel Pressurizada</option>
+        </select>
+      </div>
+      <div class="row2">
+        <div class="form-group">
+          <label>Nº de Eixos</label>
+          <select id="s-eixos">
+            <option value="2">2 eixos</option><option value="3">3 eixos</option>
+            <option value="4">4 eixos</option><option value="5" selected>5 eixos</option>
+            <option value="6">6 eixos</option><option value="7">7 eixos</option><option value="9">9 eixos</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Distância (km)</label>
+          <input type="number" id="s-dist" value="500" min="1">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Tipo de Operação</label>
+        <div class="tog">
+          <button class="tbtn on" onclick="setTog('s-op','lotacao',this)">Lotação</button>
+          <button class="tbtn" onclick="setTog('s-op','alto_desempenho',this)">Alto Desempenho</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Tipo de Contratação</label>
+        <div class="tog">
+          <button class="tbtn on" onclick="setTog('s-cont','composicao',this)">Composição/Caminhão</button>
+          <button class="tbtn" onclick="setTog('s-cont','cavalo',this)">Só Cavalo</button>
+        </div>
+      </div>
+
+      <div class="sec-lbl">🏗️ Composição</div>
+      <div class="row2">
+        <div class="form-group"><label>Pedágio (R$)</label><input type="number" id="s-ped" value="0" min="0"></div>
+        <div class="form-group"><label>Margem de Lucro (%)</label><input type="number" id="s-marg" value="10" min="0" step=".5"></div>
+      </div>
+      <div class="form-group">
+        <label>Base da Margem</label>
+        <div class="tog">
+          <button class="tbtn on" onclick="setTog('s-base','custo_total',this)">Custo Total</button>
+          <button class="tbtn" onclick="setTog('s-base','piso',this)">Só Piso</button>
+        </div>
+      </div>
+
+      <div class="sec-lbl">🧾 Custos Adicionais</div>
+      <div class="add-grid">
+        <div class="form-group"><label>Diárias (R$)</label><input type="number" id="s-diarias" value="0" min="0"></div>
+        <div class="form-group"><label>Seguro Carga (R$)</label><input type="number" id="s-seguro" value="0" min="0"></div>
+        <div class="form-group"><label>GRIS/Risco (R$)</label><input type="number" id="s-gris" value="0" min="0"></div>
+        <div class="form-group"><label>Taxa Adm. (R$)</label><input type="number" id="s-taxa" value="0" min="0"></div>
+        <div class="form-group"><label>Ad Valorem (R$)</label><input type="number" id="s-adval" value="0" min="0"></div>
+        <div class="form-group"><label>Outros (R$)</label><input type="number" id="s-outros" value="0" min="0"></div>
+      </div>
+
+      <div class="sec-lbl">🏛️ Reforma Tributária</div>
+      <div class="row2">
+        <div class="form-group"><label>IBS (%)</label><input type="number" id="s-ibs" value="9.5" min="0" step=".1"></div>
+        <div class="form-group"><label>CBS (%)</label><input type="number" id="s-cbs" value="5.8" min="0" step=".1"></div>
+      </div>
+      <div class="form-group">
+        <label>Inclusão</label>
+        <div class="tog">
+          <button class="tbtn on" onclick="setTog('s-trib','por_fora',this)">Por Fora (+%)</button>
+          <button class="tbtn" onclick="setTog('s-trib','por_dentro',this)">Por Dentro</button>
+        </div>
+      </div>
+
+      <div class="sec-lbl">✅ Validação</div>
+      <div class="form-group"><label>Frete Cotado (R$) — opcional</label><input type="number" id="s-cotado" placeholder="Comparar com piso"></div>
+      <button class="calc-btn" onclick="calcSimples()">⚡ CALCULAR FRETE</button>
+    </div>
+
+    <!-- ── MODO ROTEIRO ── -->
+    <div id="inp-roteiro" style="display:none">
+      <div class="sec-lbl">🚛 Veículo (aplica a todos os trechos)</div>
+      <div class="row2">
+        <div class="form-group">
+          <label>Tipo de Carga</label>
+          <select id="r-tipoCarga">
+            <option value="granel_solido">Granel Sólido</option>
+            <option value="granel_liquido">Granel Líquido</option>
+            <option value="frigorificada">Frigorificada/Aquecida</option>
+            <option value="conteinerizada">Conteinerizada</option>
+            <option value="carga_geral" selected>Carga Geral</option>
+            <option value="neogranel">Neogranel</option>
+            <option value="perigosa_gs">Perigosa (Gr. Sólido)</option>
+            <option value="perigosa_gl">Perigosa (Gr. Líquido)</option>
+            <option value="perigosa_frig">Perigosa (Frig.)</option>
+            <option value="perigosa_cont">Perigosa (Cont.)</option>
+            <option value="perigosa_cg">Perigosa (Cg. Geral)</option>
+            <option value="granel_pressurizado">Gr. Pressurizado</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Nº de Eixos</label>
+          <select id="r-eixos">
+            <option value="2">2 eixos</option><option value="3">3 eixos</option>
+            <option value="4">4 eixos</option><option value="5" selected>5 eixos</option>
+            <option value="6">6 eixos</option><option value="7">7 eixos</option><option value="9">9 eixos</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Tipo de Operação</label>
+        <div class="tog">
+          <button class="tbtn on" onclick="setTog('r-op','lotacao',this)">Lotação</button>
+          <button class="tbtn" onclick="setTog('r-op','alto_desempenho',this)">Alto Desempenho</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Tipo de Contratação</label>
+        <div class="tog">
+          <button class="tbtn on" onclick="setTog('r-cont','composicao',this)">Composição/Caminhão</button>
+          <button class="tbtn" onclick="setTog('r-cont','cavalo',this)">Só Cavalo</button>
+        </div>
+      </div>
+
+      <div class="sec-lbl">🗺️ Trechos da Rota</div>
+      <div class="trecho-list" id="trecho-list"></div>
+      <button class="add-trecho" onclick="addTrecho()">+ Adicionar Trecho</button>
+
+      <div class="sec-lbl">💰 Encargos Globais</div>
+      <div class="row2">
+        <div class="form-group"><label>Pedágio Total (R$)</label><input type="number" id="r-ped" value="0" min="0"></div>
+        <div class="form-group"><label>Margem de Lucro (%)</label><input type="number" id="r-marg" value="10" min="0" step=".5"></div>
+      </div>
+      <div class="row2">
+        <div class="form-group"><label>IBS (%)</label><input type="number" id="r-ibs" value="9.5" min="0" step=".1"></div>
+        <div class="form-group"><label>CBS (%)</label><input type="number" id="r-cbs" value="5.8" min="0" step=".1"></div>
+      </div>
+      <div class="form-group"><label>Custos Adicionais Totais (R$)</label><input type="number" id="r-add" value="0" min="0"></div>
+      <div class="form-group">
+        <label>Inclusão de Tributos</label>
+        <div class="tog">
+          <button class="tbtn on" onclick="setTog('r-trib','por_fora',this)">Por Fora</button>
+          <button class="tbtn" onclick="setTog('r-trib','por_dentro',this)">Por Dentro</button>
+        </div>
+      </div>
+
+      <button class="calc-btn" onclick="calcRoteiro()">⚡ CALCULAR ROTEIRO</button>
+    </div>
+  </div>
+
+  <!-- ═══ MAIN ═══ -->
+  <div class="main" id="mainArea">
+    <div class="ph">
+      <div class="ico">🚛</div>
+      <h3>Selecione o modo e preencha os dados</h3>
+      <p>Use <strong>Trecho Simples</strong> para uma origem/destino<br>ou <strong>Roteirização</strong> para múltiplos trechos na mesma viagem.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+//  TABELAS — Portaria SUROC nº 4 · 20/03/2026
+// ══════════════════════════════════════════
+const TB = {
+  A:{
+    granel_solido:      {ccd:[4.0338,5.1660,5.8464,6.7381,7.4408,8.0855,9.2662],cc:[444.84,533.36,576.59,642.10,656.76,792.30,877.83]},
+    granel_liquido:     {ccd:[4.1052,5.2583,5.9955,6.9002,7.6080,8.2192,9.4199],cc:[455.84,550.10,600.27,669.38,685.45,811.76,902.80]},
+    frigorificada:      {ccd:[4.7442,6.0679,6.9216,7.9337,8.7563,9.6471,10.9629],cc:[502.29,601.96,663.16,732.07,745.94,949.16,1030.58]},
+    conteinerizada:     {ccd:[null,5.1397,5.7767,6.6765,7.3776,8.0832,9.1859],cc:[null,526.13,557.42,625.16,639.38,791.67,855.76]},
+    carga_geral:        {ccd:[4.0031,5.1295,5.8178,6.7126,7.4124,8.1252,9.2466],cc:[436.39,523.33,568.72,635.08,648.95,803.22,872.44]},
+    neogranel:          {ccd:[3.6028,5.1281,5.8441,6.7126,7.4124,8.1252,9.2466],cc:[436.39,522.93,575.96,635.08,648.95,803.22,872.44]},
+    perigosa_gs:        {ccd:[4.7775,5.9193,6.6352,7.5269,8.2296,8.8919,10.0803],cc:[587.98,679.12,727.28,792.80,807.45,947.84,1035.49]},
+    perigosa_gl:        {ccd:[4.8611,6.0237,6.7649,7.6697,8.3775,9.0063,10.2147],cc:[610.96,707.85,762.95,832.06,848.13,979.29,1072.44]},
+    perigosa_frig:      {ccd:[5.3315,6.6676,7.5371,8.5492,9.3718,10.2855,11.6113],cc:[609.31,712.41,780.02,848.93,862.80,1072.32,1156.49]},
+    perigosa_cont:      {ccd:[null,5.5109,6.1835,7.0832,7.7843,8.5076,9.6180],cc:[null,623.38,659.60,727.35,741.56,898.70,964.90]},
+    perigosa_cg:        {ccd:[4.3647,5.5008,6.2246,7.1193,7.8191,8.5496,9.6787],cc:[531.01,620.58,670.91,737.27,751.14,910.26,981.58]},
+    granel_pressurizado:{ccd:[null,null,null,7.0646,7.8089,null,9.7697],cc:[null,null,null,731.90,757.99,null,1016.29]},
+  },
+  B:{
+    granel_solido:      {ccd:[null,null,5.2729,5.9994,6.6896,7.1066,7.9200],cc:[null,null,515.17,574.29,588.17,695.68,746.78]},
+    granel_liquido:     {ccd:[null,null,5.3358,6.0623,6.7525,7.1695,7.9829],cc:[null,null,515.17,574.29,588.17,695.68,746.78]},
+    frigorificada:      {ccd:[null,null,6.2111,7.0457,7.8586,8.2933,9.2644],cc:[null,null,564.07,623.20,637.07,749.43,802.65]},
+    conteinerizada:     {ccd:[null,null,5.2729,5.9994,6.6896,7.1066,7.9200],cc:[null,null,515.17,574.29,588.17,695.68,746.78]},
+    carga_geral:        {ccd:[null,null,5.2729,5.9994,6.6896,7.1066,7.9200],cc:[null,null,515.17,574.29,588.17,695.68,746.78]},
+    neogranel:          {ccd:[null,null,5.2729,5.9994,6.6896,7.1066,7.9200],cc:[null,null,515.17,574.29,588.17,695.68,746.78]},
+    perigosa_gs:        {ccd:[null,null,6.0617,6.7882,7.4784,7.9130,8.7341],cc:[null,null,665.87,724.99,738.86,851.22,904.44]},
+    perigosa_gl:        {ccd:[null,null,6.1053,6.8318,7.5220,7.9566,8.7777],cc:[null,null,677.85,736.97,750.84,863.20,916.42]},
+    perigosa_frig:      {ccd:[null,null,6.8267,7.6612,8.4742,8.9317,9.9128],cc:[null,null,680.93,740.05,753.93,872.59,928.56]},
+    perigosa_cont:      {ccd:[null,null,5.6796,6.4062,7.0963,7.5310,8.3521],cc:[null,null,617.35,676.48,690.35,802.71,855.93]},
+    perigosa_cg:        {ccd:[null,null,5.6796,6.4062,7.0963,7.5310,8.3521],cc:[null,null,617.35,676.48,690.35,802.71,855.93]},
+    granel_pressurizado:{ccd:[null,null,null,5.9994,6.6896,null,7.9200],cc:[null,null,null,574.29,588.17,null,746.78]},
+  },
+  C:{
+    granel_solido:      {ccd:[3.4369,4.3858,5.0084,5.7474,6.4159,6.7870,7.7868],cc:[168.42,191.28,207.68,221.79,224.95,261.12,282.59]},
+    granel_liquido:     {ccd:[3.4827,4.4391,5.1022,5.8459,6.5163,6.8753,7.8823],cc:[170.79,194.88,212.78,227.67,231.13,265.31,287.97]},
+    frigorificada:      {ccd:[4.1215,5.2426,6.0096,6.8611,7.6513,8.1234,9.2734],cc:[198.62,225.01,247.41,262.25,265.24,318.08,339.58]},
+    conteinerizada:     {ccd:[null,4.3763,4.9834,5.7253,6.3932,6.7861,7.7579],cc:[null,189.72,203.55,218.14,221.21,260.98,277.83]},
+    carga_geral:        {ccd:[3.4259,4.3727,4.9981,5.7382,6.4057,6.8012,7.7797],cc:[166.60,189.11,205.98,220.28,223.27,263.47,281.43]},
+    neogranel:          {ccd:[3.0257,4.3722,5.0076,5.7382,6.4057,6.8012,7.7797],cc:[166.60,189.03,207.54,220.28,223.27,263.47,281.43]},
+    perigosa_gs:        {ccd:[3.9550,4.9142,5.5737,6.3127,6.9812,7.3713,8.3794],cc:[217.08,241.63,261.22,275.34,278.50,317.80,340.64]},
+    perigosa_gl:        {ccd:[3.9850,4.9517,5.6203,6.3640,7.0343,7.4123,8.4276],cc:[222.03,247.82,268.91,283.80,287.26,324.57,348.60]},
+    perigosa_frig:      {ccd:[4.5997,5.7343,6.5188,7.3703,8.1605,8.6573,9.8181],cc:[244.84,273.44,299.98,314.83,317.82,374.73,398.01]},
+    perigosa_cont:      {ccd:[null,4.6358,5.2797,6.0216,6.6895,7.1014,8.0815],cc:[null,229.62,246.64,261.24,264.30,307.21,325.43]},
+    perigosa_cg:        {ccd:[3.6750,4.6321,5.2945,6.0346,6.7020,7.1165,8.1033],cc:[204.81,229.02,249.08,263.37,266.36,309.70,329.02]},
+    granel_pressurizado:{ccd:[null,null,null,5.8647,6.5481,null,7.9676],cc:[null,null,null,241.14,246.76,null,312.42]},
+  },
+  D:{
+    granel_solido:      {ccd:[null,null,4.5780,5.1667,5.8246,6.0332,6.7460],cc:[null,null,194.44,207.18,210.17,240.30,254.35]},
+    granel_liquido:     {ccd:[null,null,4.6409,5.2296,5.8875,6.0961,6.8089],cc:[null,null,194.44,207.18,210.17,240.30,254.35]},
+    frigorificada:      {ccd:[null,null,5.5300,6.2268,7.0074,7.2350,8.1060],cc:[null,null,226.06,238.80,241.78,275.04,290.47]},
+    conteinerizada:     {ccd:[null,null,4.5780,5.1667,5.8246,6.0332,6.7460],cc:[null,null,194.44,207.18,210.17,240.30,254.35]},
+    carga_geral:        {ccd:[null,null,4.5780,5.1667,5.8246,6.0332,6.7460],cc:[null,null,194.44,207.18,210.17,240.30,254.35]},
+    neogranel:          {ccd:[null,null,4.5780,5.1667,5.8246,6.0332,6.7460],cc:[null,null,194.44,207.18,210.17,240.30,254.35]},
+    perigosa_gs:        {ccd:[null,null,5.1433,5.7321,6.3899,6.6176,7.3386],cc:[null,null,247.99,260.73,263.72,296.98,312.40]},
+    perigosa_gl:        {ccd:[null,null,5.1590,5.7477,6.4056,6.6332,7.3542],cc:[null,null,250.57,263.31,266.30,299.56,314.98]},
+    perigosa_frig:      {ccd:[null,null,6.0392,6.7360,7.5166,7.7689,8.6508],cc:[null,null,278.63,291.37,294.36,331.70,348.90]},
+    perigosa_cont:      {ccd:[null,null,4.8743,5.4631,6.1209,6.3486,7.0696],cc:[null,null,237.54,250.28,253.27,286.53,301.95]},
+    perigosa_cg:        {ccd:[null,null,4.8743,5.4631,6.1209,6.3486,7.0696],cc:[null,null,237.54,250.28,253.27,286.53,301.95]},
+    granel_pressurizado:{ccd:[null,null,null,5.1667,5.8246,null,6.7460],cc:[null,null,null,207.18,210.17,null,254.35]},
+  }
+};
+const EIDX={2:0,3:1,4:2,5:3,6:4,7:5,9:6};
+const CNOMES={granel_solido:'Granel Sólido',granel_liquido:'Granel Líquido',frigorificada:'Frigorificada/Aquecida',
+  conteinerizada:'Conteinerizada',carga_geral:'Carga Geral',neogranel:'Neogranel',
+  perigosa_gs:'Perigosa (Gr.Sólido)',perigosa_gl:'Perigosa (Gr.Líquido)',perigosa_frig:'Perigosa (Frig.)',
+  perigosa_cont:'Perigosa (Cont.)',perigosa_cg:'Perigosa (Cg.Geral)',granel_pressurizado:'Granel Pressurizado'};
+const TABLBL={A:'Lotação — Composição',B:'Lotação — Só Tração',C:'Alto Desempenho — Composição',D:'Alto Desempenho — Só Tração'};
+
+const S={};
+function setTog(k,v,btn){S[k]=v;btn.parentElement.querySelectorAll('.tbtn').forEach(b=>b.classList.remove('on'));btn.classList.add('on');}
+function gt(k,def=''){return S[k]||def;}
+
+['s-op','r-op'].forEach(k=>S[k]='lotacao');
+['s-cont','r-cont'].forEach(k=>S[k]='composicao');
+['s-base'].forEach(k=>S[k]='custo_total');
+['s-trib','r-trib'].forEach(k=>S[k]='por_fora');
+
+let curMode='simples';
+function setMode(m,el){
+  curMode=m;
+  document.querySelectorAll('.mode-tab').forEach(t=>t.classList.remove('active'));el.classList.add('active');
+  document.getElementById('inp-simples').style.display=m==='simples'?'':'none';
+  document.getElementById('inp-roteiro').style.display=m==='roteiro'?'':'none';
+  document.getElementById('mainArea').innerHTML='<div class="ph"><div class="ico">🚛</div><h3>Preencha os dados e clique em Calcular</h3></div>';
+}
+
+function fmt(v,d=2){return v.toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d});}
+function getTab(op,cont){
+  if(op==='lotacao'&&cont==='composicao')return'A';
+  if(op==='lotacao'&&cont==='cavalo')return'B';
+  if(op==='alto_desempenho'&&cont==='composicao')return'C';
+  return'D';
+}
+function getCoefs(tab,tipo,eixos){
+  const t=TB[tab][tipo];if(!t)return null;
+  const i=EIDX[eixos];if(i===undefined)return null;
+  const ccd=t.ccd[i],cc=t.cc[i];
+  if(ccd===null||cc===null)return null;
+  return{ccd,cc};
+}
+function calcPiso(dist,ccd,cc){return dist*ccd+cc;}
+function applyTrib(sub,aliq,mode){
+  if(mode==='por_fora'){const v=sub*(aliq/100);return{total:sub+v,trib:v};}
+  if(aliq>=100)return null;
+  const total=sub/(1-aliq/100);return{total,trib:total-sub};
+}
+
+let trechos=[];
+function initTrechos(){trechos=[{id:1,origem:'',destino:'',dist:0,obs:''}];renderTrechos();}
+function addTrecho(){trechos.push({id:Date.now(),origem:'',destino:'',dist:0,obs:''});renderTrechos();}
+function delTrecho(id){if(trechos.length<=1)return;trechos=trechos.filter(t=>t.id!==id);renderTrechos();}
+function renderTrechos(){
+  const el=document.getElementById('trecho-list');
+  el.innerHTML=trechos.map((t,i)=>`
+    <div class="trecho-card">
+      <div class="trecho-num">${i+1}</div>
+      ${trechos.length>1?`<button class="trecho-del" onclick="delTrecho(${t.id})">✕</button>`:''}
+      <div class="trecho-inner">
+        <div class="row2" style="margin-bottom:5px">
+          <div class="form-group" style="margin:0"><label>Origem</label>
+            <input type="text" placeholder="Cidade / UF" value="${t.origem}" oninput="trechos[${i}].origem=this.value"></div>
+          <div class="form-group" style="margin:0"><label>Destino</label>
+            <input type="text" placeholder="Cidade / UF" value="${t.destino}" oninput="trechos[${i}].destino=this.value"></div>
+        </div>
+        <div class="row2">
+          <div class="form-group" style="margin:0"><label>Distância (km)</label>
+            <input type="number" min="1" value="${t.dist||''}" placeholder="km" oninput="trechos[${i}].dist=parseFloat(this.value)||0"></div>
+          <div class="form-group" style="margin:0"><label>Observação</label>
+            <input type="text" placeholder="opcional" value="${t.obs}" oninput="trechos[${i}].obs=this.value"></div>
+        </div>
+      </div>
+    </div>`).join('');
+}
+initTrechos();
+
+function calcSimples(){
+  const tipo=document.getElementById('s-tipoCarga').value;
+  const eixos=parseInt(document.getElementById('s-eixos').value);
+  const dist=parseFloat(document.getElementById('s-dist').value)||0;
+  const ped=parseFloat(document.getElementById('s-ped').value)||0;
+  const marg=parseFloat(document.getElementById('s-marg').value)||0;
+  const ibs=parseFloat(document.getElementById('s-ibs').value)||0;
+  const cbs=parseFloat(document.getElementById('s-cbs').value)||0;
+  const adds=(['diarias','seguro','gris','taxa','adval','outros']).reduce((a,k)=>a+(parseFloat(document.getElementById('s-'+k).value)||0),0);
+  const cotado=parseFloat(document.getElementById('s-cotado').value)||0;
+
+  if(!tipo){alert('Selecione o tipo de carga.');return;}
+  if(!dist||dist<=0){alert('Informe a distância.');return;}
+
+  const tab=getTab(gt('s-op','lotacao'),gt('s-cont','composicao'));
+  const cf=getCoefs(tab,tipo,eixos);
+  if(!cf){renderErr(`Combinação não aplicável na Tabela ${tab}: "${CNOMES[tipo]}" com ${eixos} eixos. Verifique tipo de carga e eixos.`);return;}
+
+  const piso=calcPiso(dist,cf.ccd,cf.cc);
+  const custoBase=piso+ped+adds;
+  const valMarg=gt('s-base')==='custo_total'?custoBase*(marg/100):piso*(marg/100);
+  const sub=custoBase+valMarg;
+  const aliq=ibs+cbs;
+  const tr=applyTrib(sub,aliq,gt('s-trib','por_fora'));
+  if(!tr){renderErr('Alíquota de tributos inválida (≥100%).');return;}
+
+  const total=tr.total;
+  const pcts={piso:piso/total*100,ped:ped/total*100,add:adds/total*100,marg:valMarg/total*100,trib:tr.trib/total*100};
+  const alertas=[];
+  if(cotado>0&&cotado<piso)alertas.push({t:'err',m:`🚨 Frete cotado (R$ ${fmt(cotado)}) está ABAIXO do piso mínimo (R$ ${fmt(piso)}). Operação irregular — Lei 13.703/2018.`});
+  else if(cotado>0)alertas.push({t:'ok',m:`✅ Frete cotado (R$ ${fmt(cotado)}) está ACIMA do piso. Em conformidade.`});
+  if(dist>2000)alertas.push({t:'warn',m:`⚠️ Distância de ${fmt(dist,0)} km. Verifique se não há múltiplos destinos — use a Roteirização para maior precisão regulatória.`});
+
+  renderSimples({tab,tipo,eixos,dist,ccd:cf.ccd,cc:cf.cc,piso,ped,adds,valMarg,sub,trib:tr.trib,total,ibs,cbs,aliq,marg,pcts,alertas,cotado,custoBase});
+}
+
+function renderSimples(d){
+  const {tab,tipo,eixos,dist,ccd,cc,piso,ped,adds,valMarg,sub,trib,total,ibs,cbs,aliq,marg,pcts,alertas,cotado,custoBase}=d;
+  const ah=alertas.map(a=>`<div class="alrt ${a.t}">${a.m}</div>`).join('');
+  document.getElementById('mainArea').innerHTML=`
+    ${ah}
+    <div class="tab-bar">
+      <div class="tab active" onclick="showTab('sp',this)">📊 Piso Mínimo</div>
+      <div class="tab" onclick="showTab('sc',this)">🧩 Composição</div>
+      <div class="tab" onclick="showTab('ss',this)">📈 Cenários</div>
+      <div class="tab" onclick="showTab('st',this)">🏛️ Tributação</div>
+    </div>
+
+    <div id="tab-sp">
+      <div class="grid2">
+        <div class="rcard hl"><div class="rlbl">🎯 Piso Mínimo ANTT</div><div class="rval">R$ ${fmt(piso)}</div><div class="rsub">R$ ${fmt(piso/dist)}/km · ${fmt(dist,0)} km</div></div>
+        <div class="rcard hl"><div class="rlbl">💰 Frete Final Composto</div><div class="rval green">R$ ${fmt(total)}</div><div class="rsub">+${fmt((total/piso-1)*100,1)}% acima do piso</div></div>
+      </div>
+      <div class="rcard">
+        <div class="sec-lbl" style="margin-bottom:10px">📐 Detalhamento do Cálculo</div>
+        <div class="drow"><span class="dl">Tabela ANTT</span><span class="dv">Tabela <b>${tab}</b> <span class="tag ${tab.toLowerCase()}">${TABLBL[tab]}</span></span></div>
+        <div class="drow"><span class="dl">Tipo de carga</span><span class="dv">${CNOMES[tipo]}</span></div>
+        <div class="drow"><span class="dl">Eixos</span><span class="dv">${eixos} eixos</span></div>
+        <div class="drow"><span class="dl">Distância</span><span class="dv">${fmt(dist,0)} km</span></div>
+        <div class="drow"><span class="dl">CCD</span><span class="dv acc">R$ ${fmt(ccd,4)}/km</span></div>
+        <div class="drow"><span class="dl">CC</span><span class="dv acc">R$ ${fmt(cc,2)}</span></div>
+        <div class="drow"><span class="dl">${fmt(dist,0)} km × ${fmt(ccd,4)}</span><span class="dv">R$ ${fmt(dist*ccd)}</span></div>
+        <div class="drow"><span class="dl">CC (fixo)</span><span class="dv">R$ ${fmt(cc)}</span></div>
+        <div class="formula"><span>(${fmt(dist,0)} × ${fmt(ccd,4)}) + ${fmt(cc)} =</span><strong>R$ ${fmt(piso)}</strong></div>
+      </div>
+    </div>
+
+    <div id="tab-sc" style="display:none">
+      <div class="rcard">
+        <div class="sec-lbl" style="margin-bottom:10px">🧩 Composição do Frete</div>
+        <table class="ctab">
+          <thead><tr><th>Componente</th><th>Valor</th><th>%</th></tr></thead>
+          <tbody>
+            <tr><td>📦 Piso Mínimo ANTT</td><td>R$ ${fmt(piso)}</td><td class="pct">${fmt(pcts.piso,1)}%</td></tr>
+            <tr><td>🚧 Pedágio</td><td>R$ ${fmt(ped)}</td><td class="pct">${fmt(pcts.ped,1)}%</td></tr>
+            <tr><td>🧾 Custos Adicionais</td><td>R$ ${fmt(adds)}</td><td class="pct">${fmt(pcts.add,1)}%</td></tr>
+            <tr><td>📈 Margem de Lucro (${fmt(marg,1)}%)</td><td>R$ ${fmt(valMarg)}</td><td class="pct">${fmt(pcts.marg,1)}%</td></tr>
+            <tr><td>🏛️ IBS+CBS (${fmt(aliq,1)}%)</td><td>R$ ${fmt(trib)}</td><td class="pct">${fmt(pcts.trib,1)}%</td></tr>
+            <tr><td>💰 FRETE FINAL</td><td>R$ ${fmt(total)}</td><td class="pct">100%</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="bbar">
+        <div class="bseg" style="width:${pcts.piso}%;background:#E8611A"></div>
+        <div class="bseg" style="width:${pcts.ped}%;background:#0D1B2A"></div>
+        <div class="bseg" style="width:${pcts.add}%;background:#8C95A6"></div>
+        <div class="bseg" style="width:${pcts.marg}%;background:#2ECC71"></div>
+        <div class="bseg" style="width:${pcts.trib}%;background:#D4930A"></div>
+      </div>
+      <div class="bleg">
+        <span>🟠 Piso (${fmt(pcts.piso,1)}%)</span>
+        <span>🔵 Pedágio (${fmt(pcts.ped,1)}%)</span>
+        <span>⬜ Adicionais (${fmt(pcts.add,1)}%)</span>
+        <span>🟢 Margem (${fmt(pcts.marg,1)}%)</span>
+        <span>🟡 Tributos (${fmt(pcts.trib,1)}%)</span>
+      </div>
+      <div class="grid3">
+        <div class="rcard"><div class="rlbl">Piso Mínimo</div><div class="rval" style="font-size:18px">R$ ${fmt(piso)}</div><div class="rsub">Obrigatório</div></div>
+        <div class="rcard"><div class="rlbl">Custo s/ Lucro</div><div class="rval" style="font-size:18px;color:var(--g800)">R$ ${fmt(custoBase)}</div><div class="rsub">Piso+Ped.+Add.</div></div>
+        <div class="rcard"><div class="rlbl">Frete Final</div><div class="rval green" style="font-size:18px">R$ ${fmt(total)}</div><div class="rsub">Com lucro e trib.</div></div>
+      </div>
+    </div>
+
+    <div id="tab-ss" style="display:none">
+      <div class="scen-grid">
+        <div class="scen-card"><div class="sc-lbl">Só Piso</div><div class="sc-val" style="color:var(--orange)">R$ ${fmt(piso)}</div><div class="sc-diff" style="color:var(--g400)">Mínimo ANTT</div></div>
+        <div class="scen-card"><div class="sc-lbl">Com Margem e Adicionais</div><div class="sc-val" style="color:var(--green2)">R$ ${fmt(sub)}</div><div class="sc-diff" style="color:var(--green2)">+${fmt((sub/piso-1)*100,1)}%</div></div>
+        <div class="scen-card"><div class="sc-lbl">Frete Final c/ Tributos</div><div class="sc-val" style="color:var(--yellow)">R$ ${fmt(total)}</div><div class="sc-diff" style="color:var(--yellow)">+${fmt((total/piso-1)*100,1)}%</div></div>
+      </div>
+      ${cotado>0?`<div class="rcard ${cotado<piso?'err':'ok'}">
+        <div class="sec-lbl" style="margin-bottom:8px">🔍 Vs. Frete Cotado</div>
+        <div class="drow"><span class="dl">Frete cotado</span><span class="dv">R$ ${fmt(cotado)}</span></div>
+        <div class="drow"><span class="dl">Piso mínimo</span><span class="dv">R$ ${fmt(piso)}</span></div>
+        <div class="drow"><span class="dl">Diferença</span><span class="dv ${cotado<piso?'red':''}">R$ ${fmt(cotado-piso)} (${fmt((cotado/piso-1)*100,1)}%)</span></div>
+        <div class="drow"><span class="dl">Status</span><span class="dv ${cotado<piso?'red':''}">${cotado<piso?'🚨 ABAIXO — IRREGULAR':'✅ ACIMA — CONFORME'}</span></div>
+      </div>`:''}
+    </div>
+
+    <div id="tab-st" style="display:none">
+      <div class="rcard">
+        <div class="sec-lbl" style="margin-bottom:10px">🏛️ Impacto IBS + CBS</div>
+        <div class="grid2">
+          <div>
+            <div class="drow"><span class="dl">IBS</span><span class="dv acc">${fmt(ibs,1)}%</span></div>
+            <div class="drow"><span class="dl">CBS</span><span class="dv acc">${fmt(cbs,1)}%</span></div>
+            <div class="drow"><span class="dl">Alíquota Total</span><span class="dv acc">${fmt(aliq,1)}%</span></div>
+          </div>
+          <div>
+            <div class="drow"><span class="dl">Base</span><span class="dv">R$ ${fmt(sub)}</span></div>
+            <div class="drow"><span class="dl">IBS s/ base</span><span class="dv">R$ ${fmt(sub*(ibs/100))}</span></div>
+            <div class="drow"><span class="dl">CBS s/ base</span><span class="dv">R$ ${fmt(sub*(cbs/100))}</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="rcard">
+        <div class="sec-lbl" style="margin-bottom:8px">Cenários Tributários</div>
+        <table class="ctab">
+          <thead><tr><th>Cenário</th><th>Valor</th><th>Δ vs Piso</th></tr></thead>
+          <tbody>
+            <tr><td>Piso mínimo</td><td>R$ ${fmt(piso)}</td><td class="pct">—</td></tr>
+            <tr><td>Sem tributos</td><td>R$ ${fmt(sub)}</td><td class="pct">+${fmt((sub/piso-1)*100,1)}%</td></tr>
+            <tr><td>Só IBS (${fmt(ibs,1)}%)</td><td>R$ ${fmt(sub*(1+ibs/100))}</td><td class="pct">+${fmt((sub*(1+ibs/100)/piso-1)*100,1)}%</td></tr>
+            <tr><td>Só CBS (${fmt(cbs,1)}%)</td><td>R$ ${fmt(sub*(1+cbs/100))}</td><td class="pct">+${fmt((sub*(1+cbs/100)/piso-1)*100,1)}%</td></tr>
+            <tr><td>💰 IBS + CBS</td><td>R$ ${fmt(total)}</td><td class="pct">+${fmt((total/piso-1)*100,1)}%</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="alrt info">ℹ️ Alíquotas IBS/CBS são estimativas. Implementação gradual até 2033 conforme Reforma Tributária.</div>
+    </div>`;
+}
+
+function calcRoteiro(){
+  const tipo=document.getElementById('r-tipoCarga').value;
+  const eixos=parseInt(document.getElementById('r-eixos').value);
+  const ped=parseFloat(document.getElementById('r-ped').value)||0;
+  const marg=parseFloat(document.getElementById('r-marg').value)||0;
+  const ibs=parseFloat(document.getElementById('r-ibs').value)||0;
+  const cbs=parseFloat(document.getElementById('r-cbs').value)||0;
+  const addGlobal=parseFloat(document.getElementById('r-add').value)||0;
+  const aliq=ibs+cbs;
+  const tab=getTab(gt('r-op','lotacao'),gt('r-cont','composicao'));
+  const cf=getCoefs(tab,tipo,eixos);
+  if(!cf){renderErr(`Combinação não aplicável na Tabela ${tab}: "${CNOMES[tipo]}" com ${eixos} eixos.`);return;}
+
+  const validos=trechos.filter(t=>t.dist>0);
+  if(!validos.length){alert('Informe a distância de pelo menos um trecho.');return;}
+
+  const resultsTrechos=validos.map(t=>{
+    const piso=calcPiso(t.dist,cf.ccd,cf.cc);
+    return{...t,piso,ccd:cf.ccd,cc:cf.cc};
+  });
+
+  const pisoTotal=resultsTrechos.reduce((a,t)=>a+t.piso,0);
+  const distTotal=resultsTrechos.reduce((a,t)=>a+t.dist,0);
+  const custoBase=pisoTotal+ped+addGlobal;
+  const valMarg=custoBase*(marg/100);
+  const sub=custoBase+valMarg;
+  const tr=applyTrib(sub,aliq,gt('r-trib','por_fora'));
+  if(!tr){renderErr('Alíquota inválida.');return;}
+
+  renderRoteiro({tab,tipo,eixos,ccd:cf.ccd,cc:cf.cc,
+    resultsTrechos,pisoTotal,distTotal,ped,addGlobal,valMarg,sub,
+    trib:tr.trib,total:tr.total,ibs,cbs,aliq,marg,custoBase});
+}
+
+function renderRoteiro(d){
+  const {tab,tipo,eixos,ccd,cc,resultsTrechos,pisoTotal,distTotal,
+    ped,addGlobal,valMarg,sub,trib,total,ibs,cbs,aliq,marg,custoBase}=d;
+
+  const trechoRows=resultsTrechos.map((t,i)=>`
+    <div class="trecho-result">
+      <div class="tr-head">
+        <div>
+          <span class="tr-title">Trecho ${i+1}${t.origem||t.destino?' — '+[t.origem,t.destino].filter(Boolean).join(' → '):''}</span>
+          ${t.obs?`<span class="tr-detail"> · ${t.obs}</span>`:''}
+        </div>
+        <div class="tr-piso">R$ ${fmt(t.piso)}</div>
+      </div>
+      <div class="tr-detail">${fmt(t.dist,0)} km · CCD ${fmt(ccd,4)} · CC ${fmt(cc,2)} · Piso = (${fmt(t.dist,0)} × ${fmt(ccd,4)}) + ${fmt(cc)}</div>
+    </div>`).join('');
+
+  const alerta=(resultsTrechos.length>1)?`<div class="alrt warn">⚠️ Operação com ${resultsTrechos.length} trechos. Certifique-se de que cada trecho possui documentação fiscal separada (CTE/NF). Múltiplos destinos exigem atenção regulatória — cada par origem/destino deve estar documentado individualmente.</div>`:'';
+
+  document.getElementById('mainArea').innerHTML=`
+    ${alerta}
+    <div class="total-strip">
+      <div>
+        <div class="t-lbl">📊 Piso Mínimo Total da Rota (${resultsTrechos.length} trecho${resultsTrechos.length>1?'s':''})</div>
+        <div class="t-val">R$ ${fmt(pisoTotal)}</div>
+        <div class="t-sub">${fmt(distTotal,0)} km total · Tabela ${tab} · ${CNOMES[tipo]} · ${eixos} eixos</div>
+      </div>
+      <div style="text-align:right">
+        <div class="t-lbl">💰 Frete Final</div>
+        <div class="t-val" style="color:var(--green)">R$ ${fmt(total)}</div>
+        <div class="t-sub">+${fmt((total/pisoTotal-1)*100,1)}% acima do piso</div>
+      </div>
+    </div>
+
+    <div class="tab-bar">
+      <div class="tab active" onclick="showTab('rp',this)">🗺️ Trechos</div>
+      <div class="tab" onclick="showTab('rc',this)">🧩 Composição</div>
+      <div class="tab" onclick="showTab('rs',this)">📈 Resumo</div>
+    </div>
+
+    <div id="tab-rp">
+      <div class="rcard">
+        <div class="sec-lbl" style="margin-bottom:10px">🗺️ Detalhamento por Trecho</div>
+        ${trechoRows}
+        <div class="formula" style="margin-top:8px">
+          <span>Piso Total = soma de ${resultsTrechos.length} trecho${resultsTrechos.length>1?'s':''} · ${fmt(distTotal,0)} km</span>
+          <strong>R$ ${fmt(pisoTotal)}</strong>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-rc" style="display:none">
+      <div class="rcard">
+        <div class="sec-lbl" style="margin-bottom:10px">🧩 Composição Global</div>
+        <table class="ctab">
+          <thead><tr><th>Componente</th><th>Valor</th><th>%</th></tr></thead>
+          <tbody>
+            <tr><td>📦 Piso Mínimo Total (${resultsTrechos.length} trecho${resultsTrechos.length>1?'s':''})</td><td>R$ ${fmt(pisoTotal)}</td><td class="pct">${fmt(pisoTotal/total*100,1)}%</td></tr>
+            <tr><td>🚧 Pedágio Total</td><td>R$ ${fmt(ped)}</td><td class="pct">${fmt(ped/total*100,1)}%</td></tr>
+            <tr><td>🧾 Custos Adicionais</td><td>R$ ${fmt(addGlobal)}</td><td class="pct">${fmt(addGlobal/total*100,1)}%</td></tr>
+            <tr><td>📈 Margem de Lucro (${fmt(marg,1)}%)</td><td>R$ ${fmt(valMarg)}</td><td class="pct">${fmt(valMarg/total*100,1)}%</td></tr>
+            <tr><td>🏛️ IBS+CBS (${fmt(aliq,1)}%)</td><td>R$ ${fmt(trib)}</td><td class="pct">${fmt(trib/total*100,1)}%</td></tr>
+            <tr><td>💰 FRETE FINAL DA ROTA</td><td>R$ ${fmt(total)}</td><td class="pct">100%</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="tab-rs" style="display:none">
+      <div class="grid2">
+        <div class="rcard hl"><div class="rlbl">Piso Total</div><div class="rval">R$ ${fmt(pisoTotal)}</div><div class="rsub">R$ ${fmt(pisoTotal/distTotal)}/km médio</div></div>
+        <div class="rcard hl"><div class="rlbl">Frete Final</div><div class="rval green">R$ ${fmt(total)}</div><div class="rsub">+${fmt((total/pisoTotal-1)*100,1)}% acima do piso</div></div>
+      </div>
+      <div class="grid3">
+        <div class="rcard"><div class="rlbl">Distância Total</div><div class="rval" style="font-size:18px;color:var(--g800)">${fmt(distTotal,0)} km</div></div>
+        <div class="rcard"><div class="rlbl">Tributos Totais</div><div class="rval" style="font-size:18px;color:var(--yellow)">R$ ${fmt(trib)}</div></div>
+        <div class="rcard"><div class="rlbl">Margem de Lucro</div><div class="rval" style="font-size:18px;color:var(--green2)">R$ ${fmt(valMarg)}</div></div>
+      </div>
+      <div class="rcard">
+        <div class="sec-lbl" style="margin-bottom:8px">Pisos por Trecho</div>
+        <table class="ctab">
+          <thead><tr><th>#</th><th>Rota</th><th>Distância</th><th>Piso</th><th>% do Total</th></tr></thead>
+          <tbody>
+            ${resultsTrechos.map((t,i)=>`<tr>
+              <td><b>${i+1}</b></td>
+              <td>${[t.origem,t.destino].filter(Boolean).join(' → ')||'—'}</td>
+              <td>${fmt(t.dist,0)} km</td>
+              <td>R$ ${fmt(t.piso)}</td>
+              <td class="pct">${fmt(t.piso/pisoTotal*100,1)}%</td>
+            </tr>`).join('')}
+            <tr><td></td><td><b>TOTAL</b></td><td>${fmt(distTotal,0)} km</td><td>R$ ${fmt(pisoTotal)}</td><td class="pct">100%</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+function renderErr(m){document.getElementById('mainArea').innerHTML=`<div class="alrt err" style="margin-top:20px">⛔ ${m}</div>`;}
+function showTab(id,el){
+  document.querySelectorAll('[id^="tab-"]').forEach(t=>t.style.display='none');
+  document.getElementById('tab-'+id).style.display='block';
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+}
+</script>
+</body>
+</html>

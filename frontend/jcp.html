@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Calculadora JCP — Lucro Real</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; font-size: 13px; color: #222; min-height: 100vh; }
+
+  /* ── HEADER ── */
+  .header {
+    background: #1a2233;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 20px; height: 56px; position: sticky; top: 0; z-index: 100;
+    border-bottom: 2px solid #e8650a;
+  }
+  .header-left { display: flex; align-items: center; gap: 14px; }
+  .logo-box {
+    background: #e8650a; color: #fff; font-weight: 800;
+    font-size: 15px; width: 36px; height: 36px; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center; letter-spacing: -1px;
+  }
+  .header-brand { color: #fff; font-size: 16px; font-weight: 400; }
+  .header-brand span { color: #e8650a; font-weight: 700; }
+  .header-title { color: #fff; font-size: 14px; font-weight: 600; }
+  .header-subtitle { color: #8a9ab5; font-size: 11px; margin-top: 1px; }
+  .header-divider { width: 1px; height: 32px; background: #2e3d57; }
+  .header-badge {
+    background: #e8650a; color: #fff; font-size: 11px; font-weight: 600;
+    padding: 4px 10px; border-radius: 4px; display: flex; align-items: center; gap: 5px;
+  }
+  .back-btn {
+    color: rgba(255,255,255,.6); font-size: 12px; font-weight: 500;
+    text-decoration: none; background: rgba(255,255,255,.07);
+    border: 1px solid rgba(255,255,255,.12);
+    padding: 5px 12px; border-radius: 6px;
+    transition: all .15s; white-space: nowrap; margin-right: 8px;
+  }
+  .back-btn:hover { background: rgba(255,255,255,.13); color: #fff; }
+
+  /* ── NAV TABS ── */
+  .nav-tabs {
+    background: #1e2b40; border-bottom: 1px solid #2e3d57;
+    display: flex; align-items: center; padding: 0 20px; height: 40px; gap: 4px;
+  }
+  .nav-tab {
+    color: #8a9ab5; font-size: 12px; padding: 0 14px; height: 40px;
+    display: flex; align-items: center; gap: 6px; cursor: pointer;
+    border-bottom: 2px solid transparent; border: none; background: none;
+    transition: all .15s;
+  }
+  .nav-tab:hover { color: #c5d0e0; }
+  .nav-tab.active { color: #e8650a; border-bottom: 2px solid #e8650a; }
+  .nav-tab .icon { font-size: 13px; }
+
+  /* ── LAYOUT ── */
+  .layout { display: flex; min-height: calc(100vh - 96px); }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width: 290px; min-width: 290px; background: #fff;
+    border-right: 1px solid #dde2ea; overflow-y: auto; padding-bottom: 20px;
+  }
+  .sidebar-section { padding: 14px 16px 8px; }
+  .sidebar-section-title {
+    color: #e8650a; font-size: 10px; font-weight: 700; letter-spacing: .08em;
+    text-transform: uppercase; display: flex; align-items: center; gap: 6px;
+    margin-bottom: 10px;
+  }
+  .sidebar-section-title::before {
+    content: ''; width: 6px; height: 6px; background: #e8650a; border-radius: 50%;
+  }
+  .field-group { margin-bottom: 10px; }
+  .field-group label { display: block; color: #555; font-size: 11px; margin-bottom: 4px; font-weight: 500; }
+  .field-group select,
+  .field-group input[type="text"],
+  .field-group input[type="number"] {
+    width: 100%; padding: 7px 10px; border: 1px solid #d0d5de;
+    border-radius: 5px; font-size: 12px; color: #222; background: #fff;
+    outline: none; transition: border .15s;
+  }
+  .field-group select:focus,
+  .field-group input:focus { border-color: #e8650a; }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+  .toggle-group { display: flex; border-radius: 5px; overflow: hidden; border: 1px solid #d0d5de; }
+  .toggle-btn {
+    flex: 1; padding: 7px 6px; text-align: center; font-size: 11px; font-weight: 600;
+    cursor: pointer; background: #f5f6f8; color: #666; border: none; transition: all .15s;
+  }
+  .toggle-btn.active { background: #e8650a; color: #fff; }
+  .toggle-btn:hover:not(.active) { background: #ebedf0; }
+  .sidebar-divider { height: 1px; background: #ebedf0; margin: 8px 16px; }
+
+  .pl-account-row {
+    display: flex; align-items: center; gap: 6px; margin-bottom: 6px; padding: 6px 8px;
+    border-radius: 5px; background: #f9fafb; border: 1px solid #ebedf0;
+  }
+  .pl-account-row.disabled { opacity: .5; }
+  .pl-account-name { flex: 1; font-size: 11px; color: #444; line-height: 1.3; }
+  .pl-account-input {
+    width: 90px; padding: 4px 7px; border: 1px solid #d0d5de; border-radius: 4px;
+    font-size: 11px; text-align: right; color: #222; background: #fff;
+  }
+  .pl-account-input:focus { border-color: #e8650a; outline: none; }
+  .pl-toggle {
+    width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid #d0d5de;
+    background: none; cursor: pointer; font-size: 13px; color: #888;
+    display: flex; align-items: center; justify-content: center; line-height: 1;
+    flex-shrink: 0;
+  }
+  .pl-toggle:hover { border-color: #e8650a; color: #e8650a; }
+  .pl-toggle.active { background: #e8650a; border-color: #e8650a; color: #fff; }
+
+  .calc-btn {
+    width: calc(100% - 32px); margin: 12px 16px 0;
+    padding: 10px; background: #e8650a; color: #fff;
+    border: none; border-radius: 6px; font-size: 13px; font-weight: 700;
+    cursor: pointer; letter-spacing: .02em; transition: background .15s;
+  }
+  .calc-btn:hover { background: #d05c08; }
+
+  /* ── MAIN ── */
+  .main { flex: 1; padding: 16px 20px; overflow-y: auto; }
+
+  /* ── ALERT ── */
+  .alert {
+    padding: 10px 14px; border-radius: 6px; font-size: 12px; margin-bottom: 14px;
+    display: flex; align-items: flex-start; gap: 8px; line-height: 1.5;
+    border-left: 4px solid;
+  }
+  .alert-info { background: #eaf4ff; border-color: #2d8bda; color: #1a5f9c; }
+  .alert-warn { background: #fff7ed; border-color: #e8650a; color: #b84d00; }
+  .alert-success { background: #eefaf2; border-color: #28a745; color: #1a6b30; }
+  .alert-icon { font-size: 14px; margin-top: 1px; flex-shrink: 0; }
+
+  /* ── RESULT TABS ── */
+  .result-tabs { display: flex; border-bottom: 1px solid #dde2ea; margin-bottom: 16px; gap: 4px; }
+  .result-tab {
+    padding: 8px 16px; font-size: 12px; font-weight: 600; cursor: pointer;
+    border: none; background: none; color: #777; border-bottom: 2px solid transparent;
+    margin-bottom: -1px; display: flex; align-items: center; gap: 5px;
+    transition: all .15s;
+  }
+  .result-tab:hover { color: #333; }
+  .result-tab.active { color: #e8650a; border-bottom-color: #e8650a; }
+  .result-panel { display: none; }
+  .result-panel.active { display: block; }
+
+  /* ── KPI CARDS ── */
+  .kpi-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px; }
+  .kpi-card {
+    background: #fff; border: 1px solid #dde2ea; border-radius: 8px;
+    padding: 16px 20px; position: relative; overflow: hidden;
+  }
+  .kpi-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  }
+  .kpi-card.orange::before { background: #e8650a; }
+  .kpi-card.green::before { background: #28a745; }
+  .kpi-card.blue::before { background: #2d8bda; }
+  .kpi-card.purple::before { background: #7c4dff; }
+  .kpi-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: #888; margin-bottom: 6px; display: flex; align-items: center; gap: 5px; }
+  .kpi-label .dot { width: 7px; height: 7px; border-radius: 50%; }
+  .kpi-label .dot.orange { background: #e8650a; }
+  .kpi-label .dot.green { background: #28a745; }
+  .kpi-value { font-size: 28px; font-weight: 800; line-height: 1; margin-bottom: 4px; }
+  .kpi-value.orange { color: #e8650a; }
+  .kpi-value.green { color: #1d8f3c; }
+  .kpi-sub { font-size: 11px; color: #888; }
+
+  /* ── DETAIL TABLE ── */
+  .detail-card {
+    background: #fff; border: 1px solid #dde2ea; border-radius: 8px; overflow: hidden;
+  }
+  .detail-header {
+    padding: 12px 18px; border-bottom: 1px solid #ebedf0;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .detail-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: #e8650a; display: flex; align-items: center; gap: 7px; }
+  .detail-badge { background: #fff3e8; color: #e8650a; font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 4px; border: 1px solid #f5c9a0; }
+  .detail-table { width: 100%; border-collapse: collapse; }
+  .detail-table tr { border-bottom: 1px solid #f0f2f5; }
+  .detail-table tr:last-child { border-bottom: none; }
+  .detail-table td { padding: 10px 18px; font-size: 12px; color: #333; }
+  .detail-table td:last-child { text-align: right; font-weight: 500; }
+  .detail-table .row-highlight td { background: #fff8f3; }
+  .detail-table .row-total td { background: #fff3e8; font-weight: 700; font-size: 13px; }
+  .detail-table .row-total td:last-child { color: #e8650a; font-size: 14px; }
+  .detail-table .val-orange { color: #e8650a !important; }
+  .detail-table .val-green { color: #1d8f3c !important; }
+  .detail-table .val-red { color: #c0392b !important; }
+  .detail-table .mono { font-family: 'Courier New', monospace; font-size: 11px; }
+  .detail-table .row-formula td { background: #f5f6f8; }
+  .detail-table .row-formula td:last-child { color: #e8650a; }
+  .detail-table .section-header td { background: #f8f9fa; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: #888; padding: 7px 18px; }
+
+  /* ── PERIOD TABLE ── */
+  .period-table { width: 100%; border-collapse: collapse; }
+  .period-table th { background: #f5f6f8; padding: 8px 12px; text-align: left; font-size: 11px; font-weight: 700; color: #666; text-transform: uppercase; letter-spacing: .05em; border-bottom: 2px solid #dde2ea; }
+  .period-table th:not(:first-child) { text-align: right; }
+  .period-table td { padding: 9px 12px; font-size: 12px; border-bottom: 1px solid #f0f2f5; }
+  .period-table td:not(:first-child) { text-align: right; }
+  .period-table tbody tr:hover { background: #fafbfc; }
+  .period-table .tfoot td { background: #fff3e8; font-weight: 700; border-top: 2px solid #e8650a; }
+  .period-table .tfoot td:not(:first-child) { color: #e8650a; }
+
+  /* ── TJLP TABLE ── */
+  .tjlp-ref { overflow-x: auto; }
+  .tjlp-ref table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .tjlp-ref th { background: #f5f6f8; padding: 8px 12px; text-align: center; font-size: 11px; font-weight: 700; color: #666; text-transform: uppercase; letter-spacing: .05em; border-bottom: 1px solid #dde2ea; }
+  .tjlp-ref td { padding: 8px 12px; text-align: center; border-bottom: 1px solid #f0f2f5; }
+  .tjlp-ref tr:last-child td { border-bottom: none; }
+  .tjlp-input { width: 80px; padding: 4px 6px; border: 1px solid #d0d5de; border-radius: 4px; font-size: 11px; text-align: center; }
+  .tjlp-input:focus { border-color: #e8650a; outline: none; }
+
+  /* ── MISC ── */
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  .tag-orange { background: #fff3e8; color: #e8650a; }
+  .tag-green { background: #eefaf2; color: #1d8f3c; }
+  .tag-blue { background: #e8f3ff; color: #1a5f9c; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .four-col { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
+  .mini-kpi { background: #fff; border: 1px solid #dde2ea; border-radius: 7px; padding: 12px 14px; }
+  .mini-kpi .lbl { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: .06em; font-weight: 700; margin-bottom: 5px; }
+  .mini-kpi .val { font-size: 18px; font-weight: 800; }
+  .mini-kpi .val.orange { color: #e8650a; }
+  .mini-kpi .val.green { color: #1d8f3c; }
+  .mini-kpi .val.red { color: #c0392b; }
+  .mini-kpi .val.blue { color: #2d8bda; }
+  .empty-state { text-align: center; padding: 60px 20px; color: #aaa; }
+  .empty-state .icon { font-size: 40px; margin-bottom: 12px; }
+  .empty-state p { font-size: 13px; line-height: 1.6; }
+  .section-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: #888; margin: 16px 0 8px; padding-bottom: 5px; border-bottom: 1px solid #ebedf0; }
+  .periodo-header { font-size: 11px; color: #888; font-weight: 600; text-align: center; }
+  .regime-chip { display: inline-flex; align-items: center; gap: 4px; background: #f0f2f5; padding: 3px 8px; border-radius: 4px; font-size: 11px; color: #555; }
+  input[type=number]::-webkit-inner-spin-button { opacity: 0.4; }
+
+  @media(max-width:700px) {
+    .layout { flex-direction: column; }
+    .sidebar { width: 100%; min-width: 0; }
+    .kpi-row, .two-col, .four-col { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-left">
+    <div class="logo-box">R</div>
+    <span class="header-brand">Rumo <span>Brasil</span></span>
+    <div class="header-divider"></div>
+    <div>
+      <div class="header-title">Calculadora de JCP — Lucro Real</div>
+      <div class="header-subtitle">Lei 9.249/1995 · Lei 14.789/2023 · IN RFB 2.296/2025 · IRPJ/CSLL</div>
+    </div>
+  </div>
+  <a class="back-btn" href="portal.html">← Portal P&D</a>
+  <div class="header-badge">🗓 Atualizado 28/04/2026</div>
+</header>
+
+<!-- NAV -->
+<nav class="nav-tabs">
+  <button class="nav-tab active" onclick="setNavTab(0,this)"><span class="icon">🏢</span> Empresa Única</button>
+  <button class="nav-tab" onclick="setNavTab(1,this)"><span class="icon">📊</span> Múltiplos Períodos</button>
+</nav>
+
+<!-- LAYOUT -->
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+
+    <!-- DADOS DA EMPRESA -->
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Dados da Empresa</div>
+      <div class="field-group"><label>Razão Social</label>
+        <input type="text" id="empresa" placeholder="Nome da empresa" value="" />
+      </div>
+      <div class="field-row">
+        <div class="field-group" style="margin:0"><label>Regime</label>
+          <select id="regime" onchange="onRegimeChange()">
+            <option value="anual">Lucro Real Anual</option>
+            <option value="trimestral">Lucro Real Trimestral</option>
+          </select>
+        </div>
+        <div class="field-group" style="margin:0"><label>Ano Inicial</label>
+          <select id="ano_ini">
+            <option>2019</option><option>2020</option><option>2021</option>
+            <option>2022</option><option selected>2023</option>
+            <option>2024</option><option>2025</option>
+          </select>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field-group" style="margin:0"><label>Legislação</label>
+          <select id="legislacao" onchange="renderPL()">
+            <option value="pre2024">Até dez/2023</option>
+            <option value="pos2024">Jan/2024 em diante</option>
+            <option value="misto">Misto</option>
+          </select>
+        </div>
+        <div class="field-group" style="margin:0"><label>Ano Final</label>
+          <select id="ano_fim">
+            <option>2020</option><option>2021</option><option>2022</option>
+            <option>2023</option><option selected>2024</option>
+            <option>2025</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar-divider"></div>
+
+    <!-- PATRIMÔNIO LÍQUIDO -->
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Patrimônio Líquido (Base de Cálculo)</div>
+      <div id="period-selector" style="margin-bottom:8px;"></div>
+      <div style="font-size:10px; color:#999; margin-bottom:8px;">Valores em R$ para o período selecionado</div>
+      <div id="pl-accounts"></div>
+    </div>
+
+    <div class="sidebar-divider"></div>
+
+    <!-- LIMITES & FISCAL -->
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Parâmetros Fiscais</div>
+      <div class="field-row">
+        <div class="field-group" style="margin:0"><label>IRPJ (%)</label>
+          <input type="number" id="aliq_irpj" value="15" step="0.01" /></div>
+        <div class="field-group" style="margin:0"><label>Adicional IRPJ (%)</label>
+          <input type="number" id="aliq_adicional" value="10" step="0.01" /></div>
+      </div>
+      <div class="field-row">
+        <div class="field-group" style="margin:0"><label>CSLL (%)</label>
+          <input type="number" id="aliq_csll" value="9" step="0.01" /></div>
+        <div class="field-group" style="margin:0"><label>IRRF s/ JCP (%)</label>
+          <input type="number" id="aliq_irrf" value="15" step="0.01" /></div>
+      </div>
+      <div class="field-group"><label>Lucro Líquido antes do JCP (R$) — Limite a)</label>
+        <input type="number" id="lucro_liquido" value="0" step="0.01" placeholder="0" />
+      </div>
+      <div class="field-group"><label>JCP já utilizado anteriormente (R$)</label>
+        <input type="number" id="jcp_ja_utilizado" value="0" step="0.01" />
+      </div>
+    </div>
+
+    <div class="sidebar-divider"></div>
+
+    <!-- TJLP RÁPIDA -->
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">TJLP por Período</div>
+      <div id="tjlp-inputs"></div>
+    </div>
+
+    <button class="calc-btn" onclick="calcular()">▶ CALCULAR JCP</button>
+    <div style="height:20px;"></div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main" id="main-area">
+    <div id="alert-area"></div>
+
+    <!-- RESULT TABS -->
+    <div class="result-tabs">
+      <button class="result-tab active" onclick="setResultTab(0,this)">📊 Resultado JCP</button>
+      <button class="result-tab" onclick="setResultTab(1,this)">🧮 Detalhamento</button>
+      <button class="result-tab" onclick="setResultTab(2,this)">📅 Por Período</button>
+      <button class="result-tab" onclick="setResultTab(3,this)">📋 TJLP Histórica</button>
+    </div>
+
+    <!-- TAB 0: RESULTADO -->
+    <div class="result-panel active" id="panel-0">
+      <div id="result-main">
+        <div class="empty-state">
+          <div class="icon">📊</div>
+          <p>Preencha os dados no painel lateral<br>e clique em <strong>Calcular JCP</strong> para ver os resultados.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 1: DETALHAMENTO -->
+    <div class="result-panel" id="panel-1">
+      <div id="result-detail">
+        <div class="empty-state"><div class="icon">🧮</div><p>Calcule primeiro para ver o detalhamento.</p></div>
+      </div>
+    </div>
+
+    <!-- TAB 2: POR PERÍODO -->
+    <div class="result-panel" id="panel-2">
+      <div id="result-periods">
+        <div class="empty-state"><div class="icon">📅</div><p>Calcule primeiro para ver o detalhamento por período.</p></div>
+      </div>
+    </div>
+
+    <!-- TAB 3: TJLP HISTÓRICA -->
+    <div class="result-panel" id="panel-3">
+      <div class="detail-card">
+        <div class="detail-header">
+          <div class="detail-title">📋 TJLP Histórica — Referência</div>
+        </div>
+        <div class="tjlp-ref" style="padding:12px 18px;">
+          <table>
+            <thead><tr>
+              <th>Ano</th><th>Anual (%)</th><th>1T (%)</th><th>2T (%)</th><th>3T (%)</th><th>4T (%)</th>
+            </tr></thead>
+            <tbody>
+              <tr><td>2019</td><td>6,3200</td><td>1,6500</td><td>1,5600</td><td>1,5400</td><td>1,5700</td></tr>
+              <tr><td>2020</td><td>4,4000</td><td>1,2300</td><td>1,0800</td><td>1,0300</td><td>1,0600</td></tr>
+              <tr><td>2021</td><td>4,8000</td><td>1,1700</td><td>1,1900</td><td>1,2100</td><td>1,2300</td></tr>
+              <tr><td>2022</td><td>6,7776</td><td>1,5600</td><td>1,6700</td><td>1,7200</td><td>1,8300</td></tr>
+              <tr><td>2023</td><td>7,0500</td><td>1,7200</td><td>1,7200</td><td>1,7700</td><td>1,8400</td></tr>
+              <tr><td>2024</td><td>6,8850</td><td>1,6326</td><td>1,6674</td><td>1,7274</td><td>1,8576</td></tr>
+              <tr><td>2025</td><td>—</td><td>1,8800</td><td>—</td><td>—</td><td>—</td></tr>
+            </tbody>
+          </table>
+          <p style="font-size:11px; color:#999; margin-top:12px;">
+            Fonte: Banco Central do Brasil — TJLP divulgada trimestralmente. Para apuração anual, utilize o acumulado do exercício.
+          </p>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+// ─── STATE ───────────────────────────────────────────────────────
+const ACCOUNTS = [
+  { id:'capital_social',    label:'Capital social integralizado',       sign:+1, active:true,  always:true  },
+  { id:'reserva_capital',   label:'Reservas de capital',                sign:+1, active:true,  always:false },
+  { id:'reserva_lucros',    label:'Reservas de lucros',                 sign:+1, active:true,  always:false },
+  { id:'reserva_incentivo', label:'(-) Reserva de incentivo fiscal',    sign:-1, active:false, always:false },
+  { id:'acoes_tesouraria',  label:'(-) Ações em tesouraria',            sign:-1, active:false, always:false },
+  { id:'lucros_acumulados', label:'Lucros / prejuízos acumulados',      sign:+1, active:true,  always:false },
+];
+const TJLP_DEFAULT = {
+  anual_2019:6.32,   anual_2020:4.40,   anual_2021:4.80,   anual_2022:6.7776, anual_2023:7.05,   anual_2024:6.885,  anual_2025:1.88,
+  trim_2019_1:1.65,  trim_2019_2:1.56,  trim_2019_3:1.54,  trim_2019_4:1.57,
+  trim_2020_1:1.23,  trim_2020_2:1.08,  trim_2020_3:1.03,  trim_2020_4:1.06,
+  trim_2021_1:1.17,  trim_2021_2:1.19,  trim_2021_3:1.21,  trim_2021_4:1.23,
+  trim_2022_1:1.56,  trim_2022_2:1.67,  trim_2022_3:1.72,  trim_2022_4:1.83,
+  trim_2023_1:1.72,  trim_2023_2:1.72,  trim_2023_3:1.77,  trim_2023_4:1.84,
+  trim_2024_1:1.6326,trim_2024_2:1.6674,trim_2024_3:1.7274,trim_2024_4:1.8576,
+  trim_2025_1:1.88,
+};
+let plData = {}, tjlpData = {}, selectedPeriod = null, lastResult = null;
+
+// ─── HELPERS ─────────────────────────────────────────────────────
+function brl(v){ return (v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function pct(v){ return (v||0).toLocaleString('pt-BR',{minimumFractionDigits:4,maximumFractionDigits:4})+'%'; }
+function g(id){ return document.getElementById(id); }
+function getPeriods(){
+  const r=g('regime').value, a0=+g('ano_ini').value, a1=+g('ano_fim').value;
+  const ps=[];
+  if(r==='anual'){
+    for(let a=a0;a<=a1;a++) ps.push({label:'DEZ/'+a,key:'anual_'+a,year:a,tipo:'anual'});
+  } else {
+    for(let a=a0;a<=a1;a++)
+      for(let t=1;t<=4;t++) ps.push({label:t+'T'+a,key:'trim_'+a+'_'+t,year:a,quarter:t,tipo:'trim'});
+  }
+  return ps.slice(0,12);
+}
+
+// ─── PERIOD SELECTOR ─────────────────────────────────────────────
+function renderPeriodSelector(){
+  const ps=getPeriods();
+  if(!selectedPeriod || !ps.find(p=>p.key===selectedPeriod)) selectedPeriod=ps[0]?.key;
+  const el=g('period-selector');
+  el.innerHTML='<div style="display:flex;flex-wrap:wrap;gap:4px;">'+
+    ps.map(p=>`<button onclick="selectPeriod('${p.key}')" style="padding:3px 8px;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid ${p.key===selectedPeriod?'#e8650a':'#d0d5de'};background:${p.key===selectedPeriod?'#e8650a':'#f9fafb'};color:${p.key===selectedPeriod?'#fff':'#555'};">${p.label}</button>`).join('')+
+  '</div>';
+}
+function selectPeriod(key){ selectedPeriod=key; renderPeriodSelector(); renderPL(); }
+
+// ─── PL ACCOUNTS ─────────────────────────────────────────────────
+function renderPL(){
+  renderPeriodSelector();
+  const leg=g('legislacao').value;
+  const ri=ACCOUNTS.find(a=>a.id==='reserva_incentivo');
+  if(leg==='pos2024') ri.active=false;
+  const el=g('pl-accounts'); el.innerHTML='';
+  ACCOUNTS.forEach(acc=>{
+    if(!plData[acc.id]) plData[acc.id]={};
+    const val=plData[acc.id][selectedPeriod]||'';
+    const row=document.createElement('div');
+    row.className='pl-account-row'+(acc.active?'':' disabled');
+    row.innerHTML=`
+      <div class="pl-account-name">${acc.label}</div>
+      <input class="pl-account-input" type="number" step="0.01" placeholder="0,00"
+        value="${val}" ${acc.active?'':'disabled'}
+        oninput="onPLInput('${acc.id}','${selectedPeriod}',this.value)" />
+      ${acc.always?'<span style="width:20px"></span>':`<button class="pl-toggle${acc.active?' active':''}" onclick="toggleAcc('${acc.id}')">${acc.active?'−':'+'}</button>`}
+    `;
+    el.appendChild(row);
+  });
+}
+function toggleAcc(id){ const a=ACCOUNTS.find(x=>x.id===id); a.active=!a.active; renderPL(); }
+function onPLInput(acc,period,v){ if(!plData[acc]) plData[acc]={}; plData[acc][period]=parseFloat(v)||0; }
+
+// ─── TJLP INPUTS ─────────────────────────────────────────────────
+function renderTJLPInputs(){
+  const ps=getPeriods(); const el=g('tjlp-inputs'); el.innerHTML='';
+  ps.forEach(p=>{
+    if(!tjlpData[p.key] && tjlpData[p.key]!==0) tjlpData[p.key]=TJLP_DEFAULT[p.key]||0;
+    const row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;';
+    row.innerHTML=`<span style="font-size:11px;color:#555;font-weight:600;">${p.label}</span>
+      <div style="display:flex;align-items:center;gap:4px;">
+        <input class="tjlp-input" type="number" step="0.0001" value="${tjlpData[p.key]||0}" oninput="tjlpData['${p.key}']=parseFloat(this.value)||0;" />
+        <span style="font-size:11px;color:#888;">%</span>
+      </div>`;
+    el.appendChild(row);
+  });
+}
+function onRegimeChange(){ renderPeriodSelector(); renderPL(); renderTJLPInputs(); }
+
+// ─── CALC ENGINE ─────────────────────────────────────────────────
+function getBase(periodKey){
+  let t=0;
+  ACCOUNTS.forEach(acc=>{
+    if(!acc.active) return;
+    const v=parseFloat(plData[acc.id]?.[periodKey])||0;
+    t += (acc.sign===+1) ? v : -v;
+  });
+  return t;
+}
+function calcular(){
+  const ps=getPeriods();
+  const jcpJaUtil=parseFloat(g('jcp_ja_utilizado').value)||0;
+  const aliqIRPJ=(parseFloat(g('aliq_irpj').value)||15)/100;
+  const aliqAdc=(parseFloat(g('aliq_adicional').value)||10)/100;
+  const aliqCSLL=(parseFloat(g('aliq_csll').value)||9)/100;
+  const aliqIRRF=(parseFloat(g('aliq_irrf').value)||15)/100;
+  const ll=parseFloat(g('lucro_liquido').value)||0;
+  const empresa=g('empresa').value||'Empresa';
+  const regime=g('regime').value;
+  const aliqTotal=aliqIRPJ+aliqAdc+aliqCSLL;
+  let rows=[], totalBruto=0, totalLimite=0, totalDedutivel=0;
+  ps.forEach(p=>{
+    const base=getBase(p.key);
+    if(!tjlpData[p.key] && tjlpData[p.key]!==0) tjlpData[p.key]=TJLP_DEFAULT[p.key]||0;
+    const tjlp=tjlpData[p.key]||0;
+    const jcpBruto=base*(tjlp/100);
+    const lucros=parseFloat(plData['lucros_acumulados']?.[p.key])||0;
+    const resLucros=parseFloat(plData['reserva_lucros']?.[p.key])||0;
+    const limB=0.5*(lucros+Math.max(resLucros,0));
+    const limA=ll>0?0.5*ll:0;
+    const limite=Math.max(limA,limB);
+    const ded=limite>0?Math.min(jcpBruto,limite):jcpBruto;
+    totalBruto+=jcpBruto; totalLimite+=limite; totalDedutivel+=ded;
+    rows.push({p,base,tjlp,jcpBruto,limA,limB,limite,ded});
+  });
+  const jcpLiq=Math.max(0,totalDedutivel-jcpJaUtil);
+  const beneficio=jcpLiq*aliqTotal;
+  const irrf=jcpLiq*aliqIRRF;
+  const economia=beneficio-irrf;
+  lastResult={empresa,regime,ps,rows,totalBruto,totalLimite,totalDedutivel,jcpJaUtil,jcpLiq,beneficio,irrf,economia,aliqTotal,aliqIRRF};
+  renderAlert(lastResult);
+  renderResultMain(lastResult);
+  renderResultDetail(lastResult);
+  renderResultPeriods(lastResult);
+}
+
+// ─── ALERT ───────────────────────────────────────────────────────
+function renderAlert(r){
+  const el=g('alert-area');
+  if(r.economia<=0){
+    el.innerHTML=`<div class="alert alert-warn"><span class="alert-icon">⚠️</span><span>Atenção: com as alíquotas informadas, o benefício fiscal (R$ ${brl(r.beneficio)}) é menor ou igual ao IRRF (R$ ${brl(r.irrf)}). Revise os parâmetros.</span></div>`;
+  } else {
+    el.innerHTML=`<div class="alert alert-success"><span class="alert-icon">✅</span><span>JCP calculado com sucesso. Economia tributária efetiva: <strong>R$ ${brl(r.economia)}</strong>. JCP disponível para dedução: <strong>R$ ${brl(r.jcpLiq)}</strong>.</span></div>`;
+  }
+}
+
+// ─── RESULT MAIN ─────────────────────────────────────────────────
+function renderResultMain(r){
+  const el=g('result-main');
+  const regimeLabel=r.regime==='anual'?'Lucro Real Anual':'Lucro Real Trimestral';
+  el.innerHTML=`
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+      <div>
+        <div style="font-size:15px;font-weight:700;color:#1a2233;">${r.empresa||'Empresa'}</div>
+        <div style="font-size:11px;color:#888;margin-top:2px;display:flex;gap:8px;align-items:center;">
+          <span class="regime-chip">📋 ${regimeLabel}</span>
+          <span class="regime-chip">📅 ${r.ps.length} período${r.ps.length>1?'s':''}</span>
+          <span class="regime-chip">⚖️ Alíquota total: ${((r.aliqTotal)*100).toFixed(2)}%</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="kpi-row">
+      <div class="kpi-card orange">
+        <div class="kpi-label"><span class="dot orange"></span> JCP TOTAL APURADO</div>
+        <div class="kpi-value orange">R$ ${brl(r.totalBruto)}</div>
+        <div class="kpi-sub">Base × TJLP (soma dos períodos)</div>
+      </div>
+      <div class="kpi-card green">
+        <div class="kpi-label"><span class="dot green"></span> ECONOMIA TRIBUTÁRIA EFETIVA</div>
+        <div class="kpi-value green">R$ ${brl(r.economia)}</div>
+        <div class="kpi-sub">Benefício IRPJ/CSLL − IRRF</div>
+      </div>
+    </div>
+
+    <div class="four-col">
+      <div class="mini-kpi"><div class="lbl">JCP Dedutível</div><div class="val orange">R$ ${brl(r.totalDedutivel)}</div></div>
+      <div class="mini-kpi"><div class="lbl">JCP já Utilizado</div><div class="val red">R$ ${brl(r.jcpJaUtil)}</div></div>
+      <div class="mini-kpi"><div class="lbl">JCP Disponível</div><div class="val green">R$ ${brl(r.jcpLiq)}</div></div>
+      <div class="mini-kpi"><div class="lbl">IRRF Devido (${(r.aliqIRRF*100).toFixed(0)}%)</div><div class="val blue">R$ ${brl(r.irrf)}</div></div>
+    </div>
+
+    <div class="detail-card">
+      <div class="detail-header">
+        <div class="detail-title">💰 CÁLCULO DO BENEFÍCIO FISCAL</div>
+        <div class="detail-badge">IRPJ + CSLL = ${((r.aliqTotal)*100).toFixed(2)}%</div>
+      </div>
+      <table class="detail-table">
+        <tr><td>JCP total apurado</td><td>R$ ${brl(r.totalBruto)}</td></tr>
+        <tr class="row-highlight"><td>JCP dedutível (após limites)</td><td class="val-orange">R$ ${brl(r.totalDedutivel)}</td></tr>
+        <tr><td>(−) JCP já utilizado anteriormente</td><td class="val-red">(R$ ${brl(r.jcpJaUtil)})</td></tr>
+        <tr class="row-highlight"><td>(=) JCP disponível para dedução</td><td style="font-weight:700;">R$ ${brl(r.jcpLiq)}</td></tr>
+        <tr><td>(+) Benefício IRPJ/CSLL (${((r.aliqTotal)*100).toFixed(2)}%)</td><td class="val-green">+ R$ ${brl(r.beneficio)}</td></tr>
+        <tr><td>(−) IRRF sobre JCP (${(r.aliqIRRF*100).toFixed(0)}%)</td><td class="val-red">(R$ ${brl(r.irrf)})</td></tr>
+        <tr class="row-total"><td>(=) ECONOMIA TRIBUTÁRIA EFETIVA</td><td>R$ ${brl(r.economia)}</td></tr>
+      </table>
+    </div>
+  `;
+}
+
+// ─── RESULT DETAIL ────────────────────────────────────────────────
+function renderResultDetail(r){
+  const el=g('result-detail');
+  const accAtivas=ACCOUNTS.filter(a=>a.active);
+  const p0=r.rows[0];
+  let accountRows='';
+  if(p0){
+    accAtivas.forEach(acc=>{
+      const v=parseFloat(plData[acc.id]?.[p0.p.key])||0;
+      accountRows+=`<tr><td>${acc.label}</td><td class="${v<0?'val-red':''}">R$ ${brl(v)}</td></tr>`;
+    });
+  }
+  el.innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+      <div class="detail-card">
+        <div class="detail-header">
+          <div class="detail-title">🏦 COMPOSIÇÃO DA BASE (${p0?p0.p.label:'—'})</div>
+        </div>
+        <table class="detail-table">
+          ${accountRows}
+          <tr class="row-total"><td>BASE DE CÁLCULO JCP</td><td>R$ ${brl(p0?p0.base:0)}</td></tr>
+        </table>
+      </div>
+      <div class="detail-card">
+        <div class="detail-header">
+          <div class="detail-title">📐 LIMITE DE DEDUTIBILIDADE (${p0?p0.p.label:'—'})</div>
+        </div>
+        <table class="detail-table">
+          <tr class="section-header"><td colspan="2">Critério a) — Lucro Líquido</td></tr>
+          <tr><td>50% do L.L. antes do JCP e IRPJ, após CSLL</td><td>R$ ${brl(p0?p0.limA:0)}</td></tr>
+          <tr class="section-header"><td colspan="2">Critério b) — Lucros e Reservas</td></tr>
+          <tr><td>50% dos lucros acumulados + reservas de lucros</td><td>R$ ${brl(p0?p0.limB:0)}</td></tr>
+          <tr class="row-highlight"><td><strong>MAIOR entre a) e b)</strong></td><td class="val-orange"><strong>R$ ${brl(p0?p0.limite:0)}</strong></td></tr>
+          <tr><td>JCP Bruto apurado</td><td>R$ ${brl(p0?p0.jcpBruto:0)}</td></tr>
+          <tr class="row-total"><td>JCP DEDUTÍVEL</td><td>R$ ${brl(p0?p0.ded:0)}</td></tr>
+        </table>
+      </div>
+    </div>
+    <div style="margin-top:14px;" class="detail-card">
+      <div class="detail-header">
+        <div class="detail-title">🧾 FÓRMULA APLICADA</div>
+        <div class="detail-badge">Lei 9.249/1995 · Lei 14.789/2023</div>
+      </div>
+      <table class="detail-table">
+        <tr><td>Fórmula base</td><td class="mono val-orange">JCP = Patrimônio Líquido (base) × TJLP</td></tr>
+        <tr><td>Contas ativas na base</td><td>${accAtivas.map(a=>a.label).join(' + ')}</td></tr>
+        <tr><td>Limite de dedutibilidade</td><td>MAX ( 50% L.L. ; 50% Lucros + Reservas )</td></tr>
+        <tr><td>Benefício fiscal</td><td class="mono">JCP × (IRPJ ${((parseFloat(g('aliq_irpj').value)||15)+(parseFloat(g('aliq_adicional').value)||10)).toFixed(0)}% + CSLL ${parseFloat(g('aliq_csll').value)||9}%)</td></tr>
+        <tr class="row-formula"><td class="mono">Economia = Benefício − IRRF</td><td class="val-orange mono">R$ ${brl(r.economia)}</td></tr>
+      </table>
+    </div>
+  `;
+}
+
+// ─── RESULT PERIODS ──────────────────────────────────────────────
+function renderResultPeriods(r){
+  const el=g('result-periods');
+  let rows='';
+  r.rows.forEach(row=>{
+    rows+=`<tr>
+      <td><strong>${row.p.label}</strong></td>
+      <td>R$ ${brl(row.base)}</td>
+      <td>${pct(row.tjlp)}</td>
+      <td class="val-orange">R$ ${brl(row.jcpBruto)}</td>
+      <td>${row.limite>0?'R$ '+brl(row.limite):'—'}</td>
+      <td style="color:#1d8f3c;font-weight:600;">R$ ${brl(row.ded)}</td>
+    </tr>`;
+  });
+  el.innerHTML=`<div class="detail-card">
+    <div class="detail-header">
+      <div class="detail-title">📅 DETALHAMENTO POR PERÍODO</div>
+      <div class="detail-badge">${r.ps.length} períodos</div>
+    </div>
+    <div style="overflow-x:auto;">
+      <table class="period-table">
+        <thead><tr>
+          <th>Período</th>
+          <th>Base JCP (R$)</th>
+          <th>TJLP</th>
+          <th>JCP Bruto (R$)</th>
+          <th>Limite Ded. (R$)</th>
+          <th>JCP Dedutível (R$)</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+        <tfoot class="tfoot"><tr>
+          <td><strong>TOTAL</strong></td>
+          <td>—</td><td>—</td>
+          <td>R$ ${brl(r.totalBruto)}</td>
+          <td>${r.totalLimite>0?'R$ '+brl(r.totalLimite):'—'}</td>
+          <td>R$ ${brl(r.totalDedutivel)}</td>
+        </tr></tfoot>
+      </table>
+    </div>
+  </div>`;
+}
+
+// ─── TAB SWITCHING ────────────────────────────────────────────────
+function setResultTab(idx,btn){
+  document.querySelectorAll('.result-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.result-panel').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+  g('panel-'+idx).classList.add('active');
+}
+function setNavTab(idx,btn){
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────
+renderPeriodSelector();
+renderPL();
+renderTJLPInputs();
+</script>
+</body>
+</html>

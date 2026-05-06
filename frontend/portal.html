@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Portal de Automações — P&D</title>
+<title>Ferramentas Enterprise — Rumo Brasil</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -305,10 +305,10 @@ footer{
 <nav>
   <div class="nav-brand">
     <div class="nav-icon">⚡</div>
-    <div class="nav-name">Portal <span>P&D</span></div>
+    <div class="nav-name">Ferramentas Enterprise <span>Rumo Brasil</span></div>
   </div>
   <div class="nav-right">
-    <span class="nav-tag">Automações internas</span>
+    <span class="nav-tag">Ferramentas internas</span>
     <div class="nav-dot-wrap">
       <div class="nav-dot"></div>
       <span>Plataforma ativa</span>
@@ -320,11 +320,11 @@ footer{
 <div class="hero">
   <div class="hero-content">
     <div class="hero-eyebrow">Central de Automações</div>
-    <h1 class="hero-title">Ferramentas que<br><span class="hl">aceleram o trabalho</span></h1>
-    <p class="hero-sub">Hub centralizado com todas as automações e sistemas desenvolvidos pelo time de P&D. Acesse rapidamente qualquer ferramenta, acompanhe o status e gerencie suas consultas.</p>
+    <h1 class="hero-title">Ferramentas que<br><span class="hl">aceleram o negócio</span></h1>
+    <p class="hero-sub">Hub centralizado com todas as ferramentas e calculadoras desenvolvidas para a Rumo Brasil. Acesse rapidamente qualquer solução, acompanhe o status e gerencie suas consultas.</p>
     <div class="hero-stats">
       <div class="hst"><div class="hst-n" id="total-tools">5</div><div class="hst-l">Ferramentas</div></div>
-      <div class="hst"><div class="hst-n" id="live-tools">1</div><div class="hst-l">Ativas</div></div>
+      <div class="hst"><div class="hst-n" id="live-tools">3</div><div class="hst-l">Ativas</div></div>
       <div class="hst"><div class="hst-n">100%</div><div class="hst-l">Local & seguro</div></div>
     </div>
   </div>
@@ -372,42 +372,44 @@ footer{
     </div>
 
     <!-- Piso Mínimo de Frete -->
-    <div class="card soon">
-      <div class="card-bar" style="background:linear-gradient(90deg,var(--blue),var(--blue-l));"></div>
+    <div class="card active" onclick="abrirFerramenta('piso-minimo-frete.html')" title="Acessar Piso Mínimo de Frete">
+      <div class="card-bar" style="background:linear-gradient(90deg,var(--blue),var(--blue-l));opacity:1;"></div>
       <div class="card-head">
         <div class="card-icon ci-blue">🚚</div>
-        <span class="badge b-soon">Em breve</span>
+        <span class="badge b-live">Ativa</span>
       </div>
       <div class="card-title">Piso Mínimo de Frete</div>
-      <div class="card-desc">Cálculo e verificação do piso mínimo de frete conforme tabela ANTT. Valida automaticamente se os fretes praticados estão dentro dos limites legais.</div>
+      <div class="card-desc">Calculadora de piso mínimo conforme Portaria SUROC nº 4 (ANTT). Suporta trecho simples e roteirização com múltiplos trechos, margem, pedágio e IBS/CBS.</div>
       <div class="card-tags">
         <span class="tag">ANTT</span>
         <span class="tag">Logística</span>
         <span class="tag">Compliance</span>
+        <span class="tag">SUROC nº4</span>
       </div>
       <div class="card-foot">
-        <span class="card-meta">Em desenvolvimento</span>
-        <button class="btn btn-ghost btn-sm" disabled style="opacity:.4;cursor:not-allowed">Em breve</button>
+        <span class="card-meta">Portaria 20/03/2026</span>
+        <button class="btn btn-orange btn-sm" onclick="event.stopPropagation();abrirFerramenta('piso-minimo-frete.html')">Acessar →</button>
       </div>
     </div>
 
     <!-- JCP -->
-    <div class="card soon">
-      <div class="card-bar" style="background:linear-gradient(90deg,#7C3AED,#A78BFA);"></div>
+    <div class="card active" onclick="abrirFerramenta('jcp.html')" title="Acessar Calculadora JCP">
+      <div class="card-bar" style="background:linear-gradient(90deg,#7C3AED,#A78BFA);opacity:1;"></div>
       <div class="card-head">
         <div class="card-icon" style="background:rgba(124,58,237,.12);border:1px solid rgba(124,58,237,.2);">💰</div>
-        <span class="badge b-soon">Em breve</span>
+        <span class="badge b-live">Ativa</span>
       </div>
       <div class="card-title">JCP — Juros sobre Capital Próprio</div>
-      <div class="card-desc">Automação do cálculo de Juros sobre Capital Próprio com base nas variações da TJLP. Gera memória de cálculo detalhada e relatório para distribuição.</div>
+      <div class="card-desc">Cálculo de JCP conforme Lei 9.249/1995 e Lei 14.789/2023. Suporta Lucro Real Anual e Trimestral com TJLP histórica, limites de dedutibilidade e impacto IRPJ/CSLL/IRRF.</div>
       <div class="card-tags">
         <span class="tag">Financeiro</span>
         <span class="tag">TJLP</span>
         <span class="tag">Fiscal</span>
+        <span class="tag">Lucro Real</span>
       </div>
       <div class="card-foot">
-        <span class="card-meta">Em desenvolvimento</span>
-        <button class="btn btn-ghost btn-sm" disabled style="opacity:.4;cursor:not-allowed">Em breve</button>
+        <span class="card-meta">Lei 14.789/2023</span>
+        <button class="btn btn-orange btn-sm" onclick="event.stopPropagation();abrirFerramenta('jcp.html')">Acessar →</button>
       </div>
     </div>
 
@@ -471,24 +473,26 @@ footer{
         <a class="btn btn-orange btn-sm" href="index.html">Abrir →</a>
       </div>
     </div>
-    <div class="rec-item" style="opacity:.5;">
+    <div class="rec-item">
       <div class="rec-ic ci-blue">🚚</div>
       <div>
         <div class="rec-name">Piso Mínimo de Frete</div>
-        <div class="rec-time">Em desenvolvimento</div>
+        <div class="rec-time">Portaria SUROC nº 4 · 20/03/2026</div>
       </div>
       <div class="rec-right">
-        <span class="badge b-soon">Em breve</span>
+        <span class="badge b-live">Online</span>
+        <a class="btn btn-orange btn-sm" href="piso-minimo-frete.html">Abrir →</a>
       </div>
     </div>
-    <div class="rec-item" style="opacity:.5;">
+    <div class="rec-item">
       <div class="rec-ic" style="background:rgba(124,58,237,.12);border:1px solid rgba(124,58,237,.2);">💰</div>
       <div>
         <div class="rec-name">JCP — Juros sobre Capital Próprio</div>
-        <div class="rec-time">Em desenvolvimento</div>
+        <div class="rec-time">Lei 14.789/2023 · TJLP histórica 2019–2025</div>
       </div>
       <div class="rec-right">
-        <span class="badge b-soon">Em breve</span>
+        <span class="badge b-live">Online</span>
+        <a class="btn btn-orange btn-sm" href="jcp.html">Abrir →</a>
       </div>
     </div>
     <div class="rec-item" style="opacity:.5;">
@@ -549,9 +553,9 @@ footer{
 <footer>
   <div class="ft-brand">
     <div class="ft-brand-dot"></div>
-    Portal P&D
+    Rumo Brasil
   </div>
-  <div class="ft-copy">Plataforma interna · Dados não armazenados externamente · Desenvolvido com Claude Code</div>
+  <div class="ft-copy">Ferramentas Enterprise · Dados não armazenados externamente · Desenvolvido com Claude Code</div>
   <div class="ft-links">
     <a class="ft-link" href="index.html">DUE Consulta</a>
   </div>
