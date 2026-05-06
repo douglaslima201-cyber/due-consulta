@@ -13,7 +13,8 @@
       "Bash(gh repo *)",
       "Bash(git push *)",
       "Bash(git status *)",
-      "Bash(git log *)"
+      "Bash(git log *)",
+      "Bash(gh api *)"
     ]
   },
   "hooks": {
