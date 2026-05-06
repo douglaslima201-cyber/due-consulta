@@ -235,11 +235,59 @@ tr:hover td{background:rgba(139,92,246,.04);}
     </div>
   </div>
 
+  <!-- MAPEAMENTO DE COLUNAS -->
+  <div id="mapping-section" style="display:none;">
+    <div style="background:var(--db2);border:1px solid rgba(139,92,246,.25);border-radius:var(--r2);padding:28px 32px;margin-top:4px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+        <span style="font-size:20px;">🗂️</span>
+        <div>
+          <div style="font-size:16px;font-weight:700;" id="map-filename">—</div>
+          <div style="font-size:12px;color:var(--g3);font-family:var(--mono);" id="map-cols-count">—</div>
+        </div>
+      </div>
+      <p style="font-size:13px;color:var(--g3);margin-bottom:24px;margin-top:12px;">Confirme qual coluna do seu Excel corresponde a cada campo. A prévia abaixo mostra as primeiras linhas do arquivo.</p>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:24px;" id="col-selects">
+        <div>
+          <label style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--purple);font-family:var(--mono);display:block;margin-bottom:8px;">Conta Contábil</label>
+          <select class="filter-sel" id="sel-conta" style="width:100%;padding:10px 14px;font-size:13px;"></select>
+          <div style="font-size:11px;color:var(--g4);margin-top:4px;">Código da conta (ex: 6.1.1.01)</div>
+        </div>
+        <div>
+          <label style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--purple);font-family:var(--mono);display:block;margin-bottom:8px;">Descrição</label>
+          <select class="filter-sel" id="sel-descricao" style="width:100%;padding:10px 14px;font-size:13px;"></select>
+          <div style="font-size:11px;color:var(--g4);margin-top:4px;">Nome da conta (ex: Energia Elétrica)</div>
+        </div>
+        <div>
+          <label style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--purple);font-family:var(--mono);display:block;margin-bottom:8px;">Valor (R$)</label>
+          <select class="filter-sel" id="sel-valor" style="width:100%;padding:10px 14px;font-size:13px;"></select>
+          <div style="font-size:11px;color:var(--g4);margin-top:4px;">Saldo ou valor do período</div>
+        </div>
+      </div>
+
+      <!-- Prévia da planilha -->
+      <div style="margin-bottom:24px;">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--g4);font-family:var(--mono);margin-bottom:10px;">Prévia do arquivo (5 primeiras linhas)</div>
+        <div style="overflow-x:auto;border-radius:var(--r);border:1px solid rgba(255,255,255,.06);">
+          <table id="preview-table" style="width:100%;border-collapse:collapse;font-size:12px;">
+            <thead id="preview-thead" style="background:var(--db3);"></thead>
+            <tbody id="preview-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:12px;align-items:center;">
+        <button class="btn btn-purple" onclick="confirmarMapeamento()">Analisar balancete →</button>
+        <button class="btn btn-ghost" onclick="voltarUpload()">← Trocar arquivo</button>
+      </div>
+    </div>
+  </div>
+
   <!-- LOADING -->
   <div id="loading">
     <div class="spinner"></div>
     <div style="font-size:14px;color:var(--g3);">Analisando balancete...</div>
-    <div style="font-size:12px;color:var(--g4);margin-top:4px;font-family:var(--mono);">Aplicando motor de regras tributárias PIS/COFINS</div>
+    <div style="font-size:12px;color:var(--g4);margin-top:4px;font-family:var(--mono);">Aplicando motor de regras tributárias PIS/COFINS — SC COSIT 5/2018</div>
   </div>
 
   <!-- RESULTS -->
@@ -425,6 +473,7 @@ tr:hover td{background:rgba(139,92,246,.04);}
 <script>
 const API = 'http://localhost:5000/api/piscofins';
 let currentAnalysisId = null;
+let currentPreviewId = null;
 let allRows = [];
 let charts = {};
 
@@ -443,8 +492,9 @@ function handleFileSelect(e) {
   if (f) processFile(f);
 }
 
+// ── Etapa 1: preview + mapeamento ────────────────────────────────────────────
 async function processFile(file) {
-  if (!file.name.endsWith('.xlsx')) {
+  if (!file.name.toLowerCase().endsWith('.xlsx')) {
     alert('Por favor, envie um arquivo .xlsx');
     return;
   }
@@ -455,14 +505,83 @@ async function processFile(file) {
   fd.append('file', file);
 
   try {
-    const res = await fetch(`${API}/upload`, { method: 'POST', body: fd });
+    const res = await fetch(`${API}/preview`, { method: 'POST', body: fd });
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || 'Erro ao ler arquivo');
+    renderMapping(data);
+  } catch (err) {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('upload-section').style.display = 'block';
+    alert(`Erro: ${err.message}\n\nVerifique se o backend está rodando em http://localhost:5000/piscofins.html`);
+  }
+}
+
+function renderMapping(data) {
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('mapping-section').style.display = 'block';
+
+  currentPreviewId = data.preview_id;
+  document.getElementById('map-filename').textContent = data.filename;
+  document.getElementById('map-cols-count').textContent = `${data.columns.length} colunas detectadas`;
+
+  // Preenche selects
+  const opts = data.columns.map((c, i) => `<option value="${i}">${c}</option>`).join('');
+  ['sel-conta', 'sel-descricao', 'sel-valor'].forEach(id => {
+    document.getElementById(id).innerHTML = opts;
+  });
+
+  // Aplica sugestão automática
+  const s = data.suggestion;
+  if (s.conta    !== null) document.getElementById('sel-conta').value    = s.conta;
+  if (s.descricao !== null) document.getElementById('sel-descricao').value = s.descricao;
+  if (s.valor    !== null) document.getElementById('sel-valor').value    = s.valor;
+
+  // Prévia
+  const thead = document.getElementById('preview-thead');
+  const tbody = document.getElementById('preview-tbody');
+  thead.innerHTML = '<tr>' + data.columns.map(c =>
+    `<th style="padding:8px 12px;text-align:left;font-size:10px;color:var(--g3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;">${esc(c)}</th>`
+  ).join('') + '</tr>';
+  tbody.innerHTML = data.preview_rows.map(row =>
+    '<tr>' + row.map(v =>
+      `<td style="padding:7px 12px;border-top:1px solid rgba(255,255,255,.04);font-size:12px;color:var(--g2);white-space:nowrap;max-width:200px;overflow:hidden;text-overflow:ellipsis;">${esc(v)}</td>`
+    ).join('') + '</tr>'
+  ).join('');
+}
+
+function voltarUpload() {
+  currentPreviewId = null;
+  document.getElementById('mapping-section').style.display = 'none';
+  document.getElementById('upload-section').style.display = 'block';
+  document.getElementById('file-input').value = '';
+}
+
+// ── Etapa 2: análise com mapeamento confirmado ───────────────────────────────
+async function confirmarMapeamento() {
+  if (!currentPreviewId) return;
+  document.getElementById('mapping-section').style.display = 'none';
+  document.getElementById('loading').style.display = 'block';
+
+  const payload = {
+    preview_id: currentPreviewId,
+    col_conta:     parseInt(document.getElementById('sel-conta').value),
+    col_descricao: parseInt(document.getElementById('sel-descricao').value),
+    col_valor:     parseInt(document.getElementById('sel-valor').value),
+  };
+
+  try {
+    const res = await fetch(`${API}/upload`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
     const data = await res.json();
     if (!res.ok || data.error) throw new Error(data.error || 'Erro na análise');
     renderResults(data);
   } catch (err) {
     document.getElementById('loading').style.display = 'none';
-    document.getElementById('upload-section').style.display = 'block';
-    alert(`Erro: ${err.message}\n\nVerifique se o backend está rodando em localhost:5000`);
+    document.getElementById('mapping-section').style.display = 'block';
+    alert(`Erro na análise: ${err.message}`);
   }
 }
 
@@ -689,9 +808,11 @@ async function exportarExcel() {
 // ── Reset ─────────────────────────────────────────────────────────────────────
 function resetar() {
   currentAnalysisId = null;
+  currentPreviewId = null;
   allRows = [];
   document.getElementById('file-input').value = '';
   document.getElementById('results').style.display = 'none';
+  document.getElementById('mapping-section').style.display = 'none';
   document.getElementById('upload-section').style.display = 'block';
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }

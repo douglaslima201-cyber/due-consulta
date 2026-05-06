@@ -898,8 +898,9 @@ def _find_rule(conta: str, descricao: str, nature: str) -> dict | None:
     return None
 
 
-def analyze_balancete(df: pd.DataFrame) -> dict:
-    col_map = _normalize_cols(df)
+def analyze_balancete(df: pd.DataFrame, col_map: dict | None = None) -> dict:
+    if col_map is None:
+        col_map = _normalize_cols(df)
     raw_rows: list[dict] = []
 
     for _, row in df.iterrows():
@@ -1090,32 +1091,132 @@ def analyze_balancete(df: pd.DataFrame) -> dict:
 
 # ─── 5. ROTAS FLASK ───────────────────────────────────────────────────────────
 
-@bp.route("/upload", methods=["POST"])
-def upload():
+@bp.route("/preview", methods=["POST"])
+def preview():
+    """Retorna colunas e primeiras linhas do Excel para o usuário confirmar o mapeamento."""
     if "file" not in request.files:
         return jsonify({"error": "Nenhum arquivo enviado"}), 400
     f = request.files["file"]
     if not f.filename.lower().endswith(".xlsx"):
         return jsonify({"error": "Apenas arquivos .xlsx são aceitos"}), 400
+
     try:
-        df = pd.read_excel(f, dtype=str)
+        # Tenta ler com e sem cabeçalho para mostrar ao usuário
+        file_bytes = f.read()
+        import io as _io
+        df = pd.read_excel(_io.BytesIO(file_bytes), dtype=str, nrows=8)
     except Exception as e:
         return jsonify({"error": f"Erro ao ler planilha: {e}"}), 400
+
     if df.empty:
         return jsonify({"error": "Planilha vazia"}), 400
+
+    columns = list(df.columns)
+    preview_rows = []
+    for _, row in df.head(5).iterrows():
+        preview_rows.append([str(v) if pd.notna(v) else "" for v in row])
+
+    # Sugestão automática de mapeamento
+    suggestion = {"conta": None, "descricao": None, "valor": None}
+    for i, col in enumerate(columns):
+        cl = str(col).lower().strip()
+        if suggestion["conta"] is None and any(k in cl for k in ["conta", "código", "codigo", "cód", "cod"]):
+            suggestion["conta"] = i
+        if suggestion["descricao"] is None and any(k in cl for k in ["descriç", "descricao", "description", "nome", "histórico", "historico"]):
+            suggestion["descricao"] = i
+        if suggestion["valor"] is None and any(k in cl for k in ["valor", "saldo", "value", "amount", "montante", "débito", "credito", "crédito"]):
+            suggestion["valor"] = i
+
+    # Fallback: se não achou por nome, sugere por posição
+    if suggestion["conta"] is None and len(columns) > 0:
+        suggestion["conta"] = 0
+    if suggestion["descricao"] is None and len(columns) > 1:
+        suggestion["descricao"] = 1
+    if suggestion["valor"] is None and len(columns) > 2:
+        suggestion["valor"] = 2
+
+    # Salva os bytes para o upload posterior
+    preview_id = str(uuid.uuid4())
+    _analyses[f"preview_{preview_id}"] = {
+        "file_bytes": file_bytes,
+        "filename": f.filename,
+        "columns": columns,
+    }
+
+    return jsonify({
+        "preview_id": preview_id,
+        "filename": f.filename,
+        "columns": columns,
+        "preview_rows": preview_rows,
+        "suggestion": suggestion,
+    })
+
+
+@bp.route("/upload", methods=["POST"])
+def upload():
+    """Executa a análise com base no preview_id e mapeamento de colunas confirmado pelo usuário."""
+    data = request.get_json(force=True)
+    preview_id = data.get("preview_id")
+    col_conta = data.get("col_conta")        # índice (int) ou nome (str)
+    col_descricao = data.get("col_descricao")
+    col_valor = data.get("col_valor")
+
+    if not preview_id:
+        return jsonify({"error": "preview_id ausente"}), 400
+
+    cache_key = f"preview_{preview_id}"
+    if cache_key not in _analyses:
+        return jsonify({"error": "Preview expirado. Faça o upload novamente."}), 400
+
+    cached = _analyses.pop(cache_key)
+    file_bytes = cached["file_bytes"]
+    filename = cached["filename"]
+    columns = cached["columns"]
+
+    import io as _io
     try:
-        result = analyze_balancete(df)
+        df = pd.read_excel(_io.BytesIO(file_bytes), dtype=str)
+    except Exception as e:
+        return jsonify({"error": f"Erro ao ler planilha: {e}"}), 400
+
+    # Resolve índice → nome de coluna
+    def resolve(ref):
+        if ref is None:
+            return None
+        if isinstance(ref, int) and 0 <= ref < len(columns):
+            return columns[ref]
+        if isinstance(ref, str) and ref in columns:
+            return ref
+        try:
+            idx = int(ref)
+            if 0 <= idx < len(columns):
+                return columns[idx]
+        except (ValueError, TypeError):
+            pass
+        return None
+
+    col_map = {
+        "conta":    resolve(col_conta)    or columns[0],
+        "descricao": resolve(col_descricao) or (columns[1] if len(columns) > 1 else columns[0]),
+        "valor":    resolve(col_valor)    or (columns[2] if len(columns) > 2 else columns[0]),
+    }
+
+    if df.empty:
+        return jsonify({"error": "Planilha vazia"}), 400
+
+    try:
+        result = analyze_balancete(df, col_map=col_map)
     except Exception as e:
         return jsonify({"error": f"Erro na análise: {e}"}), 500
 
     analysis_id = str(uuid.uuid4())
-    result.update({"analysis_id": analysis_id, "filename": f.filename,
+    result.update({"analysis_id": analysis_id, "filename": filename,
                    "created_at": datetime.now().isoformat()})
     _analyses[analysis_id] = result
 
     return jsonify({
         "analysis_id": analysis_id,
-        "filename": f.filename,
+        "filename": filename,
         "summary": result["summary"],
         "by_category": result["by_category"],
         "by_credit_type": result["by_credit_type"],
