@@ -898,21 +898,46 @@ def _find_rule(conta: str, descricao: str, nature: str) -> dict | None:
     return None
 
 
-def analyze_balancete(df: pd.DataFrame, col_map: dict | None = None) -> dict:
+def analyze_balancete(df: pd.DataFrame, col_map: dict | None = None, nivel_filtro: int = 5) -> dict:
     if col_map is None:
         col_map = _normalize_cols(df)
+
+    col_nivel = col_map.get("nivel")  # None se não informado
+    usar_nivel = col_nivel and col_nivel in df.columns
+
     raw_rows: list[dict] = []
+    skipped_nivel: list[dict] = []
 
     for _, row in df.iterrows():
-        conta = str(row.get(col_map["conta"], "")).strip()
+        conta     = str(row.get(col_map["conta"],    "")).strip()
         descricao = str(row.get(col_map["descricao"], "")).strip()
-        valor = _parse_value(row.get(col_map["valor"], 0))
+        valor     = _parse_value(row.get(col_map["valor"], 0))
+
         if not conta and not descricao:
             continue
+
+        # Filtro de nível: se a coluna existe, inclui somente o nível solicitado
+        if usar_nivel:
+            nivel_raw = str(row.get(col_nivel, "")).strip()
+            try:
+                nivel_val = int(float(nivel_raw))
+            except (ValueError, TypeError):
+                nivel_val = None
+
+            if nivel_val != nivel_filtro:
+                skipped_nivel.append({
+                    "conta": conta, "descricao": descricao, "valor": valor,
+                    "nivel": nivel_val,
+                })
+                continue
+
         raw_rows.append({"_raw_conta": conta, "_raw_desc": descricao, "_raw_valor": valor})
 
-    # Detectar contas sintéticas
-    synthetic_codes = mark_synthetic_accounts(raw_rows)
+    # Com filtro de nível ativo, toda conta restante já é analítica — skip detecção sintética
+    if usar_nivel:
+        synthetic_codes: set[str] = set()
+    else:
+        synthetic_codes = mark_synthetic_accounts(raw_rows)
 
     rows_out: list[dict] = []
     for r in raw_rows:
@@ -1074,10 +1099,12 @@ def analyze_balancete(df: pd.DataFrame, col_map: dict | None = None) -> dict:
             "credito_possivel": round(credito_possivel, 2),
             "credito_total_potencial": round(credito_certo + credito_possivel, 2),
             "pct_aproveitamento": pct,
-            "total_linhas": len(rows_out),
+            "total_linhas": len(rows_out) + len(skipped_nivel),
             "total_analiticas": len(result_rows),
             "total_balanço": len(bs_rows),
             "total_sinteticas": len(syn_rows),
+            "total_outros_niveis": len(skipped_nivel),
+            "nivel_filtro": nivel_filtro if usar_nivel else None,
             "pis_rate": PIS_RATE,
             "cofins_rate": COFINS_RATE,
         },
@@ -1117,7 +1144,7 @@ def preview():
         preview_rows.append([str(v) if pd.notna(v) else "" for v in row])
 
     # Sugestão automática de mapeamento
-    suggestion = {"conta": None, "descricao": None, "valor": None}
+    suggestion = {"conta": None, "descricao": None, "valor": None, "nivel": None}
     for i, col in enumerate(columns):
         cl = str(col).lower().strip()
         if suggestion["conta"] is None and any(k in cl for k in ["conta", "código", "codigo", "cód", "cod"]):
@@ -1126,6 +1153,8 @@ def preview():
             suggestion["descricao"] = i
         if suggestion["valor"] is None and any(k in cl for k in ["valor", "saldo", "value", "amount", "montante", "débito", "credito", "crédito"]):
             suggestion["valor"] = i
+        if suggestion["nivel"] is None and any(k in cl for k in ["nível", "nivel", "level", "grau", "hierarquia"]):
+            suggestion["nivel"] = i
 
     # Fallback: se não achou por nome, sugere por posição
     if suggestion["conta"] is None and len(columns) > 0:
@@ -1134,6 +1163,7 @@ def preview():
         suggestion["descricao"] = 1
     if suggestion["valor"] is None and len(columns) > 2:
         suggestion["valor"] = 2
+    # nivel não tem fallback — campo opcional
 
     # Salva os bytes para o upload posterior
     preview_id = str(uuid.uuid4())
@@ -1157,9 +1187,11 @@ def upload():
     """Executa a análise com base no preview_id e mapeamento de colunas confirmado pelo usuário."""
     data = request.get_json(force=True)
     preview_id = data.get("preview_id")
-    col_conta = data.get("col_conta")        # índice (int) ou nome (str)
+    col_conta    = data.get("col_conta")      # índice (int) ou nome (str)
     col_descricao = data.get("col_descricao")
-    col_valor = data.get("col_valor")
+    col_valor    = data.get("col_valor")
+    col_nivel    = data.get("col_nivel")     # opcional
+    nivel_filtro = int(data.get("nivel_filtro", 5))
 
     if not preview_id:
         return jsonify({"error": "preview_id ausente"}), 400
@@ -1196,16 +1228,17 @@ def upload():
         return None
 
     col_map = {
-        "conta":    resolve(col_conta)    or columns[0],
+        "conta":    resolve(col_conta)     or columns[0],
         "descricao": resolve(col_descricao) or (columns[1] if len(columns) > 1 else columns[0]),
-        "valor":    resolve(col_valor)    or (columns[2] if len(columns) > 2 else columns[0]),
+        "valor":    resolve(col_valor)     or (columns[2] if len(columns) > 2 else columns[0]),
+        "nivel":    resolve(col_nivel),   # pode ser None se não informado
     }
 
     if df.empty:
         return jsonify({"error": "Planilha vazia"}), 400
 
     try:
-        result = analyze_balancete(df, col_map=col_map)
+        result = analyze_balancete(df, col_map=col_map, nivel_filtro=nivel_filtro)
     except Exception as e:
         return jsonify({"error": f"Erro na análise: {e}"}), 500
 

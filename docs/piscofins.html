@@ -247,7 +247,7 @@ tr:hover td{background:rgba(139,92,246,.04);}
       </div>
       <p style="font-size:13px;color:var(--g3);margin-bottom:24px;margin-top:12px;">Confirme qual coluna do seu Excel corresponde a cada campo. A prévia abaixo mostra as primeiras linhas do arquivo.</p>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:24px;" id="col-selects">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:16px;margin-bottom:24px;" id="col-selects">
         <div>
           <label style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--purple);font-family:var(--mono);display:block;margin-bottom:8px;">Conta Contábil</label>
           <select class="filter-sel" id="sel-conta" style="width:100%;padding:10px 14px;font-size:13px;"></select>
@@ -262,6 +262,17 @@ tr:hover td{background:rgba(139,92,246,.04);}
           <label style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--purple);font-family:var(--mono);display:block;margin-bottom:8px;">Valor (R$)</label>
           <select class="filter-sel" id="sel-valor" style="width:100%;padding:10px 14px;font-size:13px;"></select>
           <div style="font-size:11px;color:var(--g4);margin-top:4px;">Saldo ou valor do período</div>
+        </div>
+        <div>
+          <label style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--purple);font-family:var(--mono);display:block;margin-bottom:8px;">Nível das Contas</label>
+          <select class="filter-sel" id="sel-nivel" style="width:100%;padding:10px 14px;font-size:13px;margin-bottom:8px;">
+            <option value="">— sem filtro de nível —</option>
+          </select>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:11px;color:var(--g4);white-space:nowrap;">Nível analítico:</span>
+            <input type="number" id="inp-nivel" value="5" min="1" max="10"
+              style="width:64px;background:var(--db3);border:1px solid rgba(255,255,255,.09);border-radius:var(--r);padding:5px 8px;font-size:13px;color:var(--white);text-align:center;outline:none;"/>
+          </div>
         </div>
       </div>
 
@@ -358,7 +369,7 @@ tr:hover td{background:rgba(139,92,246,.04);}
       </div>
       <div style="background:var(--db3);border:1px solid rgba(139,92,246,.15);border-radius:var(--r);padding:14px 18px;display:flex;align-items:center;gap:12px;">
         <span style="font-size:20px;">🔬</span>
-        <div><div style="font-size:11px;color:var(--purple);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;">Analíticas de resultado</div><div style="font-size:18px;font-weight:700;" id="k-analiticas">—</div></div>
+        <div><div style="font-size:11px;color:var(--purple);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;" id="k-analiticas-label">Analíticas de resultado</div><div style="font-size:18px;font-weight:700;" id="k-analiticas">—</div></div>
       </div>
       <div style="background:var(--db3);border:1px solid rgba(255,255,255,.06);border-radius:var(--r);padding:14px 18px;display:flex;align-items:center;gap:12px;">
         <span style="font-size:20px;">🏦</span>
@@ -366,7 +377,7 @@ tr:hover td{background:rgba(139,92,246,.04);}
       </div>
       <div style="background:var(--db3);border:1px solid rgba(255,255,255,.06);border-radius:var(--r);padding:14px 18px;display:flex;align-items:center;gap:12px;">
         <span style="font-size:20px;">🗂️</span>
-        <div><div style="font-size:11px;color:var(--g3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;">Sintéticas (excluídas)</div><div style="font-size:18px;font-weight:700;color:var(--g3);" id="k-sinteticas">—</div></div>
+        <div><div style="font-size:11px;color:var(--g3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;" id="k-sinteticas-label">Sintéticas (excluídas)</div><div style="font-size:18px;font-weight:700;color:var(--g3);" id="k-sinteticas">—</div></div>
       </div>
     </div>
 
@@ -524,17 +535,22 @@ function renderMapping(data) {
   document.getElementById('map-filename').textContent = data.filename;
   document.getElementById('map-cols-count').textContent = `${data.columns.length} colunas detectadas`;
 
-  // Preenche selects
+  // Preenche selects de colunas
   const opts = data.columns.map((c, i) => `<option value="${i}">${c}</option>`).join('');
   ['sel-conta', 'sel-descricao', 'sel-valor'].forEach(id => {
     document.getElementById(id).innerHTML = opts;
   });
+  // Select de nível: opção vazia + todas as colunas
+  document.getElementById('sel-nivel').innerHTML =
+    '<option value="">— sem filtro de nível —</option>' +
+    data.columns.map((c, i) => `<option value="${i}">${c}</option>`).join('');
 
   // Aplica sugestão automática
   const s = data.suggestion;
-  if (s.conta    !== null) document.getElementById('sel-conta').value    = s.conta;
+  if (s.conta     !== null) document.getElementById('sel-conta').value     = s.conta;
   if (s.descricao !== null) document.getElementById('sel-descricao').value = s.descricao;
-  if (s.valor    !== null) document.getElementById('sel-valor').value    = s.valor;
+  if (s.valor     !== null) document.getElementById('sel-valor').value     = s.valor;
+  if (s.nivel     !== null) document.getElementById('sel-nivel').value     = s.nivel;
 
   // Prévia
   const thead = document.getElementById('preview-thead');
@@ -562,11 +578,14 @@ async function confirmarMapeamento() {
   document.getElementById('mapping-section').style.display = 'none';
   document.getElementById('loading').style.display = 'block';
 
+  const nivelCol = document.getElementById('sel-nivel').value;
   const payload = {
-    preview_id: currentPreviewId,
+    preview_id:    currentPreviewId,
     col_conta:     parseInt(document.getElementById('sel-conta').value),
     col_descricao: parseInt(document.getElementById('sel-descricao').value),
     col_valor:     parseInt(document.getElementById('sel-valor').value),
+    col_nivel:     nivelCol !== '' ? parseInt(nivelCol) : null,
+    nivel_filtro:  parseInt(document.getElementById('inp-nivel').value) || 5,
   };
 
   try {
@@ -623,6 +642,11 @@ function renderResults(data) {
   document.getElementById('k-analiticas').textContent = s.total_analiticas;
   document.getElementById('k-balanco').textContent = s['total_balanço'] ?? s.total_balanco ?? '—';
   document.getElementById('k-sinteticas').textContent = s.total_sinteticas;
+  if (s.nivel_filtro) {
+    document.getElementById('k-analiticas-label').textContent = `Analíticas — Nível ${s.nivel_filtro}`;
+    document.getElementById('k-sinteticas-label').textContent = `Outros níveis (excluídos)`;
+    document.getElementById('k-sinteticas').textContent = s.total_outros_niveis ?? '—';
+  }
 
   renderCharts(data);
   renderOportunidades(data.top_oportunidades);
