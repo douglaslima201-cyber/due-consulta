@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Portal de Automações — P&D</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --db1:#060D1A;
+  --db2:#0C1625;
+  --db3:#122035;
+  --db4:#1A2E48;
+  --db5:#243D5E;
+  --blue:#1D4ED8;
+  --blue-l:#3B82F6;
+  --orange:#F97316;
+  --orange-l:#FB923C;
+  --orange-d:#EA580C;
+  --white:#FFFFFF;
+  --g1:#E8EDF5;
+  --g2:#A8B8CC;
+  --g3:#6B7D94;
+  --g4:#3D5068;
+  --green:#22C55E;
+  --yellow:#F59E0B;
+  --red:#EF4444;
+  --mono:'JetBrains Mono',monospace;
+  --sans:'Inter',sans-serif;
+  --r:10px;
+  --r2:16px;
+  --r3:20px;
+}
+html{scroll-behavior:smooth;}
+body{font-family:var(--sans);background:var(--db1);color:var(--white);overflow-x:hidden;line-height:1.6;min-height:100vh;}
+
+/* ─── SCROLLBAR ─── */
+::-webkit-scrollbar{width:5px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:rgba(249,115,22,.3);border-radius:3px;}
+
+/* ─── NAV ─── */
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:200;
+  height:64px;display:flex;align-items:center;padding:0 48px;
+  background:rgba(6,13,26,.92);backdrop-filter:blur(24px);
+  border-bottom:1px solid rgba(249,115,22,.12);
+}
+.nav-brand{display:flex;align-items:center;gap:12px;}
+.nav-icon{
+  width:36px;height:36px;border-radius:10px;
+  background:linear-gradient(135deg,var(--orange),var(--orange-d));
+  display:flex;align-items:center;justify-content:center;
+  font-size:16px;box-shadow:0 4px 16px rgba(249,115,22,.3);
+}
+.nav-name{font-size:15px;font-weight:700;letter-spacing:-.02em;}
+.nav-name span{color:var(--orange);}
+.nav-right{margin-left:auto;display:flex;align-items:center;gap:20px;}
+.nav-tag{
+  font-family:var(--mono);font-size:10px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--g3);
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);
+  padding:4px 12px;border-radius:100px;
+}
+.nav-dot-wrap{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--g3);}
+.nav-dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{box-shadow:0 0 6px var(--green);}50%{box-shadow:0 0 18px var(--green);}}
+
+/* ─── HERO ─── */
+.hero{
+  position:relative;overflow:hidden;
+  padding:140px 48px 80px;
+  display:flex;flex-direction:column;align-items:flex-start;
+  max-width:1260px;margin:0 auto;
+}
+.hero-bg{
+  position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 20%,rgba(29,78,216,.07) 0%,transparent 60%),
+    radial-gradient(ellipse 60% 50% at 80% 80%,rgba(249,115,22,.05) 0%,transparent 60%);
+}
+.hero-grid{
+  position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:
+    linear-gradient(rgba(249,115,22,.03) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(249,115,22,.03) 1px,transparent 1px);
+  background-size:56px 56px;
+  mask-image:radial-gradient(ellipse 100% 100% at 50% 0%,black 30%,transparent 100%);
+}
+.hero-content{position:relative;z-index:1;}
+.hero-eyebrow{
+  display:inline-flex;align-items:center;gap:8px;
+  background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.2);
+  border-radius:100px;padding:5px 14px;margin-bottom:28px;
+  font-size:11px;font-family:var(--mono);letter-spacing:.1em;
+  text-transform:uppercase;color:var(--orange);
+  animation:fadeUp .5s ease both;
+}
+.hero-eyebrow::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--orange);animation:pulse2 2s infinite;}
+@keyframes pulse2{0%,100%{opacity:1;}50%{opacity:.4;}}
+h1.hero-title{
+  font-size:clamp(36px,5vw,62px);font-weight:800;
+  letter-spacing:-.04em;line-height:1.05;
+  margin-bottom:20px;
+  animation:fadeUp .5s .08s ease both;
+}
+h1.hero-title .hl{
+  background:linear-gradient(135deg,var(--orange),var(--orange-l));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.hero-sub{
+  font-size:17px;font-weight:400;color:var(--g2);
+  max-width:520px;line-height:1.7;margin-bottom:48px;
+  animation:fadeUp .5s .16s ease both;
+}
+.hero-stats{
+  display:flex;gap:40px;flex-wrap:wrap;
+  animation:fadeUp .5s .24s ease both;
+}
+.hst{border-left:2px solid rgba(249,115,22,.3);padding-left:16px;}
+.hst-n{font-size:26px;font-weight:800;letter-spacing:-.03em;color:var(--white);}
+.hst-l{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--g3);margin-top:2px;}
+
+/* ─── MAIN CONTENT ─── */
+.main{position:relative;z-index:1;max-width:1260px;margin:0 auto;padding:0 48px 80px;}
+
+/* ─── SECTION HEADER ─── */
+.sec-hd{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:24px;}
+.sec-lbl{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);margin-bottom:6px;}
+h2.sec-ttl{font-size:22px;font-weight:700;letter-spacing:-.02em;}
+.sec-count{font-family:var(--mono);font-size:12px;color:var(--g3);}
+
+/* ─── DIVIDER ─── */
+.dvd{height:1px;background:linear-gradient(90deg,transparent,rgba(249,115,22,.15),transparent);margin:60px 0;}
+
+/* ─── TOOL GRID ─── */
+.tool-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;}
+
+/* ─── CARD ─── */
+.card{
+  background:var(--db2);
+  border:1px solid rgba(255,255,255,.07);
+  border-radius:var(--r3);
+  padding:28px;
+  display:flex;flex-direction:column;gap:0;
+  transition:all .25s;
+  position:relative;overflow:hidden;
+  cursor:default;
+}
+.card::after{
+  content:'';position:absolute;inset:0;border-radius:var(--r3);
+  background:linear-gradient(135deg,rgba(249,115,22,.04) 0%,transparent 60%);
+  opacity:0;transition:opacity .3s;pointer-events:none;
+}
+.card:hover{
+  border-color:rgba(249,115,22,.25);
+  transform:translateY(-3px);
+  box-shadow:0 16px 48px rgba(0,0,0,.4),0 0 0 1px rgba(249,115,22,.1);
+}
+.card:hover::after{opacity:1;}
+.card.active{cursor:pointer;}
+.card.soon{opacity:.6;}
+
+/* Card accent bar */
+.card-bar{
+  position:absolute;top:0;left:0;right:0;height:2px;
+  border-radius:var(--r3) var(--r3) 0 0;
+  background:linear-gradient(90deg,var(--orange),var(--orange-l));
+  opacity:0;transition:opacity .3s;
+}
+.card:hover .card-bar{opacity:1;}
+.card.active .card-bar{opacity:1;}
+
+/* Card header */
+.card-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;}
+.card-icon{
+  width:48px;height:48px;border-radius:14px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:22px;flex-shrink:0;
+}
+.ci-orange{background:rgba(249,115,22,.12);border:1px solid rgba(249,115,22,.2);}
+.ci-blue{background:rgba(29,78,216,.15);border:1px solid rgba(59,130,246,.2);}
+.ci-green{background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);}
+.ci-gray{background:rgba(107,125,148,.1);border:1px solid rgba(107,125,148,.2);}
+
+/* Status badge */
+.badge{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:3px 10px;border-radius:100px;
+  font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+  font-family:var(--mono);
+}
+.b-live{background:rgba(34,197,94,.1);color:var(--green);border:1px solid rgba(34,197,94,.2);}
+.b-live::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;}
+.b-soon{background:rgba(245,158,11,.1);color:var(--yellow);border:1px solid rgba(245,158,11,.2);}
+.b-plan{background:rgba(107,125,148,.1);color:var(--g3);border:1px solid rgba(107,125,148,.2);}
+
+/* Card body */
+.card-title{font-size:17px;font-weight:700;letter-spacing:-.02em;margin-bottom:8px;}
+.card-desc{font-size:13px;color:var(--g2);line-height:1.65;margin-bottom:24px;flex:1;}
+
+/* Card tags */
+.card-tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px;}
+.tag{
+  font-size:10px;font-family:var(--mono);
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.07);
+  color:var(--g3);padding:3px 9px;border-radius:6px;
+  letter-spacing:.04em;
+}
+
+/* Card footer */
+.card-foot{display:flex;align-items:center;justify-content:space-between;margin-top:auto;padding-top:18px;border-top:1px solid rgba(255,255,255,.05);}
+.card-meta{font-size:11px;color:var(--g4);font-family:var(--mono);}
+
+/* Buttons */
+.btn{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:9px 20px;border-radius:var(--r);
+  font-size:13px;font-weight:600;font-family:var(--sans);
+  cursor:pointer;border:none;text-decoration:none;
+  transition:all .2s;
+}
+.btn-orange{
+  background:linear-gradient(135deg,var(--orange),var(--orange-d));
+  color:var(--white);
+  box-shadow:0 4px 16px rgba(249,115,22,.25);
+}
+.btn-orange:hover{transform:translateY(-1px);box-shadow:0 6px 24px rgba(249,115,22,.4);}
+.btn-ghost{
+  background:rgba(255,255,255,.05);color:var(--g2);
+  border:1px solid rgba(255,255,255,.09);
+}
+.btn-ghost:hover{background:rgba(255,255,255,.09);color:var(--white);}
+.btn-sm{padding:7px 14px;font-size:12px;}
+
+/* ─── FEATURE STRIP ─── */
+.strip{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1px;
+  background:rgba(255,255,255,.05);border-radius:var(--r2);overflow:hidden;
+  border:1px solid rgba(255,255,255,.06);margin-bottom:60px;
+}
+.strip-item{
+  background:var(--db2);padding:26px 24px;
+  display:flex;align-items:flex-start;gap:14px;
+}
+.strip-ic{font-size:20px;flex-shrink:0;margin-top:2px;}
+.strip-title{font-size:13px;font-weight:600;margin-bottom:4px;}
+.strip-desc{font-size:12px;color:var(--g3);line-height:1.5;}
+
+/* ─── RECENTES ─── */
+.recentes-list{display:flex;flex-direction:column;gap:1px;background:rgba(255,255,255,.04);border-radius:var(--r2);overflow:hidden;border:1px solid rgba(255,255,255,.06);}
+.rec-item{
+  background:var(--db2);padding:14px 20px;
+  display:flex;align-items:center;gap:16px;
+  transition:background .15s;
+}
+.rec-item:hover{background:var(--db3);}
+.rec-ic{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;}
+.rec-name{font-size:13px;font-weight:500;}
+.rec-time{font-size:11px;color:var(--g3);font-family:var(--mono);margin-top:2px;}
+.rec-right{margin-left:auto;display:flex;align-items:center;gap:10px;}
+
+/* ─── FOOTER ─── */
+footer{
+  position:relative;z-index:1;
+  border-top:1px solid rgba(255,255,255,.05);
+  padding:32px 48px;
+  display:flex;align-items:center;justify-content:space-between;
+  max-width:100%;
+}
+.ft-brand{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600;}
+.ft-brand-dot{width:8px;height:8px;border-radius:50%;background:var(--orange);}
+.ft-copy{font-size:12px;color:var(--g4);}
+.ft-links{display:flex;gap:20px;}
+.ft-link{font-size:12px;color:var(--g4);text-decoration:none;transition:color .2s;}
+.ft-link:hover{color:var(--g2);}
+
+/* ─── REVEAL ANIMATION ─── */
+.reveal{opacity:0;transform:translateY(18px);transition:opacity .5s ease,transform .5s ease;}
+.reveal.vis{opacity:1;transform:none;}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:none;}}
+
+/* ─── RESPONSIVE ─── */
+@media(max-width:900px){
+  nav{padding:0 20px;}
+  .hero,.main{padding-left:20px;padding-right:20px;}
+  .tool-grid{grid-template-columns:1fr;}
+  footer{flex-direction:column;gap:16px;padding:24px 20px;text-align:center;}
+  .ft-links{justify-content:center;}
+  .nav-tag{display:none;}
+}
+</style>
+</head>
+<body>
+
+<!-- BG -->
+<div class="hero-bg"></div>
+<div class="hero-grid"></div>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-brand">
+    <div class="nav-icon">⚡</div>
+    <div class="nav-name">Portal <span>P&D</span></div>
+  </div>
+  <div class="nav-right">
+    <span class="nav-tag">Automações internas</span>
+    <div class="nav-dot-wrap">
+      <div class="nav-dot"></div>
+      <span>Plataforma ativa</span>
+    </div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-content">
+    <div class="hero-eyebrow">Central de Automações</div>
+    <h1 class="hero-title">Ferramentas que<br><span class="hl">aceleram o trabalho</span></h1>
+    <p class="hero-sub">Hub centralizado com todas as automações e sistemas desenvolvidos pelo time de P&D. Acesse rapidamente qualquer ferramenta, acompanhe o status e gerencie suas consultas.</p>
+    <div class="hero-stats">
+      <div class="hst"><div class="hst-n" id="total-tools">5</div><div class="hst-l">Ferramentas</div></div>
+      <div class="hst"><div class="hst-n" id="live-tools">1</div><div class="hst-l">Ativas</div></div>
+      <div class="hst"><div class="hst-n">100%</div><div class="hst-l">Local & seguro</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- STRIP DE FEATURES -->
+<div class="main" style="padding-top:0">
+  <div class="strip reveal">
+    <div class="strip-item"><span class="strip-ic">🔒</span><div><div class="strip-title">Dados locais</div><div class="strip-desc">Nenhuma informação enviada a servidores externos</div></div></div>
+    <div class="strip-item"><span class="strip-ic">⚡</span><div><div class="strip-title">Alta performance</div><div class="strip-desc">Automação com Python, Playwright e FastAPI</div></div></div>
+    <div class="strip-item"><span class="strip-ic">📊</span><div><div class="strip-title">Relatórios Excel</div><div class="strip-desc">Exportação formatada e pronta para uso</div></div></div>
+    <div class="strip-item"><span class="strip-ic">🔄</span><div><div class="strip-title">Atualização contínua</div><div class="strip-desc">Novas ferramentas adicionadas regularmente</div></div></div>
+  </div>
+
+  <!-- FERRAMENTAS DISPONÍVEIS -->
+  <div class="sec-hd reveal">
+    <div>
+      <div class="sec-lbl">Catálogo</div>
+      <h2 class="sec-ttl">Ferramentas disponíveis</h2>
+    </div>
+    <span class="sec-count" id="cat-count">5 ferramentas</span>
+  </div>
+
+  <div class="tool-grid reveal" id="tool-grid">
+
+    <!-- DUE Consulta -->
+    <div class="card active" onclick="abrirFerramenta('index.html')" title="Acessar Consulta DUEs">
+      <div class="card-bar"></div>
+      <div class="card-head">
+        <div class="card-icon ci-orange">🚢</div>
+        <span class="badge b-live">Ativa</span>
+      </div>
+      <div class="card-title">Consulta DUEs</div>
+      <div class="card-desc">Consulta automatizada de Declarações Únicas de Exportação a partir de chaves de NF-e no Portal Único do Siscomex. Gera relatório Excel com status de averbação.</div>
+      <div class="card-tags">
+        <span class="tag">Siscomex</span>
+        <span class="tag">NF-e</span>
+        <span class="tag">Playwright</span>
+        <span class="tag">FastAPI</span>
+      </div>
+      <div class="card-foot">
+        <span class="card-meta">Backend: porta 5000</span>
+        <button class="btn btn-orange btn-sm" onclick="event.stopPropagation();abrirFerramenta('index.html')">Acessar →</button>
+      </div>
+    </div>
+
+    <!-- Piso Mínimo de Frete -->
+    <div class="card soon">
+      <div class="card-bar" style="background:linear-gradient(90deg,var(--blue),var(--blue-l));"></div>
+      <div class="card-head">
+        <div class="card-icon ci-blue">🚚</div>
+        <span class="badge b-soon">Em breve</span>
+      </div>
+      <div class="card-title">Piso Mínimo de Frete</div>
+      <div class="card-desc">Cálculo e verificação do piso mínimo de frete conforme tabela ANTT. Valida automaticamente se os fretes praticados estão dentro dos limites legais.</div>
+      <div class="card-tags">
+        <span class="tag">ANTT</span>
+        <span class="tag">Logística</span>
+        <span class="tag">Compliance</span>
+      </div>
+      <div class="card-foot">
+        <span class="card-meta">Em desenvolvimento</span>
+        <button class="btn btn-ghost btn-sm" disabled style="opacity:.4;cursor:not-allowed">Em breve</button>
+      </div>
+    </div>
+
+    <!-- JCP -->
+    <div class="card soon">
+      <div class="card-bar" style="background:linear-gradient(90deg,#7C3AED,#A78BFA);"></div>
+      <div class="card-head">
+        <div class="card-icon" style="background:rgba(124,58,237,.12);border:1px solid rgba(124,58,237,.2);">💰</div>
+        <span class="badge b-soon">Em breve</span>
+      </div>
+      <div class="card-title">JCP — Juros sobre Capital Próprio</div>
+      <div class="card-desc">Automação do cálculo de Juros sobre Capital Próprio com base nas variações da TJLP. Gera memória de cálculo detalhada e relatório para distribuição.</div>
+      <div class="card-tags">
+        <span class="tag">Financeiro</span>
+        <span class="tag">TJLP</span>
+        <span class="tag">Fiscal</span>
+      </div>
+      <div class="card-foot">
+        <span class="card-meta">Em desenvolvimento</span>
+        <button class="btn btn-ghost btn-sm" disabled style="opacity:.4;cursor:not-allowed">Em breve</button>
+      </div>
+    </div>
+
+    <!-- Compliance Mensal -->
+    <div class="card soon">
+      <div class="card-bar" style="background:linear-gradient(90deg,var(--green),#16A34A);"></div>
+      <div class="card-head">
+        <div class="card-icon ci-green">✅</div>
+        <span class="badge b-soon">Em breve</span>
+      </div>
+      <div class="card-title">Compliance Mensal</div>
+      <div class="card-desc">Dashboard de compliance mensal com verificação automática de obrigações fiscais, trabalhistas e regulatórias. Alertas de prazos e geração de relatórios consolidados.</div>
+      <div class="card-tags">
+        <span class="tag">Compliance</span>
+        <span class="tag">Fiscal</span>
+        <span class="tag">Relatórios</span>
+      </div>
+      <div class="card-foot">
+        <span class="card-meta">Em desenvolvimento</span>
+        <button class="btn btn-ghost btn-sm" disabled style="opacity:.4;cursor:not-allowed">Em breve</button>
+      </div>
+    </div>
+
+    <!-- Slot futuro -->
+    <div class="card soon" style="border-style:dashed;background:transparent;">
+      <div class="card-head">
+        <div class="card-icon ci-gray">＋</div>
+        <span class="badge b-plan">Planejado</span>
+      </div>
+      <div class="card-title" style="color:var(--g3);">Nova ferramenta</div>
+      <div class="card-desc" style="color:var(--g4);">Slot reservado para próximas automações. Novas ferramentas são adicionadas continuamente conforme demanda do time.</div>
+      <div class="card-tags">
+        <span class="tag">A definir</span>
+      </div>
+      <div class="card-foot">
+        <span class="card-meta" style="color:var(--g4);">—</span>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="dvd"></div>
+
+  <!-- ACESSO RÁPIDO -->
+  <div class="sec-hd reveal" style="margin-bottom:20px">
+    <div>
+      <div class="sec-lbl">Acesso rápido</div>
+      <h2 class="sec-ttl">Atividades recentes</h2>
+    </div>
+  </div>
+
+  <div class="recentes-list reveal" id="recentes">
+    <div class="rec-item">
+      <div class="rec-ic ci-orange">🚢</div>
+      <div>
+        <div class="rec-name">Consulta DUEs</div>
+        <div class="rec-time" id="rec-time-1">— última execução</div>
+      </div>
+      <div class="rec-right">
+        <span class="badge b-live">Online</span>
+        <a class="btn btn-orange btn-sm" href="index.html">Abrir →</a>
+      </div>
+    </div>
+    <div class="rec-item" style="opacity:.5;">
+      <div class="rec-ic ci-blue">🚚</div>
+      <div>
+        <div class="rec-name">Piso Mínimo de Frete</div>
+        <div class="rec-time">Em desenvolvimento</div>
+      </div>
+      <div class="rec-right">
+        <span class="badge b-soon">Em breve</span>
+      </div>
+    </div>
+    <div class="rec-item" style="opacity:.5;">
+      <div class="rec-ic" style="background:rgba(124,58,237,.12);border:1px solid rgba(124,58,237,.2);">💰</div>
+      <div>
+        <div class="rec-name">JCP — Juros sobre Capital Próprio</div>
+        <div class="rec-time">Em desenvolvimento</div>
+      </div>
+      <div class="rec-right">
+        <span class="badge b-soon">Em breve</span>
+      </div>
+    </div>
+    <div class="rec-item" style="opacity:.5;">
+      <div class="rec-ic ci-green">✅</div>
+      <div>
+        <div class="rec-name">Compliance Mensal</div>
+        <div class="rec-time">Em desenvolvimento</div>
+      </div>
+      <div class="rec-right">
+        <span class="badge b-soon">Em breve</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="dvd"></div>
+
+  <!-- GUIDE RÁPIDO -->
+  <div class="sec-hd reveal" style="margin-bottom:24px">
+    <div>
+      <div class="sec-lbl">Guia</div>
+      <h2 class="sec-ttl">Como usar as ferramentas</h2>
+    </div>
+  </div>
+
+  <div class="strip reveal" style="margin-bottom:0">
+    <div class="strip-item">
+      <span class="strip-ic" style="color:var(--orange);font-style:normal;font-family:var(--mono);font-size:16px;font-weight:700;">01</span>
+      <div>
+        <div class="strip-title">Inicie o backend</div>
+        <div class="strip-desc">Execute o servidor Python local correspondente à ferramenta desejada</div>
+      </div>
+    </div>
+    <div class="strip-item">
+      <span class="strip-ic" style="color:var(--orange);font-style:normal;font-family:var(--mono);font-size:16px;font-weight:700;">02</span>
+      <div>
+        <div class="strip-title">Clique em Acessar</div>
+        <div class="strip-desc">Selecione a ferramenta no portal e clique no botão de acesso</div>
+      </div>
+    </div>
+    <div class="strip-item">
+      <span class="strip-ic" style="color:var(--orange);font-style:normal;font-family:var(--mono);font-size:16px;font-weight:700;">03</span>
+      <div>
+        <div class="strip-title">Envie os dados</div>
+        <div class="strip-desc">Faça upload da planilha ou insira os dados necessários</div>
+      </div>
+    </div>
+    <div class="strip-item">
+      <span class="strip-ic" style="color:var(--orange);font-style:normal;font-family:var(--mono);font-size:16px;font-weight:700;">04</span>
+      <div>
+        <div class="strip-title">Baixe o resultado</div>
+        <div class="strip-desc">Aguarde o processamento e faça download do relatório gerado</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="ft-brand">
+    <div class="ft-brand-dot"></div>
+    Portal P&D
+  </div>
+  <div class="ft-copy">Plataforma interna · Dados não armazenados externamente · Desenvolvido com Claude Code</div>
+  <div class="ft-links">
+    <a class="ft-link" href="index.html">DUE Consulta</a>
+  </div>
+</footer>
+
+<script>
+// Reveal on scroll
+const obs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) { e.target.classList.add('vis'); obs.unobserve(e.target); }
+  });
+}, { threshold: 0.1 });
+document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
+
+// Navigate to tool
+function abrirFerramenta(url) {
+  window.location.href = url;
+}
+
+// Última execução DUE (lê do localStorage)
+function atualizarRecentes() {
+  const ultima = localStorage.getItem('due_ultima_execucao');
+  const el = document.getElementById('rec-time-1');
+  if (ultima) {
+    const d = new Date(ultima);
+    const diff = Date.now() - d.getTime();
+    const mins = Math.floor(diff / 60000);
+    const hrs  = Math.floor(diff / 3600000);
+    const dias = Math.floor(diff / 86400000);
+    if (mins < 1)       el.textContent = 'Agora mesmo';
+    else if (mins < 60) el.textContent = `Há ${mins} min`;
+    else if (hrs < 24)  el.textContent = `Há ${hrs}h`;
+    else                el.textContent = `Há ${dias} dia${dias > 1 ? 's' : ''}`;
+  } else {
+    el.textContent = 'Nenhuma execução registrada';
+  }
+}
+atualizarRecentes();
+
+// Contar ferramentas ativas
+const liveCount = document.querySelectorAll('.badge.b-live').length;
+document.getElementById('live-tools').textContent = liveCount;
+</script>
+</body>
+</html>
