@@ -1,0 +1,36 @@
+# Banco de dados
+*.db
+
+# Arquivos de upload e resultados temporários
+uploads/
+results/
+backend/results/
+backend/uploads/
+
+# Imagens de diagnóstico
+*.png
+*.jpg
+
+# Arquivos de debug e diagnóstico
+diag_*.txt
+debug_*.png
+interceptar_output.txt
+backend/diag_error.txt
+backend/diag_output.txt
+backend/interceptar_output.txt
+backend/api_capturada.json
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.env
+venv/
+.venv/
+
+# Node
+node_modules/
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh auth *)",
+      "Read(//c/Program Files/**)",
+      "Read(//c/Users/Douglas Lima/AppData/Local/Programs/**)",
+      "Bash(gh --version)",
+      "Bash(git init *)",
+      "Bash(git config *)",
+      "Bash(git add *)"
+    ]
+  }
+}

@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>DUE Consulta — Portal Siscomex | Consulta de NF-e Automatizada</title>
+<meta name="description" content="Plataforma de consulta automatizada de DUEs a partir de chaves de NF-e no Portal Único do Siscomex."/>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --navy:#060F1E; --navy2:#0D1B2E; --navy3:#142236;
+  --blue:#0D6EFD; --cyan:#00D4FF; --cyan2:#00A8CC;
+  --teal:#00E5C3; --green:#22C55E; --yellow:#FACC15;
+  --red:#EF4444; --white:#FFFFFF; --g1:#E2EAF4;
+  --g2:#8EA3BE; --g3:#4A6480;
+  --mono:'DM Mono',monospace; --display:'Syne',sans-serif; --body:'DM Sans',sans-serif;
+  --r:10px; --r2:16px;
+}
+html{scroll-behavior:smooth;}
+body{font-family:var(--body);background:var(--navy);color:var(--white);overflow-x:hidden;line-height:1.6;}
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;height:60px;display:flex;align-items:center;padding:0 40px;background:rgba(6,15,30,.9);backdrop-filter:blur(20px);border-bottom:1px solid rgba(0,212,255,.1);}
+.nav-logo{font-family:var(--display);font-weight:800;font-size:17px;letter-spacing:-.02em;display:flex;align-items:center;gap:10px;}
+.nav-dot{width:8px;height:8px;border-radius:50%;background:var(--cyan);box-shadow:0 0 10px var(--cyan);animation:breathe 2s infinite;}
+@keyframes breathe{0%,100%{box-shadow:0 0 6px var(--cyan);}50%{box-shadow:0 0 20px var(--cyan);}}
+.nav-links{display:flex;align-items:center;gap:8px;margin-left:auto;}
+.nav-link{color:var(--g2);text-decoration:none;font-size:13px;font-weight:500;padding:6px 14px;border-radius:6px;transition:all .2s;}
+.nav-link:hover{color:var(--white);background:rgba(255,255,255,.06);}
+.nav-cta{background:rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.3);color:var(--cyan);text-decoration:none;font-size:13px;font-weight:600;padding:7px 18px;border-radius:6px;transition:all .2s;margin-left:8px;}
+.nav-cta:hover{background:rgba(0,212,255,.2);}
+/* HERO */
+.hero{position:relative;z-index:1;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:120px 24px 80px;text-align:center;overflow:hidden;}
+.hero-glow{position:absolute;width:800px;height:800px;border-radius:50%;background:radial-gradient(circle,rgba(0,212,255,.07) 0%,transparent 70%);top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;}
+.hero-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(0,212,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,.04) 1px,transparent 1px);background-size:48px 48px;mask-image:radial-gradient(ellipse 70% 60% at 50% 40%,black,transparent);pointer-events:none;}
+.hero-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.2);border-radius:100px;padding:6px 16px;font-size:12px;font-family:var(--mono);letter-spacing:.08em;color:var(--cyan);text-transform:uppercase;margin-bottom:28px;animation:fadeUp .6s ease both;}
+.hero-badge::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--cyan);animation:breathe 2s infinite;}
+h1.hero-title{font-family:var(--display);font-size:clamp(40px,6vw,72px);font-weight:800;letter-spacing:-.04em;line-height:1.05;margin-bottom:24px;animation:fadeUp .6s .1s ease both;}
+h1.hero-title .ac{color:var(--cyan);}
+h1.hero-title .l2{display:block;color:rgba(255,255,255,.5);}
+.hero-desc{max-width:540px;font-size:18px;font-weight:300;color:var(--g2);line-height:1.7;margin-bottom:40px;animation:fadeUp .6s .2s ease both;}
+.hero-acts{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;animation:fadeUp .6s .3s ease both;margin-bottom:60px;}
+.btn-h{display:inline-flex;align-items:center;gap:8px;padding:14px 32px;border-radius:var(--r);font-family:var(--body);font-size:15px;font-weight:600;text-decoration:none;cursor:pointer;border:none;transition:all .25s;}
+.btn-hp{background:linear-gradient(135deg,var(--cyan),var(--cyan2));color:var(--navy);box-shadow:0 8px 32px rgba(0,212,255,.3);}
+.btn-hp:hover{transform:translateY(-2px);box-shadow:0 12px 40px rgba(0,212,255,.45);}
+.btn-ho{background:rgba(255,255,255,.05);color:var(--white);border:1px solid rgba(255,255,255,.15);}
+.btn-ho:hover{background:rgba(255,255,255,.1);}
+.hero-stats{display:flex;gap:48px;justify-content:center;flex-wrap:wrap;animation:fadeUp .6s .4s ease both;}
+.hs{text-align:center;}
+.hs-n{font-family:var(--display);font-size:32px;font-weight:800;color:var(--cyan);letter-spacing:-.03em;line-height:1;}
+.hs-l{font-size:12px;color:var(--g3);letter-spacing:.06em;text-transform:uppercase;margin-top:4px;}
+/* SECTIONS */
+.sec{position:relative;z-index:1;padding:88px 24px;max-width:1140px;margin:0 auto;}
+.sec-lbl{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--cyan);margin-bottom:12px;}
+h2.sec-ttl{font-family:var(--display);font-size:clamp(26px,4vw,42px);font-weight:700;letter-spacing:-.03em;line-height:1.1;margin-bottom:14px;}
+.sec-sub{font-size:16px;color:var(--g2);max-width:520px;line-height:1.7;margin-bottom:52px;}
+/* STEPS */
+.steps-g{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:2px;background:rgba(255,255,255,.04);border-radius:var(--r2);overflow:hidden;border:1px solid rgba(255,255,255,.06);}
+.stp{background:var(--navy2);padding:34px 26px;transition:background .2s;}
+.stp:hover{background:var(--navy3);}
+.stp-n{font-family:var(--mono);font-size:11px;color:var(--cyan);letter-spacing:.1em;margin-bottom:18px;}
+.stp-ic{width:46px;height:46px;border-radius:12px;background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.12);display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:18px;}
+.stp h3{font-family:var(--display);font-size:16px;font-weight:700;margin-bottom:8px;letter-spacing:-.02em;}
+.stp p{font-size:13px;color:var(--g2);line-height:1.6;}
+/* FEATURES */
+.feat-g{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:14px;}
+.feat{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:var(--r2);padding:26px 22px;transition:all .25s;position:relative;overflow:hidden;}
+.feat::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--cyan),transparent);opacity:0;transition:opacity .3s;}
+.feat:hover{border-color:rgba(0,212,255,.2);}
+.feat:hover::before{opacity:1;}
+.feat-ic{font-size:22px;margin-bottom:14px;display:block;}
+.feat h3{font-family:var(--display);font-size:15px;font-weight:700;margin-bottom:7px;letter-spacing:-.01em;}
+.feat p{font-size:13px;color:var(--g2);line-height:1.6;}
+/* DIVIDER */
+.dvd{width:100%;height:1px;background:linear-gradient(90deg,transparent,rgba(0,212,255,.15),transparent);margin:0 auto;}
+/* TOOL SECTION */
+.tool-sec{background:linear-gradient(180deg,var(--navy) 0%,rgba(0,20,40,.5) 50%,var(--navy) 100%);border-top:1px solid rgba(0,212,255,.08);border-bottom:1px solid rgba(0,212,255,.08);padding:80px 0;}
+.tool-w{max-width:1140px;margin:0 auto;padding:0 24px;}
+/* APP SHELL */
+.shell{background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.08);border-radius:20px;overflow:hidden;box-shadow:0 40px 80px rgba(0,0,0,.4);}
+.tbar{background:rgba(0,0,0,.3);padding:12px 20px;display:flex;align-items:center;gap:8px;border-bottom:1px solid rgba(255,255,255,.06);}
+.td{width:12px;height:12px;border-radius:50%;}
+.tbar-lbl{margin-left:12px;font-family:var(--mono);font-size:12px;color:var(--g3);}
+.shell-inner{display:grid;grid-template-columns:248px 1fr;min-height:580px;}
+.sidebar{background:rgba(0,0,0,.2);border-right:1px solid rgba(255,255,255,.05);padding:20px 0;}
+.s-sec{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--g3);padding:14px 20px 6px;}
+.s-item{display:flex;align-items:center;gap:10px;padding:9px 20px;font-size:13px;font-weight:500;color:var(--g3);cursor:pointer;transition:all .15s;border-left:2px solid transparent;}
+.s-item.act{background:rgba(0,212,255,.06);color:var(--cyan);border-left-color:var(--cyan);}
+.s-item:hover:not(.act){background:rgba(255,255,255,.04);color:var(--g2);}
+.s-item .ni{font-size:14px;}
+.app-main{padding:26px 30px;overflow-y:auto;}
+/* PANELS */
+.panel{display:none;}
+.panel.act{display:block;animation:fi .25s ease;}
+@keyframes fi{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+/* UPLOAD */
+.dz{border:2px dashed rgba(0,212,255,.25);border-radius:14px;padding:50px 30px;text-align:center;cursor:pointer;transition:all .25s;background:rgba(0,212,255,.02);margin-bottom:18px;}
+.dz:hover,.dz.ov{border-color:var(--cyan);background:rgba(0,212,255,.05);transform:translateY(-2px);}
+.dz input{display:none;}
+.dz-ic{width:58px;height:58px;border-radius:14px;background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.15);margin:0 auto 14px;display:flex;align-items:center;justify-content:center;font-size:24px;}
+.dz-t{font-family:var(--display);font-size:15px;font-weight:700;margin-bottom:5px;}
+.dz-s{font-size:13px;color:var(--g2);}
+.fchip{display:none;align-items:center;gap:12px;background:rgba(34,197,94,.07);border:1px solid rgba(34,197,94,.2);border-radius:10px;padding:11px 15px;margin-bottom:18px;}
+.fchip.show{display:flex;}
+.fc-r{margin-left:auto;background:none;border:none;color:var(--g3);cursor:pointer;font-size:16px;transition:color .15s;}
+.fc-r:hover{color:var(--red);}
+.rbox{display:none;border-radius:10px;padding:14px 18px;margin-bottom:18px;font-size:13px;line-height:1.6;}
+.rbox.ok{background:rgba(34,197,94,.07);border:1px solid rgba(34,197,94,.2);display:block;}
+.rbox.er{background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.2);display:block;color:#FCA5A5;}
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:10px 22px;border-radius:var(--r);font-family:var(--body);font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .2s;text-decoration:none;}
+.btn-c{background:linear-gradient(135deg,var(--cyan),var(--cyan2));color:var(--navy);box-shadow:0 4px 20px rgba(0,212,255,.25);}
+.btn-c:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 28px rgba(0,212,255,.4);}
+.btn-c:disabled{opacity:.35;cursor:not-allowed;transform:none;}
+.btn-g{background:rgba(255,255,255,.05);color:var(--white);border:1px solid rgba(255,255,255,.1);}
+.btn-g:hover{background:rgba(255,255,255,.09);}
+.btn-d{background:rgba(239,68,68,.1);color:#FCA5A5;border:1px solid rgba(239,68,68,.25);}
+.btn-d:hover{background:rgba(239,68,68,.18);}
+.btn-s{background:linear-gradient(135deg,var(--green),#16A34A);color:var(--white);}
+.brow{display:flex;gap:10px;flex-wrap:wrap;}
+/* PROGRESS */
+.pb-o{flex:1;background:rgba(255,255,255,.06);border-radius:100px;height:6px;overflow:hidden;}
+.pb-i{height:100%;border-radius:100px;background:linear-gradient(90deg,var(--cyan),var(--teal));transition:width .5s ease;position:relative;}
+.pb-i::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.35),transparent);animation:shim 1.6s linear infinite;}
+@keyframes shim{from{transform:translateX(-100%)}to{transform:translateX(200%)}}
+/* STATS */
+.mstats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px;}
+.ms{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:13px 10px;text-align:center;}
+.ms-n{font-family:var(--display);font-size:20px;font-weight:800;line-height:1;margin-bottom:3px;}
+.ms-l{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--g3);}
+/* BADGE */
+.bdg{display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:100px;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;}
+.b-r{background:rgba(0,212,255,.12);color:var(--cyan);border:1px solid rgba(0,212,255,.25);}
+.b-d{background:rgba(34,197,94,.1);color:var(--green);border:1px solid rgba(34,197,94,.25);}
+.b-w{background:rgba(250,204,21,.1);color:var(--yellow);border:1px solid rgba(250,204,21,.25);}
+.b-e{background:rgba(239,68,68,.1);color:var(--red);border:1px solid rgba(239,68,68,.25);}
+.pulse{animation:blk 1.4s infinite;}
+@keyframes blk{0%,100%{opacity:1}50%{opacity:.35}}
+/* TERMINAL */
+.term{background:#03080F;border:1px solid rgba(0,212,255,.1);border-radius:10px;padding:13px 15px;font-family:var(--mono);font-size:11px;max-height:190px;overflow-y:auto;line-height:1.75;margin-top:16px;}
+.tr{display:flex;gap:10px;}
+.tt{color:#2A4060;flex-shrink:0;}
+.tI{color:var(--cyan);}.tW{color:var(--yellow);}.tE{color:var(--red);}.tm{color:#6D97C0;}
+/* TABLE */
+.tw{overflow-x:auto;border-radius:10px;border:1px solid rgba(255,255,255,.06);margin-top:14px;}
+table{width:100%;border-collapse:collapse;font-size:12px;}
+thead th{background:rgba(255,255,255,.04);padding:9px 13px;text-align:left;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--g3);border-bottom:1px solid rgba(255,255,255,.06);white-space:nowrap;}
+tbody tr{border-bottom:1px solid rgba(255,255,255,.03);transition:background .15s;}
+tbody tr:hover{background:rgba(255,255,255,.02);}
+td{padding:8px 13px;font-family:var(--mono);font-size:11px;color:var(--g1);}
+.sa{color:var(--green);font-weight:600;}.sn{color:var(--yellow);}.snf{color:var(--g3);}.se{color:var(--red);}
+/* CAPTCHA */
+.cap-box{background:rgba(250,204,21,.06);border:1px solid rgba(250,204,21,.2);border-radius:12px;padding:16px 18px;display:flex;gap:12px;align-items:flex-start;margin-bottom:18px;}
+.cap-t{font-weight:700;font-size:13px;color:var(--yellow);margin-bottom:3px;}
+.cap-d{font-size:12px;color:var(--g2);line-height:1.5;}
+/* DOCS */
+.docs-g{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:22px;}
+.doc-b{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:22px;}
+.doc-b h3{font-family:var(--display);font-size:14px;font-weight:700;margin-bottom:11px;display:flex;align-items:center;gap:8px;}
+.doc-b ul{list-style:none;font-size:13px;color:var(--g2);line-height:2;}
+.doc-b ul li::before{content:'→';color:var(--cyan);margin-right:7px;font-family:var(--mono);font-size:11px;}
+.code-b{background:#03080F;border:1px solid rgba(0,212,255,.1);border-radius:8px;padding:14px;font-family:var(--mono);font-size:12px;color:#6D97C0;line-height:1.8;overflow-x:auto;margin:10px 0;}
+.kw{color:var(--cyan);}.str{color:var(--teal);}.cm{color:#2A4060;}
+/* FAQ */
+.faq-i{border-bottom:1px solid rgba(255,255,255,.06);padding:18px 0;}
+.faq-i:last-child{border-bottom:none;}
+.faq-q{font-family:var(--display);font-size:15px;font-weight:700;cursor:pointer;display:flex;justify-content:space-between;align-items:center;letter-spacing:-.01em;}
+.faq-q .arr{font-size:18px;color:var(--cyan);transition:transform .2s;}
+.faq-i.op .faq-q .arr{transform:rotate(45deg);}
+.faq-a{font-size:13px;color:var(--g2);line-height:1.7;max-height:0;overflow:hidden;transition:max-height .3s ease,padding .3s;}
+.faq-i.op .faq-a{max-height:200px;padding-top:10px;}
+/* FOOTER */
+footer{position:relative;z-index:1;border-top:1px solid rgba(255,255,255,.06);padding:36px 24px;text-align:center;color:var(--g3);font-size:13px;}
+/* ANIMATIONS */
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+.reveal{opacity:0;transform:translateY(20px);transition:opacity .5s ease,transform .5s ease;}
+.reveal.vis{opacity:1;transform:none;}
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:3px;}
+@media(max-width:768px){nav{padding:0 16px;}.nav-links{display:none;}.shell-inner{grid-template-columns:1fr;}.sidebar{display:none;}.docs-g{grid-template-columns:1fr;}.mstats{grid-template-columns:repeat(2,1fr);}.hero-stats{gap:24px;}}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo"><div class="nav-dot"></div>DUE Consulta</div>
+  <div class="nav-links">
+    <a class="nav-link" href="#como">Como funciona</a>
+    <a class="nav-link" href="#ferramenta">Ferramenta</a>
+    <a class="nav-link" href="#docs">Documentação</a>
+    <a class="nav-link" href="#faq">FAQ</a>
+    <a class="nav-cta" href="#ferramenta">Usar agora</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero" style="max-width:100%;padding-top:100px">
+  <div class="hero-glow"></div>
+  <div class="hero-grid"></div>
+  <div class="hero-badge">Portal Siscomex — Automação NF-e</div>
+  <h1 class="hero-title">Consulta de DUE<br><span class="ac">automatizada</span><span class="l2">a partir de NF-e</span></h1>
+  <p class="hero-desc">Carregue sua planilha com chaves de NF-e. A plataforma consulta o Portal Único do Siscomex, extrai os números de DUE vinculados e gera um relatório estruturado em Excel.</p>
+  <div class="hero-acts">
+    <a class="btn-h btn-hp" href="#ferramenta">🚀 Iniciar consulta</a>
+    <a class="btn-h btn-ho" href="#como">Ver como funciona</a>
+  </div>
+  <div class="hero-stats">
+    <div class="hs"><div class="hs-n">44</div><div class="hs-l">Dígitos validados</div></div>
+    <div class="hs"><div class="hs-n">100%</div><div class="hs-l">Local & seguro</div></div>
+    <div class="hs"><div class="hs-n">.xlsx</div><div class="hs-l">Relatório gerado</div></div>
+    <div class="hs"><div class="hs-n">3×</div><div class="hs-l">Retry automático</div></div>
+  </div>
+</div>
+
+<div class="dvd" style="max-width:1140px;margin:0 auto"></div>
+
+<!-- COMO FUNCIONA -->
+<section class="sec" id="como">
+  <div class="reveal">
+    <div class="sec-lbl">Fluxo de execução</div>
+    <h2 class="sec-ttl">Como funciona</h2>
+    <p class="sec-sub">Quatro etapas automáticas, do upload ao relatório final.</p>
+  </div>
+  <div class="steps-g reveal">
+    <div class="stp">
+      <div class="stp-n">01 —</div>
+      <div class="stp-ic">📊</div>
+      <h3>Upload da planilha</h3>
+      <p>Envie seu arquivo <code>.xlsx</code> ou <code>.csv</code> com chaves de 44 dígitos. Detecção automática de coluna e remoção de duplicatas.</p>
+    </div>
+    <div class="stp">
+      <div class="stp-n">02 —</div>
+      <div class="stp-ic">✅</div>
+      <h3>Validação</h3>
+      <p>Cada chave é validada estruturalmente antes do envio. Chaves inválidas são listadas em log separado com preview.</p>
+    </div>
+    <div class="stp">
+      <div class="stp-n">03 —</div>
+      <div class="stp-ic">🤖</div>
+      <h3>Automação Siscomex</h3>
+      <p>Playwright consulta o portal para cada chave, resolve CAPTCHAs automaticamente e extrai os dados da DUE vinculada.</p>
+    </div>
+    <div class="stp">
+      <div class="stp-n">04 —</div>
+      <div class="stp-ic">📥</div>
+      <h3>Relatório Excel</h3>
+      <p>Resultados consolidados em planilha com código de cores por status, aba de resumo e histórico completo.</p>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="sec" style="padding-top:0">
+  <div class="feat-g reveal">
+    <div class="feat"><span class="feat-ic">🔄</span><h3>Retry automático</h3><p>3 tentativas por chave com backoff. Falhas por timeout, CAPTCHA ou instabilidade do portal são tratadas automaticamente.</p></div>
+    <div class="feat"><span class="feat-ic">💾</span><h3>Checkpoint contínuo</h3><p>Cada resultado é salvo imediatamente em SQLite local. Interrupções não perdem dados já processados.</p></div>
+    <div class="feat"><span class="feat-ic">📋</span><h3>Log auditável</h3><p>Cada etapa do processamento é registrada com timestamp, nível de severidade e descrição completa.</p></div>
+    <div class="feat"><span class="feat-ic">🔐</span><h3>100% local</h3><p>Nenhum dado é enviado a servidores externos. Tudo roda no seu computador — uploads, consultas e resultados.</p></div>
+    <div class="feat"><span class="feat-ic">⚡</span><h3>Anti-Captcha integrado</h3><p>Resolução automática via API anti-captcha.com. Fallback para resolução manual com aviso visual claro.</p></div>
+    <div class="feat"><span class="feat-ic">📊</span><h3>Relatório profissional</h3><p>Excel formatado com código de cores por status, aba de resumo com métricas e colunas otimizadas.</p></div>
+  </div>
+</section>
+
+<div class="dvd" style="max-width:1140px;margin:0 auto"></div>
+
+<!-- FERRAMENTA -->
+<div class="tool-sec" id="ferramenta">
+  <div class="tool-w">
+    <div class="reveal" style="margin-bottom:32px">
+      <div class="sec-lbl">Ferramenta</div>
+      <h2 class="sec-ttl">Executar consulta</h2>
+      <p class="sec-sub" style="margin-bottom:0">Requer o backend Python rodando localmente na porta 5000. Execute <code style="font-family:var(--mono);font-size:13px;color:var(--cyan)">python backend/main.py</code> antes de usar.</p>
+    </div>
+
+    <div class="shell reveal">
+      <div class="tbar">
+        <div class="td" style="background:#FF5F57"></div>
+        <div class="td" style="background:#FEBC2E"></div>
+        <div class="td" style="background:#28C840"></div>
+        <span class="tbar-lbl">DUE Consulta — Portal Siscomex v1.0</span>
+        <span id="hst" style="margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--g3)">⬤ verificando...</span>
+      </div>
+
+      <div class="shell-inner">
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+          <div class="s-sec">Navegação</div>
+          <div class="s-item act" onclick="sp('p-up')"><span class="ni">📂</span>Upload</div>
+          <div class="s-item" onclick="sp('p-consult')"><span class="ni">🔍</span>Consultar</div>
+          <div class="s-item" onclick="sp('p-mon')"><span class="ni">📊</span>Monitorar</div>
+          <div class="s-sec" style="margin-top:12px">Sessão</div>
+          <div class="s-item" onclick="sp('p-hist');loadHist()"><span class="ni">🕐</span>Histórico</div>
+        </aside>
+
+        <!-- MAIN -->
+        <main class="app-main">
+
+          <!-- UPLOAD -->
+          <div class="panel act" id="p-up">
+            <h2 style="font-family:var(--display);font-size:17px;font-weight:700;margin-bottom:5px;letter-spacing:-.02em">Upload de planilha</h2>
+            <p style="font-size:13px;color:var(--g2);margin-bottom:22px">Envie o arquivo com as chaves NF-e para validação automática.</p>
+
+            <div class="dz" id="dz" onclick="document.getElementById('fi').click()"
+                 ondragover="event.preventDefault();this.classList.add('ov')"
+                 ondragleave="this.classList.remove('ov')"
+                 ondrop="hdrop(event)">
+              <input type="file" id="fi" accept=".xlsx,.csv" onchange="hfile(this.files[0])"/>
+              <div class="dz-ic">📊</div>
+              <div class="dz-t">Arraste ou clique para selecionar</div>
+              <div class="dz-s">Formatos: .xlsx · .csv &nbsp;|&nbsp; Coluna: Chave NF-e (44 dígitos)</div>
+            </div>
+
+            <div class="fchip" id="fchip">
+              <span style="font-size:20px">📄</span>
+              <div><div style="font-weight:600;font-size:13px" id="fn">—</div><div style="font-size:11px;color:var(--g2);font-family:var(--mono)" id="fm">—</div></div>
+              <button class="fc-r" onclick="clrf()">✕</button>
+            </div>
+
+            <div class="rbox" id="rb"></div>
+
+            <div class="brow">
+              <button class="btn btn-c" id="bup" onclick="dup()" disabled>⬆ Enviar e Validar</button>
+            </div>
+          </div>
+
+          <!-- CONSULTAR -->
+          <div class="panel" id="p-consult">
+            <h2 style="font-family:var(--display);font-size:17px;font-weight:700;margin-bottom:5px;letter-spacing:-.02em">
+              Executar consulta
+              <span id="jbdg" style="margin-left:10px;vertical-align:middle"></span>
+            </h2>
+            <p style="font-size:13px;color:var(--g2);margin-bottom:18px">Inicie após o upload e validação da planilha.</p>
+
+            <div class="cap-box">
+              <span style="font-size:20px;flex-shrink:0">🔐</span>
+              <div>
+                <div class="cap-t">Aviso: Resolução de CAPTCHA</div>
+                <div class="cap-d">O portal pode exibir CAPTCHA. A API Anti-Captcha está configurada para resolução automática. Se falhar, o navegador abre para resolução manual.</div>
+              </div>
+            </div>
+
+            <div class="mstats" id="mst">
+              <div class="ms"><div class="ms-n" style="color:var(--cyan)">—</div><div class="ms-l">Total</div></div>
+              <div class="ms"><div class="ms-n" style="color:var(--green)">—</div><div class="ms-l">Processadas</div></div>
+              <div class="ms"><div class="ms-n" style="color:var(--yellow)">—</div><div class="ms-l">Pendentes</div></div>
+              <div class="ms"><div class="ms-n" style="color:var(--white)">—</div><div class="ms-l">Progresso</div></div>
+            </div>
+
+            <div id="pw" style="display:none;display:flex;align-items:center;gap:14px;margin:16px 0 6px">
+              <div class="pb-o"><div class="pb-i" id="pfi" style="width:0%"></div></div>
+              <span style="font-family:var(--mono);font-size:13px;color:var(--cyan);min-width:36px;text-align:right" id="pct">0%</span>
+            </div>
+            <div style="font-size:11px;color:var(--g3);font-family:var(--mono);margin-bottom:14px" id="ptxt"></div>
+
+            <div class="brow">
+              <button class="btn btn-c" id="bst" onclick="dstart()">🚀 Iniciar consulta</button>
+              <button class="btn btn-d" id="bcan" onclick="dcancel()" style="display:none">⛔ Cancelar</button>
+              <button class="btn btn-s" id="bdl" onclick="ddl()" style="display:none">⬇ Baixar relatório</button>
+            </div>
+
+            <div class="term" id="lg">
+              <div class="tr"><span class="tt">——:——:——</span><span class="tI">INFO</span><span class="tm">Aguardando início do processamento...</span></div>
+            </div>
+          </div>
+
+          <!-- MONITOR -->
+          <div class="panel" id="p-mon">
+            <h2 style="font-family:var(--display);font-size:17px;font-weight:700;margin-bottom:5px;letter-spacing:-.02em">Resultados em tempo real</h2>
+            <p style="font-size:13px;color:var(--g2);margin-bottom:18px">Últimas chaves processadas neste job.</p>
+            <div class="tw">
+              <table>
+                <thead><tr><th>Chave NF-e</th><th>Status</th><th>Número DUE</th><th>Consultado em</th></tr></thead>
+                <tbody id="rtb"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- HISTÓRICO -->
+          <div class="panel" id="p-hist">
+            <h2 style="font-family:var(--display);font-size:17px;font-weight:700;margin-bottom:5px;letter-spacing:-.02em">Histórico de jobs</h2>
+            <p style="font-size:13px;color:var(--g2);margin-bottom:18px">Jobs executados nesta sessão.</p>
+            <div id="hl"><div style="color:var(--g3);font-size:13px;text-align:center;padding:32px">Nenhum job encontrado.</div></div>
+          </div>
+
+        </main>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DOCUMENTAÇÃO -->
+<section class="sec" id="docs">
+  <div class="reveal">
+    <div class="sec-lbl">Guia de uso</div>
+    <h2 class="sec-ttl">Documentação</h2>
+    <p class="sec-sub">Instalação, configuração e operação completas.</p>
+  </div>
+  <div class="docs-g reveal">
+    <div class="doc-b">
+      <h3>⚙️ Instalação rápida</h3>
+      <div class="code-b"><span class="cm"># 1. Instalar dependências</span>
+<span class="kw">cd</span> backend
+pip install <span class="str">-r requirements.txt</span>
+
+<span class="cm"># 2. Instalar navegador</span>
+python <span class="str">-m playwright install</span> chromium
+
+<span class="cm"># 3. Iniciar servidor</span>
+python <span class="str">main.py</span>
+
+<span class="cm"># 4. Abrir frontend/index.html</span></div>
+    </div>
+    <div class="doc-b">
+      <h3>📊 Estrutura da planilha</h3>
+      <ul>
+        <li>Coluna com "chave", "nfe" ou "nota" no nome</li>
+        <li>Ou qualquer coluna com strings de 44 dígitos</li>
+        <li>Formatos aceitos: .xlsx e .csv</li>
+        <li>Duplicatas removidas automaticamente</li>
+        <li>Chaves inválidas listadas em log separado</li>
+      </ul>
+    </div>
+    <div class="doc-b">
+      <h3>📥 Campos do relatório</h3>
+      <ul>
+        <li>Chave NF-e (44 dígitos)</li>
+        <li>Status: Averbada / Não Averbada / Não Encontrada</li>
+        <li>Número da DUE vinculada</li>
+        <li>Data e status da DUE</li>
+        <li>Observações e timestamp da consulta</li>
+      </ul>
+    </div>
+    <div class="doc-b">
+      <h3>🔌 Endpoints da API</h3>
+      <ul>
+        <li>POST /api/upload — Validar planilha</li>
+        <li>POST /api/iniciar/{id} — Iniciar job</li>
+        <li>GET /api/status/{id} — Status em tempo real</li>
+        <li>POST /api/cancelar/{id} — Cancelar job</li>
+        <li>GET /api/download/{id} — Baixar Excel</li>
+        <li>GET /api/jobs — Listar histórico</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="sec" id="faq" style="padding-top:0">
+  <div class="reveal">
+    <div class="sec-lbl">Perguntas frequentes</div>
+    <h2 class="sec-ttl">FAQ</h2>
+  </div>
+  <div class="reveal">
+    <div class="faq-i" onclick="this.classList.toggle('op')">
+      <div class="faq-q">O backend precisa estar rodando para usar a ferramenta?<span class="arr">+</span></div>
+      <div class="faq-a">Sim. O frontend se comunica com o servidor Python local na porta 5000. Execute <code>python main.py</code> na pasta <code>backend/</code> antes de abrir a interface.</div>
+    </div>
+    <div class="faq-i" onclick="this.classList.toggle('op')">
+      <div class="faq-q">O que acontece se o CAPTCHA não for resolvido automaticamente?<span class="arr">+</span></div>
+      <div class="faq-a">O Chromium será exibido na tela para resolução manual. Após resolver, a consulta continua automaticamente para as demais chaves sem intervenção adicional.</div>
+    </div>
+    <div class="faq-i" onclick="this.classList.toggle('op')">
+      <div class="faq-q">Meus dados ficam em algum servidor externo?<span class="arr">+</span></div>
+      <div class="faq-a">Não. Toda execução é local. Os únicos dados enviados externamente são os CAPTCHAs para resolução via anti-captcha.com — nenhuma chave de NF-e ou resultado de consulta sai do seu computador.</div>
+    </div>
+    <div class="faq-i" onclick="this.classList.toggle('op')">
+      <div class="faq-q">Posso retomar após uma interrupção?<span class="arr">+</span></div>
+      <div class="faq-a">Os resultados processados ficam no banco SQLite local. Em caso de interrupção, baixe o relatório parcial com os dados já coletados via botão "Baixar relatório".</div>
+    </div>
+    <div class="faq-i" onclick="this.classList.toggle('op')">
+      <div class="faq-q">O portal mudou o layout e a extração parou. O que fazer?<span class="arr">+</span></div>
+      <div class="faq-a">Screenshots de debug são salvos automaticamente em <code>backend/</code>. Os seletores CSS/XPath podem ser ajustados na função <code>consultar_chave()</code> no arquivo <code>main.py</code>.</div>
+    </div>
+  </div>
+</section>
+
+<div class="dvd" style="max-width:1140px;margin:0 auto"></div>
+
+<footer>
+  <p>DUE Consulta — <strong style="color:var(--g2)">Plataforma de automação Siscomex</strong></p>
+  <p style="margin-top:8px;font-size:12px">Execução 100% local · Dados não armazenados externamente · Python + Playwright + Flask</p>
+</footer>
+
+<script>
+const API='http://localhost:5000/api';
+let jobId=null,pollT=null,selF=null;
+
+// Reveal on scroll
+const obs=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('vis');obs.unobserve(e.target);}});},{threshold:.12});
+document.querySelectorAll('.reveal').forEach(el=>obs.observe(el));
+
+// Health check
+async function chk(){
+  const d=document.getElementById('hst');
+  try{const r=await fetch(`${API}/health`,{signal:AbortSignal.timeout(3000)});
+    if(r.ok){d.textContent='⬤ backend online';d.style.color='var(--green)';}
+    else throw 0;}
+  catch{d.textContent='⬤ backend offline';d.style.color='var(--red)';}
+}
+chk();setInterval(chk,15000);
+
+// Panel navigation
+function sp(id){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('act'));
+  document.getElementById(id).classList.add('act');
+  const map={'p-up':0,'p-consult':1,'p-mon':2,'p-hist':3};
+  document.querySelectorAll('.s-item').forEach(n=>n.classList.remove('act'));
+  if(map[id]!==undefined)document.querySelectorAll('.s-item')[map[id]]?.classList.add('act');
+}
+
+// File handling
+function hdrop(e){e.preventDefault();document.getElementById('dz').classList.remove('ov');hfile(e.dataTransfer.files[0]);}
+function hfile(f){
+  if(!f)return;
+  const ext=f.name.split('.').pop().toLowerCase();
+  if(!['xlsx','csv'].includes(ext)){alert('Use .xlsx ou .csv');return;}
+  selF=f;
+  document.getElementById('fchip').classList.add('show');
+  document.getElementById('fn').textContent=f.name;
+  document.getElementById('fm').textContent=`${(f.size/1024).toFixed(1)} KB · ${ext.toUpperCase()}`;
+  document.getElementById('bup').disabled=false;
+  document.getElementById('rb').className='rbox';
+}
+function clrf(){selF=null;document.getElementById('fchip').classList.remove('show');document.getElementById('bup').disabled=true;document.getElementById('fi').value='';}
+
+// Upload
+async function dup(){
+  if(!selF)return;
+  const b=document.getElementById('bup');
+  b.disabled=true;b.textContent='⏳ Validando...';
+  const fd=new FormData();fd.append('file',selF);
+  try{
+    const res=await fetch(`${API}/upload`,{method:'POST',body:fd});
+    const d=await res.json();
+    if(!res.ok)throw new Error(d.error);
+    jobId=d.job_id;
+    const rb=document.getElementById('rb');
+    rb.className='rbox ok';
+    rb.innerHTML=`<strong style="color:var(--green)">✅ Planilha validada</strong><br>
+      Coluna: <code>${d.coluna_detectada}</code> &nbsp;·&nbsp;
+      Válidas: <strong style="color:var(--green)">${d.total_validas}</strong> &nbsp;·&nbsp;
+      Inválidas: <strong style="color:var(--yellow)">${d.total_invalidas}</strong><br>
+      <span style="color:var(--g3);font-family:var(--mono);font-size:11px">Job: ${d.job_id.slice(0,8)}…</span>
+      ${d.invalidas_preview.length?`<br><span style="color:var(--red);font-size:11px">Inválidas: ${d.invalidas_preview.join(', ')}</span>`:''}`;
+    updStats({total:d.total_validas,processed:0,percent:0});
+    sp('p-consult');
+  }catch(err){
+    const rb=document.getElementById('rb');rb.className='rbox er';rb.textContent='❌ '+err.message;
+    b.disabled=false;b.textContent='⬆ Enviar e Validar';
+  }
+}
+
+// Start
+async function dstart(){
+  if(!jobId){alert('Faça o upload primeiro.');return;}
+  try{
+    const r=await fetch(`${API}/iniciar/${jobId}`,{method:'POST'});
+    const d=await r.json();if(!r.ok)throw new Error(d.error);
+    document.getElementById('bst').style.display='none';
+    document.getElementById('bcan').style.display='inline-flex';
+    document.getElementById('pw').style.display='flex';
+    startPoll();
+  }catch(e){alert('Erro: '+e.message);}
+}
+
+// Polling
+function startPoll(){clearInterval(pollT);pollT=setInterval(poll,2500);poll();}
+async function poll(){
+  if(!jobId)return;
+  try{
+    const r=await fetch(`${API}/status/${jobId}`);
+    const d=await r.json();if(!r.ok)return;
+    updStats(d);updLogs(d.logs);updTable(d.ultimos_resultados);updBadge(d.status);
+    const p=d.percent||0;
+    document.getElementById('pfi').style.width=p+'%';
+    document.getElementById('pct').textContent=p+'%';
+    document.getElementById('ptxt').textContent=`${d.processed} de ${d.total} chaves consultadas`;
+    if(d.status==='done'||d.status==='cancelled'){
+      clearInterval(pollT);
+      document.getElementById('bcan').style.display='none';
+      if(d.status==='done')document.getElementById('bdl').style.display='inline-flex';
+    }
+  }catch{}
+}
+
+function updStats(d){
+  const ns=document.querySelectorAll('#mst .ms-n');
+  const t=d.total||0,p=d.processed||0;
+  if(ns[0])ns[0].textContent=t;
+  if(ns[1])ns[1].textContent=p;
+  if(ns[2])ns[2].textContent=t-p;
+  if(ns[3])ns[3].textContent=(d.percent||0)+'%';
+}
+function updLogs(logs){
+  if(!logs?.length)return;
+  document.getElementById('lg').innerHTML=logs.slice(0,50).map(l=>`
+    <div class="tr"><span class="tt">${(l.criado_em||'').slice(11,19)||'——'}</span><span class="t${l.nivel[0]}">${l.nivel}</span><span class="tm">${e(l.mensagem)}</span></div>`).join('');
+  document.getElementById('lg').scrollTop=9999;
+}
+function updTable(rows){
+  if(!rows?.length)return;
+  document.getElementById('rtb').innerHTML=rows.map(r=>{
+    const c={'Averbada':'sa','Não Averbada':'sn','Não Encontrada':'snf'}[r.status]||'se';
+    return`<tr><td>${r.chave}</td><td class="${c}">${r.status}</td><td>${r.due||'—'}</td><td>${(r.em||'').slice(0,19).replace('T',' ')||'—'}</td></tr>`;
+  }).join('');
+}
+function updBadge(s){
+  const m={running:'<span class="bdg b-r pulse">● Executando</span>',done:'<span class="bdg b-d">✓ Concluído</span>',pending:'<span class="bdg b-w">⏳ Aguardando</span>',cancelled:'<span class="bdg b-e">✗ Cancelado</span>'};
+  document.getElementById('jbdg').innerHTML=m[s]||'';
+}
+async function dcancel(){if(!jobId||!confirm('Cancelar?'))return;await fetch(`${API}/cancelar/${jobId}`,{method:'POST'});clearInterval(pollT);document.getElementById('bcan').style.display='none';document.getElementById('bst').style.display='inline-flex';}
+function ddl(){if(jobId)window.open(`${API}/download/${jobId}`,'_blank');}
+
+// History
+async function loadHist(){
+  const c=document.getElementById('hl');
+  try{
+    const r=await fetch(`${API}/jobs`);const jobs=await r.json();
+    if(!jobs.length){c.innerHTML='<div style="color:var(--g3);font-size:13px;text-align:center;padding:32px">Nenhum job encontrado.</div>';return;}
+    c.innerHTML=jobs.map(j=>{
+      const p=j.total?Math.round(j.processed/j.total*100):0;
+      const bdg={running:'<span class="bdg b-r pulse">● Em execução</span>',done:'<span class="bdg b-d">✓ Concluído</span>',pending:'<span class="bdg b-w">⏳ Pendente</span>',cancelled:'<span class="bdg b-e">✗ Cancelado</span>'}[j.status]||j.status;
+      return`<div style="display:flex;align-items:center;gap:14px;padding:13px 0;border-bottom:1px solid rgba(255,255,255,.05)"><div style="flex:1"><div style="font-size:13px;font-weight:500">Job <code style="font-size:11px;color:var(--g3)">${j.id.slice(0,8)}</code></div><div style="font-size:11px;color:var(--g3);font-family:var(--mono)">${j.processed}/${j.total} · ${p}% · ${(j.created_at||'').slice(0,16).replace('T',' ')}</div></div>${bdg}${j.status==='done'?`<button class="btn btn-g" style="padding:5px 11px;font-size:11px" onclick="window.open('${API}/download/${j.id}','_blank')">⬇ Baixar</button>`:''}</div>`;
+    }).join('');
+  }catch{c.innerHTML=`<div style="color:var(--red);font-size:13px;text-align:center;padding:32px">Backend offline. Execute <code>python main.py</code></div>`;}
+}
+function e(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+</script>
+</body>
+</html>
