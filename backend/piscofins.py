@@ -856,15 +856,38 @@ RULES = [
 # ─── 4. ENGINE PRINCIPAL ──────────────────────────────────────────────────────
 
 def _parse_value(raw) -> float:
+    """
+    Converte para float suportando:
+    - int / float nativos do pandas
+    - Formato BR: 1.234.567,89 ou 1.234,56
+    - Formato US: 1,234,567.89
+    - Negativos com parênteses: (1.234,56)
+    - Texto com R$, espaços, tabulações
+    """
+    if raw is None:
+        return 0.0
+    # Valor numérico nativo — caminho direto
+    if isinstance(raw, (int, float)):
+        import math
+        return 0.0 if math.isnan(raw) else float(raw)
     try:
-        s = str(raw).strip().replace("R$", "").replace(" ", "")
-        if not s or s.lower() in ("nan", "none", ""):
+        s = str(raw).strip()
+        if not s or s.lower() in ("nan", "none", "-", ""):
             return 0.0
-        if "," in s and "." in s:
+        # Negativos entre parênteses: (1.234,56) → -1234.56
+        negativo = s.startswith("(") and s.endswith(")")
+        s = s.strip("()").replace("R$", "").replace("\xa0", "").replace(" ", "").replace("\t", "")
+        if not s:
+            return 0.0
+        # Detecta separador decimal: se termina com ",XX" (2 casas) é BR; senão tenta inferir
+        if re.search(r",\d{1,2}$", s):          # formato BR: últimos dígitos após vírgula
             s = s.replace(".", "").replace(",", ".")
-        elif "," in s:
-            s = s.replace(",", ".")
-        return float(s)
+        elif re.search(r"\.\d{1,2}$", s):       # formato US / ponto decimal
+            s = s.replace(",", "")
+        else:                                    # só inteiro ou formato ambíguo
+            s = s.replace(".", "").replace(",", "")
+        val = float(s)
+        return -val if negativo else val
     except (ValueError, TypeError):
         return 0.0
 
@@ -1207,7 +1230,8 @@ def upload():
 
     import io as _io
     try:
-        df = pd.read_excel(_io.BytesIO(file_bytes), dtype=str)
+        # Lê sem forçar dtype=str para que colunas numéricas cheguem como float
+        df = pd.read_excel(_io.BytesIO(file_bytes))
     except Exception as e:
         return jsonify({"error": f"Erro ao ler planilha: {e}"}), 400
 
@@ -1247,9 +1271,20 @@ def upload():
                    "created_at": datetime.now().isoformat()})
     _analyses[analysis_id] = result
 
+    # Aviso se a maioria dos valores ficou zero (provável coluna errada)
+    rows_with_valor = [r for r in result["rows"] if r.get("account_type") == "ANALÍTICA"]
+    zeros = sum(1 for r in rows_with_valor if r["valor"] == 0.0)
+    aviso_valor = None
+    if rows_with_valor and zeros / len(rows_with_valor) > 0.8:
+        aviso_valor = (
+            "Mais de 80% dos valores ficaram zerados. "
+            "Verifique se a coluna 'Valor' está mapeada corretamente."
+        )
+
     return jsonify({
         "analysis_id": analysis_id,
         "filename": filename,
+        "aviso_valor": aviso_valor,
         "summary": result["summary"],
         "by_category": result["by_category"],
         "by_credit_type": result["by_credit_type"],

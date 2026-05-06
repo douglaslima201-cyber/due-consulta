@@ -596,6 +596,9 @@ async function confirmarMapeamento() {
     });
     const data = await res.json();
     if (!res.ok || data.error) throw new Error(data.error || 'Erro na análise');
+    if (data.aviso_valor) {
+      setTimeout(() => alert('⚠️ ' + data.aviso_valor), 300);
+    }
     renderResults(data);
   } catch (err) {
     document.getElementById('loading').style.display = 'none';
