@@ -18,7 +18,11 @@
       "Bash(git mv *)",
       "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('Status:', d.get\\('status'\\)\\); print\\('URL:', d.get\\('html_url'\\)\\)\")",
       "Bash(python -c \"import piscofins; print\\('OK — regras:', len\\(piscofins.RULES\\)\\)\")",
-      "Bash(python -c ' *)"
+      "Bash(python -c ' *)",
+      "Bash(python -c \"from flask import Flask; from piscofins import bp; print\\('imports OK'\\)\")",
+      "Bash(netstat -ano)",
+      "Bash(findstr \":5000\")",
+      "Bash(curl -s http://localhost:5000/api/piscofins/health)"
     ]
   },
   "hooks": {
