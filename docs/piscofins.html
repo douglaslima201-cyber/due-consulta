@@ -302,6 +302,26 @@ tr:hover td{background:rgba(139,92,246,.04);}
       </div>
     </div>
 
+    <!-- ESCOPO DO BALANCETE -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:40px;">
+      <div style="background:var(--db3);border:1px solid rgba(255,255,255,.06);border-radius:var(--r);padding:14px 18px;display:flex;align-items:center;gap:12px;">
+        <span style="font-size:20px;">📋</span>
+        <div><div style="font-size:11px;color:var(--g3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;">Total de contas</div><div style="font-size:18px;font-weight:700;" id="k-total-linhas">—</div></div>
+      </div>
+      <div style="background:var(--db3);border:1px solid rgba(139,92,246,.15);border-radius:var(--r);padding:14px 18px;display:flex;align-items:center;gap:12px;">
+        <span style="font-size:20px;">🔬</span>
+        <div><div style="font-size:11px;color:var(--purple);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;">Analíticas de resultado</div><div style="font-size:18px;font-weight:700;" id="k-analiticas">—</div></div>
+      </div>
+      <div style="background:var(--db3);border:1px solid rgba(255,255,255,.06);border-radius:var(--r);padding:14px 18px;display:flex;align-items:center;gap:12px;">
+        <span style="font-size:20px;">🏦</span>
+        <div><div style="font-size:11px;color:var(--g3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;">Balanço (excluídas)</div><div style="font-size:18px;font-weight:700;color:var(--g3);" id="k-balanco">—</div></div>
+      </div>
+      <div style="background:var(--db3);border:1px solid rgba(255,255,255,.06);border-radius:var(--r);padding:14px 18px;display:flex;align-items:center;gap:12px;">
+        <span style="font-size:20px;">🗂️</span>
+        <div><div style="font-size:11px;color:var(--g3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;">Sintéticas (excluídas)</div><div style="font-size:18px;font-weight:700;color:var(--g3);" id="k-sinteticas">—</div></div>
+      </div>
+    </div>
+
     <!-- CHARTS -->
     <div class="dvd"></div>
     <div class="sec-hd">
@@ -356,6 +376,12 @@ tr:hover td{background:rgba(139,92,246,.04);}
         <option value="MÉDIO">🟡 Médio</option>
         <option value="ALTO">🔴 Alto</option>
       </select>
+      <select class="filter-sel" id="filter-type" onchange="filtrarTabela()">
+        <option value="">Todos — Tipo de conta</option>
+        <option value="ANALÍTICA">Analíticas de Resultado</option>
+        <option value="SINTÉTICA">Sintéticas</option>
+        <option value="BALANÇO">Balanço Patrimonial</option>
+      </select>
     </div>
 
     <div class="table-wrap">
@@ -364,12 +390,12 @@ tr:hover td{background:rgba(139,92,246,.04);}
           <tr>
             <th>Conta</th>
             <th>Descrição</th>
+            <th>Tipo</th>
+            <th>Natureza / CPC</th>
             <th style="text-align:right">Valor R$</th>
-            <th>Categoria</th>
             <th>Elegibilidade</th>
-            <th style="text-align:right">Crédito R$</th>
+            <th style="text-align:right">Crédito 9,25%</th>
             <th>Risco</th>
-            <th>Base Legal</th>
             <th style="width:28px"></th>
           </tr>
         </thead>
@@ -462,17 +488,22 @@ function renderResults(data) {
   document.getElementById('results').style.display = 'block';
 
   document.getElementById('file-bar-name').textContent = data.filename || 'Balancete';
-  document.getElementById('file-bar-lines').textContent = `${s.total_linhas} linhas analisadas · Gerado em ${new Date().toLocaleString('pt-BR')}`;
+  document.getElementById('file-bar-lines').textContent = `${s.total_analiticas} contas analíticas de resultado analisadas · Gerado em ${new Date().toLocaleString('pt-BR')}`;
 
-  // KPIs
+  // KPIs principais
   document.getElementById('k-total').textContent = fmtShort(s.total_analisado);
-  document.getElementById('k-linhas').textContent = `${s.total_linhas} contas`;
+  document.getElementById('k-linhas').textContent = `${s.total_analiticas} contas analíticas`;
   document.getElementById('k-elegivel').textContent = fmtShort(s.total_elegivel);
   document.getElementById('k-pct').textContent = `${s.pct_aproveitamento}% do total`;
   document.getElementById('k-possivel').textContent = fmtShort(s.total_possivel);
   document.getElementById('k-credito-certo').textContent = fmtShort(s.credito_certo);
   document.getElementById('k-credito-total').textContent = fmtShort(s.credito_total_potencial);
   document.getElementById('k-risco-alto').textContent = fmtShort(data.risk_distribution['ALTO'] || 0);
+  // KPIs de escopo
+  document.getElementById('k-total-linhas').textContent = s.total_linhas;
+  document.getElementById('k-analiticas').textContent = s.total_analiticas;
+  document.getElementById('k-balanco').textContent = s['total_balanço'] ?? s.total_balanco ?? '—';
+  document.getElementById('k-sinteticas').textContent = s.total_sinteticas;
 
   renderCharts(data);
   renderOportunidades(data.top_oportunidades);
@@ -564,24 +595,29 @@ function renderOportunidades(opps) {
 }
 
 // ── Tabela ────────────────────────────────────────────────────────────────────
+function typeBadge(t) {
+  if (t === 'ANALÍTICA') return 'background:rgba(139,92,246,.1);color:#A78BFA;border:1px solid rgba(139,92,246,.2)';
+  if (t === 'SINTÉTICA') return 'background:rgba(107,125,148,.1);color:var(--g3);border:1px solid rgba(107,125,148,.2)';
+  return 'background:rgba(59,130,246,.08);color:var(--blue-l);border:1px solid rgba(59,130,246,.15)';
+}
 function renderTable(rows) {
   const tbody = document.getElementById('table-body');
   tbody.innerHTML = rows.map((r, i) => `
-    <tr class="data-row" data-eligible="${r.eligible}" data-risk="${r.risk}" data-search="${(r.conta + r.descricao + r.category).toLowerCase()}">
+    <tr class="data-row" data-eligible="${r.eligible}" data-risk="${r.risk}" data-actype="${r.account_type}" data-search="${(r.conta + r.descricao + r.category + r.nature).toLowerCase()}">
       <td class="td-conta td-toggle" onclick="toggleDetail(${i})">${esc(r.conta)}</td>
       <td class="td-desc td-toggle" onclick="toggleDetail(${i})">${esc(r.descricao)}</td>
+      <td><span class="badge" style="${typeBadge(r.account_type)};font-size:9px;">${r.account_type}</span></td>
+      <td style="font-size:11px;color:var(--g3);max-width:180px;">${esc(r.nature)}${r.cpc_ref ? '<br><span style="color:var(--g4);font-size:10px;">' + esc(r.cpc_ref.split('—')[0]) + '</span>' : ''}</td>
       <td class="td-valor">${fmt(r.valor)}</td>
-      <td style="font-size:12px;color:var(--g2)">${esc(r.category)}</td>
-      <td><span class="badge ${eligBadge(r.eligible)}">${r.eligible}</span></td>
+      <td>${r.eligible !== 'N/A' ? '<span class="badge ' + eligBadge(r.eligible) + '">' + r.eligible + '</span>' : '<span style="color:var(--g4);font-size:11px;">—</span>'}</td>
       <td class="td-credito">${r.credit_value > 0 ? fmt(r.credit_value) : '—'}</td>
-      <td><span class="badge ${riskBadge(r.risk)}">${r.risk}</span></td>
-      <td class="td-base">${esc(r.legal_basis)}</td>
+      <td>${r.risk !== 'N/A' ? '<span class="badge ' + riskBadge(r.risk) + '">' + r.risk + '</span>' : '<span style="color:var(--g4);font-size:11px;">—</span>'}</td>
       <td style="text-align:center;color:var(--g4);cursor:pointer;user-select:none;" onclick="toggleDetail(${i})" id="tog-${i}">▸</td>
     </tr>
     <tr class="row-detail" id="detail-${i}">
       <td colspan="9">
         <div class="detail-box">
-          <strong>Comentário técnico</strong>${esc(r.comment)}
+          <strong>Fundamentação técnica (SC COSIT 5/2018)</strong>${esc(r.comment)}
           <div style="margin-top:8px;display:flex;gap:16px;flex-wrap:wrap;">
             <span style="font-size:11px;color:var(--g4);">Tipo: <strong style="color:var(--g2)">${esc(r.credit_type)}</strong></span>
             <span style="font-size:11px;color:var(--g4);">Fundamento: <strong style="color:var(--g2)">${esc(r.law_type)}</strong></span>
@@ -605,13 +641,15 @@ function filtrarTabela() {
   const q = document.getElementById('search-input').value.toLowerCase();
   const fe = document.getElementById('filter-eligible').value;
   const fr = document.getElementById('filter-risk').value;
+  const ft = document.getElementById('filter-type').value;
   const rows = document.querySelectorAll('.data-row');
   let visible = 0;
   rows.forEach(row => {
     const matchQ = !q || row.dataset.search.includes(q);
     const matchE = !fe || row.dataset.eligible === fe;
     const matchR = !fr || row.dataset.risk === fr;
-    const show = matchQ && matchE && matchR;
+    const matchT = !ft || row.dataset.actype === ft;
+    const show = matchQ && matchE && matchR && matchT;
     row.style.display = show ? '' : 'none';
     const detId = row.querySelector('[id^="tog-"]')?.id?.replace('tog-', '');
     if (detId) document.getElementById(`detail-${detId}`).style.display = 'none';
