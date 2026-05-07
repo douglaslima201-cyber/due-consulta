@@ -820,7 +820,7 @@ async def processar_job_async(job_id: str, chaves: list[str]):
                 resultado["obs"],
             )
             update_job(job_id, processed=idx + 1)
-            await asyncio.sleep(0.5)  # delay leve entre chamadas
+            await asyncio.sleep(0.2)  # delay leve entre chamadas
 
     output_file = gerar_relatorio(job_id)
     update_job(job_id, status="done", finished_at=datetime.now().isoformat(), output_file=str(output_file))
