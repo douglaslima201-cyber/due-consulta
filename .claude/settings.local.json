@@ -28,7 +28,15 @@
       "Bash(curl -s -I -X OPTIONS \"http://localhost:5000/api/piscofins/upload\" -H \"Origin: null\" -H \"Access-Control-Request-Method: POST\")",
       "Bash(python -m py_compile main.py)",
       "Bash(python -c \"import piscofins; print\\('Rules:', len\\(piscofins.RULES\\)\\); from piscofins import analyze_balancete; import pandas as pd; df = pd.DataFrame\\({'Conta':['5.1.01','5.1.02','6.1.01','6.2.01'],'Desc':['Matéria-Prima Consumida','Energia Elétrica Industrial','Salários e Encargos','Aluguel de Prédio'],'Valor':['200000','50000','300000','80000']}\\); r = analyze_balancete\\(df\\); s = r['summary']; print\\('Analiticas:', s['total_analiticas']\\); print\\('Crédito certo: R$', s['credito_certo']\\)\")",
-      "Bash(python -m py_compile piscofins.py)"
+      "Bash(python -m py_compile piscofins.py)",
+      "Bash(python -c \"import piscofins\")",
+      "Bash(python -c \"import main\")",
+      "Bash(python main.py)",
+      "Bash(curl -s -X POST http://localhost:5000/api/piscofins/preview -F \"file=@teste_balancete.xlsx\")",
+      "Bash(curl -s -X POST http://localhost:5000/api/piscofins/upload -H \"Content-Type: application/json\" -d \"{\\\\\"preview_id\\\\\":\\\\\"ff0fd2c5-f40a-4732-86b9-1306608349fe\\\\\",\\\\\"col_conta\\\\\":1,\\\\\"col_descricao\\\\\":2,\\\\\"col_valor\\\\\":3,\\\\\"col_nivel\\\\\":0,\\\\\"nivel_filtro\\\\\":5}\")",
+      "Bash(findstr LISTENING)",
+      "Bash(taskkill /PID 13796 /F)",
+      "Bash(taskkill /PID 22820 /F)"
     ]
   },
   "hooks": {
