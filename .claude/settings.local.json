@@ -36,7 +36,8 @@
       "Bash(curl -s -X POST http://localhost:5000/api/piscofins/upload -H \"Content-Type: application/json\" -d \"{\\\\\"preview_id\\\\\":\\\\\"ff0fd2c5-f40a-4732-86b9-1306608349fe\\\\\",\\\\\"col_conta\\\\\":1,\\\\\"col_descricao\\\\\":2,\\\\\"col_valor\\\\\":3,\\\\\"col_nivel\\\\\":0,\\\\\"nivel_filtro\\\\\":5}\")",
       "Bash(findstr LISTENING)",
       "Bash(taskkill /PID 13796 /F)",
-      "Bash(taskkill /PID 22820 /F)"
+      "Bash(taskkill /PID 22820 /F)",
+      "Bash(python -c \"import flask, playwright; print\\('dependencias OK'\\)\")"
     ]
   },
   "hooks": {
