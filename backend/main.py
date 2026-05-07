@@ -769,36 +769,53 @@ async def consultar_via_api(
 
 
 class RateLimiter:
-    """Janela deslizante: pausa automaticamente ao atingir o limite de req/hora."""
+    """Janela deslizante: sinaliza quando o limite de req/hora está próximo."""
 
     def __init__(self, max_requests: int = 950, window_seconds: int = 3600):
         self.max_requests = max_requests
         self.window_seconds = window_seconds
         self._timestamps: deque[float] = deque()
 
-    async def acquire(self, job_id: str | None = None):
+    def _clean(self):
         now = time.time()
         while self._timestamps and now - self._timestamps[0] >= self.window_seconds:
             self._timestamps.popleft()
 
-        if len(self._timestamps) >= self.max_requests:
-            espera = self.window_seconds - (now - self._timestamps[0]) + 1
-            if job_id:
-                log(job_id, "WARN",
-                    f"Limite de {self.max_requests} req/hora atingido — aguardando {espera:.0f}s (~{espera/60:.1f} min)")
-            await asyncio.sleep(espera)
-            now = time.time()
-            while self._timestamps and now - self._timestamps[0] >= self.window_seconds:
-                self._timestamps.popleft()
+    def near_limit(self) -> bool:
+        self._clean()
+        return len(self._timestamps) >= self.max_requests
 
+    def record(self):
         self._timestamps.append(time.time())
+
+    def reset(self):
+        self._timestamps.clear()
 
 
 async def processar_job_async(job_id: str, chaves: list[str]):
     import aiohttp
 
-    log(job_id, "INFO", f"Iniciando processamento de {len(chaves)} chaves")
-    update_job(job_id, status="running", total=len(chaves), processed=0)
+    # Filtrar chaves já processadas — suporte a retomada de onde parou
+    conn = sqlite3.connect(DB_PATH)
+    ja_processadas = {row[0] for row in conn.execute(
+        "SELECT chave_nfe FROM resultados WHERE job_id=?", (job_id,)
+    ).fetchall()}
+    conn.close()
+
+    chaves_pendentes = [c for c in chaves if c not in ja_processadas]
+    base_processadas = len(ja_processadas)
+
+    if ja_processadas:
+        log(job_id, "INFO", f"{base_processadas} chaves já processadas — retomando as {len(chaves_pendentes)} restantes")
+
+    log(job_id, "INFO", f"Iniciando processamento de {len(chaves_pendentes)} chaves")
+    update_job(job_id, status="running", total=len(chaves), processed=base_processadas)
+
+    if not chaves_pendentes:
+        output_file = gerar_relatorio(job_id)
+        update_job(job_id, status="done", finished_at=datetime.now().isoformat(), output_file=str(output_file))
+        log(job_id, "INFO", "Todas as chaves já estavam processadas. Relatório gerado.")
+        return
 
     # Fase 1 — abrir Chrome, usuário resolve captcha UMA vez
     sessao = await obter_sessao_com_captcha(job_id)
@@ -809,11 +826,23 @@ async def processar_job_async(job_id: str, chaves: list[str]):
     cookies, csrf_token = sessao
     log(job_id, "INFO", "Sessão obtida — processando chaves via API direta")
 
-    # Fase 2 — consultar todas as chaves sem abrir browser
-    captcha_expirou = False
+    # Fase 2 — consultar chaves pendentes sem abrir browser
     rate_limiter = RateLimiter(max_requests=950, window_seconds=3600)
+
+    async def renovar_sessao(http_session) -> tuple[dict, str] | None:
+        log(job_id, "INFO", "Abrindo navegador para renovação de CAPTCHA...")
+        nova = await obter_sessao_com_captcha(job_id)
+        if nova:
+            c, t = nova
+            http_session.cookie_jar.update_cookies(c)
+            rate_limiter.reset()
+            log(job_id, "INFO", "Sessão renovada — contador de requisições zerado")
+            return c, t
+        log(job_id, "ERROR", "Não foi possível renovar sessão")
+        return None
+
     async with aiohttp.ClientSession(cookies=cookies) as http:
-        for idx, chave in enumerate(chaves):
+        for idx, chave in enumerate(chaves_pendentes):
             # Verificar cancelamento
             conn = sqlite3.connect(DB_PATH)
             row = conn.execute("SELECT status FROM jobs WHERE id=?", (job_id,)).fetchone()
@@ -822,22 +851,27 @@ async def processar_job_async(job_id: str, chaves: list[str]):
                 log(job_id, "INFO", "Job cancelado pelo usuário")
                 break
 
-            await rate_limiter.acquire(job_id)
-            log(job_id, "INFO", f"Consultando {idx+1}/{len(chaves)}: {chave[:10]}...{chave[-6:]}")
+            # Renovar sessão proativamente ao atingir o limite — nova sessão = contador zerado no portal
+            if rate_limiter.near_limit():
+                log(job_id, "WARN", f"Limite de 950 req/hora atingido — renovando sessão para continuar")
+                nova = await renovar_sessao(http)
+                if not nova:
+                    break
+                cookies, csrf_token = nova
+
+            rate_limiter.record()
+            total_global = base_processadas + idx + 1
+            log(job_id, "INFO", f"Consultando {total_global}/{len(chaves)}: {chave[:10]}...{chave[-6:]}")
             resultado, csrf_token = await consultar_via_api(http, chave, csrf_token, job_id)
 
-            if resultado["status_nfe"] == "Erro CAPTCHA" and not captcha_expirou:
-                # Sessão expirou — tentar renovar captcha uma vez
-                log(job_id, "WARN", "Sessão expirou — renovando CAPTCHA...")
-                captcha_expirou = True
-                nova_sessao = await obter_sessao_com_captcha(job_id)
-                if nova_sessao:
-                    cookies, csrf_token = nova_sessao
-                    # Atualizar cookies na sessão aiohttp
-                    http.cookie_jar.update_cookies(cookies)
+            # Renovar sessão se CAPTCHA expirou inesperadamente (renovações ilimitadas)
+            if resultado["status_nfe"] == "Erro CAPTCHA":
+                log(job_id, "WARN", "Sessão expirou inesperadamente — renovando CAPTCHA...")
+                nova = await renovar_sessao(http)
+                if nova:
+                    cookies, csrf_token = nova
                     resultado, csrf_token = await consultar_via_api(http, chave, csrf_token, job_id)
                 else:
-                    log(job_id, "ERROR", "Não foi possível renovar sessão")
                     break
 
             salvar_resultado(
@@ -848,8 +882,8 @@ async def processar_job_async(job_id: str, chaves: list[str]):
                 resultado["status_due"],
                 resultado["obs"],
             )
-            update_job(job_id, processed=idx + 1)
-            await asyncio.sleep(0.2)  # delay leve entre chamadas
+            update_job(job_id, processed=total_global)
+            await asyncio.sleep(0.2)
 
     output_file = gerar_relatorio(job_id)
     update_job(job_id, status="done", finished_at=datetime.now().isoformat(), output_file=str(output_file))
@@ -1092,6 +1126,29 @@ def status(job_id):
 def cancelar(job_id):
     update_job(job_id, status="cancelled")
     return jsonify({"message": "Solicitação de cancelamento enviada"})
+
+@app.route("/api/retomar/<job_id>", methods=["POST"])
+def retomar(job_id):
+    conn = sqlite3.connect(DB_PATH)
+    row = conn.execute("SELECT status FROM jobs WHERE id=?", (job_id,)).fetchone()
+    conn.close()
+
+    if not row:
+        return jsonify({"error": "Job não encontrado"}), 404
+    if row[0] == "running":
+        return jsonify({"error": "Job já está em execução"}), 400
+
+    chaves_path = UPLOAD_DIR / f"{job_id}_chaves.json"
+    if not chaves_path.exists():
+        return jsonify({"error": "Arquivo de chaves não encontrado"}), 400
+
+    chaves = json.loads(chaves_path.read_text())
+    update_job(job_id, status="pending", finished_at=None)
+
+    t = threading.Thread(target=processar_job_thread, args=(job_id, chaves), daemon=True)
+    t.start()
+
+    return jsonify({"message": "Job retomado com sucesso", "job_id": job_id})
 
 @app.route("/api/download/<job_id>")
 def download(job_id):
