@@ -32,6 +32,7 @@ RESULTS_DIR.mkdir(exist_ok=True)
 
 ANTICAPTCHA_KEY = "6d73ae3890ea23b5d54c6240355586c2"
 PORTAL_URL = "https://portalunico.siscomex.gov.br/due/x/#/consulta/consulta-filtro?perfil=publico"
+PROXY_FILE = _BASE_DIR / "proxies.txt"
 
 # ─── Banco de dados ─────────────────────────────────────────────────────────
 
@@ -672,6 +673,7 @@ async def consultar_via_api(
     chave: str,
     csrf_token: str,
     job_id: str,
+    proxy: str | None = None,
 ) -> tuple[dict, str]:
     """
     Consulta uma chave NF-e diretamente via HTTP (sem browser).
@@ -693,7 +695,7 @@ async def consultar_via_api(
     try:
         # Parâmetro correto: chaveNfe (descoberto via análise do JS Angular do portal)
         url = f"{API_BASE}/api/due/listar-due-consulta"
-        async with session.get(url, headers=headers, params={"chaveNfe": chave}) as resp:
+        async with session.get(url, headers=headers, params={"chaveNfe": chave}, proxy=proxy) as resp:
             novo_csrf = resp.headers.get("x-csrf-token", csrf_token)
             try:
                 body = await resp.json(content_type=None)
@@ -775,6 +777,63 @@ async def consultar_via_api(
     return resultado, novo_csrf
 
 
+class ProxyRotator:
+    """Rotaciona proxies automaticamente quando cada um atinge o rate limit."""
+
+    def __init__(self, proxy_file: Path):
+        self.proxies: list[str | None] = self._load(proxy_file)
+        self._blocked: dict[str, float] = {}  # chave -> timestamp de liberação
+        self._idx = 0
+
+    def _load(self, path: Path) -> list[str | None]:
+        if not path.exists():
+            return [None]
+        proxies: list[str | None] = []
+        for line in path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if line and not line.startswith("#"):
+                proxies.append(line)
+        return proxies if proxies else [None]
+
+    def _key(self, proxy: str | None) -> str:
+        return proxy or "direto"
+
+    def current(self) -> str | None | str:
+        """Retorna proxy disponível. Retorna sentinela 'TODOS_BLOQUEADOS' se nenhum disponível."""
+        now = time.time()
+        for _ in range(len(self.proxies)):
+            p = self.proxies[self._idx % len(self.proxies)]
+            if self._blocked.get(self._key(p), 0) <= now:
+                return p
+            self._idx += 1
+        return "TODOS_BLOQUEADOS"
+
+    def mark_limited(self, proxy: str | None, reset_timestamp: float):
+        self._blocked[self._key(proxy)] = reset_timestamp
+        self._idx += 1
+
+    def seconds_to_next(self) -> float:
+        now = time.time()
+        if not self._blocked:
+            return 0.0
+        return max(0.0, min(self._blocked.values()) - now) + 5
+
+    def status(self) -> list[dict]:
+        now = time.time()
+        return [
+            {
+                "proxy": p or "IP direto",
+                "disponivel": self._blocked.get(self._key(p), 0) <= now,
+                "libera_em": max(0, int(self._blocked.get(self._key(p), 0) - now)),
+            }
+            for p in self.proxies
+        ]
+
+    @property
+    def count(self) -> int:
+        return len([p for p in self.proxies if p])
+
+
 def _calcular_espera_rate_limit(msg: str) -> int:
     """Extrai o horário de liberação da mensagem 422 e retorna segundos a aguardar."""
     m = re.search(r'após as (\d{2}:\d{2}:\d{2})', msg)
@@ -847,7 +906,11 @@ async def processar_job_async(job_id: str, chaves: list[str]):
     log(job_id, "INFO", "Sessão obtida — processando chaves via API direta")
 
     # Fase 2 — consultar chaves pendentes sem abrir browser
-    rate_limiter = RateLimiter(max_requests=950, window_seconds=3600)
+    rotator = ProxyRotator(PROXY_FILE)
+    if rotator.count:
+        log(job_id, "INFO", f"{rotator.count} proxies carregados — capacidade efetiva: ~{rotator.count * 1000} req/hora")
+    else:
+        log(job_id, "INFO", "Sem proxies configurados — usando IP direto (limite: 1000 req/hora)")
 
     async def renovar_sessao(http_session) -> tuple[dict, str] | None:
         log(job_id, "INFO", "Abrindo navegador para renovação de CAPTCHA...")
@@ -860,6 +923,23 @@ async def processar_job_async(job_id: str, chaves: list[str]):
         log(job_id, "ERROR", "Não foi possível renovar sessão")
         return None
 
+    async def handle_rate_limit(resultado: dict, proxy: str | None) -> tuple[dict, str]:
+        """Troca proxy ao atingir rate limit. Se todos bloqueados, aguarda o mais próximo."""
+        reset_ts = time.time() + _calcular_espera_rate_limit(resultado["obs"])
+        rotator.mark_limited(proxy, reset_ts)
+        proximo = rotator.current()
+        if proximo != "TODOS_BLOQUEADOS":
+            log(job_id, "INFO", f"Rate limit em {proxy or 'IP direto'} — trocando para {proximo or 'IP direto'}")
+            return proximo, csrf_token
+        # Todos bloqueados — aguardar liberação do mais próximo
+        espera = rotator.seconds_to_next()
+        log(job_id, "WARN",
+            f"Todos os proxies atingiram o limite — aguardando {espera:.0f}s (~{espera/60:.1f} min)")
+        update_job(job_id, status="aguardando_rate_limit")
+        await asyncio.sleep(espera)
+        update_job(job_id, status="running")
+        return rotator.current(), csrf_token
+
     async with aiohttp.ClientSession(cookies=cookies) as http:
         for idx, chave in enumerate(chaves_pendentes):
             # Verificar cancelamento
@@ -870,22 +950,23 @@ async def processar_job_async(job_id: str, chaves: list[str]):
                 log(job_id, "INFO", "Job cancelado pelo usuário")
                 break
 
-            rate_limiter.record()
-            total_global = base_processadas + idx + 1
-            log(job_id, "INFO", f"Consultando {total_global}/{len(chaves)}: {chave[:10]}...{chave[-6:]}")
-            resultado, csrf_token = await consultar_via_api(http, chave, csrf_token, job_id)
-
-            # Rate limit atingido — aguardar até o horário de liberação e continuar
-            if resultado["status_nfe"] == "Erro Rate Limit":
-                espera = _calcular_espera_rate_limit(resultado["obs"])
-                log(job_id, "WARN",
-                    f"Limite de 1000 req/hora atingido — aguardando {espera}s (~{espera//60} min) para retomar automaticamente")
+            proxy = rotator.current()
+            if proxy == "TODOS_BLOQUEADOS":
+                espera = rotator.seconds_to_next()
+                log(job_id, "WARN", f"Todos os proxies bloqueados — aguardando {espera:.0f}s")
                 update_job(job_id, status="aguardando_rate_limit")
                 await asyncio.sleep(espera)
                 update_job(job_id, status="running")
-                rate_limiter.reset()
-                log(job_id, "INFO", "Retomando consultas após liberação do rate limit")
-                resultado, csrf_token = await consultar_via_api(http, chave, csrf_token, job_id)
+                proxy = rotator.current()
+
+            total_global = base_processadas + idx + 1
+            log(job_id, "INFO", f"Consultando {total_global}/{len(chaves)}: {chave[:10]}...{chave[-6:]}")
+            resultado, csrf_token = await consultar_via_api(http, chave, csrf_token, job_id, proxy=proxy)
+
+            # Rate limit — trocar proxy ou aguardar
+            if resultado["status_nfe"] == "Erro Rate Limit":
+                proxy, csrf_token = await handle_rate_limit(resultado, proxy)
+                resultado, csrf_token = await consultar_via_api(http, chave, csrf_token, job_id, proxy=proxy)
 
             # Renovar sessão se CAPTCHA expirou (renovações ilimitadas)
             if resultado["status_nfe"] == "Erro CAPTCHA":
@@ -893,7 +974,7 @@ async def processar_job_async(job_id: str, chaves: list[str]):
                 nova = await renovar_sessao(http)
                 if nova:
                     cookies, csrf_token = nova
-                    resultado, csrf_token = await consultar_via_api(http, chave, csrf_token, job_id)
+                    resultado, csrf_token = await consultar_via_api(http, chave, csrf_token, job_id, proxy=proxy)
                 else:
                     break
 
@@ -1210,6 +1291,16 @@ def listar_jobs():
 @app.route("/api/health")
 def health():
     return jsonify({"status": "ok", "version": "1.0.0"})
+
+@app.route("/api/proxies")
+def listar_proxies():
+    rotator = ProxyRotator(PROXY_FILE)
+    return jsonify({
+        "total": len(rotator.proxies),
+        "configurados": rotator.count,
+        "capacidade_hora": rotator.count * 1000 if rotator.count else 1000,
+        "proxies": rotator.status()
+    })
 
 from piscofins import bp as piscofins_bp
 app.register_blueprint(piscofins_bp)

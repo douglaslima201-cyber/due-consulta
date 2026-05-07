@@ -1,0 +1,14 @@
+# Lista de proxies para rotação automática — DUE Consulta
+#
+# Cada proxy adiciona +1.000 req/hora de capacidade.
+# Exemplo: 5 proxies = 5.000 req/hora
+#
+# Formatos aceitos (um por linha):
+#   http://host:porta
+#   http://usuario:senha@host:porta
+#   socks5://host:porta
+#
+# Linhas começando com # são ignoradas.
+# Sem proxies configurados, o sistema usa o IP direto (1.000 req/hora).
+#
+# --- Adicione seus proxies abaixo ---

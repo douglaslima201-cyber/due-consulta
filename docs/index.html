@@ -292,6 +292,7 @@ footer{position:relative;z-index:1;border-top:1px solid rgba(255,255,255,.06);pa
           <div class="s-item" onclick="sp('p-mon')"><span class="ni">📊</span>Monitorar</div>
           <div class="s-sec" style="margin-top:12px">Sessão</div>
           <div class="s-item" onclick="sp('p-hist');loadHist()"><span class="ni">🕐</span>Histórico</div>
+          <div class="s-item" onclick="sp('p-proxy');loadProxy()"><span class="ni">🔀</span>Proxies</div>
         </aside>
 
         <!-- MAIN -->
@@ -374,6 +375,23 @@ footer{position:relative;z-index:1;border-top:1px solid rgba(255,255,255,.06);pa
                 <thead><tr><th>Chave NF-e</th><th>Status</th><th>Número DUE</th><th>Consultado em</th></tr></thead>
                 <tbody id="rtb"></tbody>
               </table>
+            </div>
+          </div>
+
+          <!-- PROXIES -->
+          <div class="panel" id="p-proxy">
+            <h2 style="font-family:var(--display);font-size:17px;font-weight:700;margin-bottom:5px;letter-spacing:-.02em">Proxy Rotation</h2>
+            <p style="font-size:13px;color:var(--g2);margin-bottom:18px">Configure proxies em <code style="font-family:var(--mono);color:var(--cyan)">backend/proxies.txt</code> para multiplicar a capacidade de consultas.</p>
+            <div id="proxy-cap" style="background:rgba(249,115,22,.06);border:1px solid rgba(249,115,22,.2);border-radius:10px;padding:14px 18px;margin-bottom:18px;font-size:13px;">
+              <div style="font-weight:700;color:var(--cyan);margin-bottom:4px">Carregando...</div>
+            </div>
+            <div id="proxy-list" style="display:flex;flex-direction:column;gap:6px;"></div>
+            <div style="margin-top:18px;background:#03080F;border:1px solid rgba(249,115,22,.1);border-radius:8px;padding:14px;font-family:var(--mono);font-size:11px;color:#6D97C0;line-height:1.9">
+              <div style="color:var(--g3);margin-bottom:6px"># backend/proxies.txt — um por linha:</div>
+              <div>http://host:porta</div>
+              <div>http://usuario:senha@host:porta</div>
+              <div>socks5://host:porta</div>
+              <div style="color:var(--g3);margin-top:6px"># 5 proxies = ~5.000 req/hora</div>
             </div>
           </div>
 
@@ -627,6 +645,25 @@ async function loadHist(){
       return`<div style="display:flex;align-items:center;gap:14px;padding:13px 0;border-bottom:1px solid rgba(255,255,255,.05)"><div style="flex:1"><div style="font-size:13px;font-weight:500">Job <code style="font-size:11px;color:var(--g3)">${j.id.slice(0,8)}</code></div><div style="font-size:11px;color:var(--g3);font-family:var(--mono)">${j.processed}/${j.total} · ${p}% · ${(j.created_at||'').slice(0,16).replace('T',' ')}</div></div>${bdg}${j.status==='done'?`<button class="btn btn-g" style="padding:5px 11px;font-size:11px" onclick="window.open('${API}/download/${j.id}','_blank')">⬇ Baixar</button>`:''}${podeRetomar?`<button class="btn btn-c" style="padding:5px 11px;font-size:11px" onclick="dretomar('${j.id}')">▶ Retomar</button>`:''}</div>`;
     }).join('');
   }catch{c.innerHTML=`<div style="color:var(--red);font-size:13px;text-align:center;padding:32px">Backend offline. Execute <code>python main.py</code></div>`;}
+}
+async function loadProxy(){
+  try{
+    const r=await fetch(`${API}/proxies`);const d=await r.json();
+    const cap=document.getElementById('proxy-cap');
+    const n=d.configurados;
+    cap.innerHTML=n
+      ?`<div style="font-weight:700;color:var(--cyan);margin-bottom:4px">🔀 ${n} proxy${n>1?'s':''} configurado${n>1?'s':''}</div><div style="color:var(--g2)">Capacidade: ~<strong style="color:var(--white)">${d.capacidade_hora.toLocaleString()}</strong> req/hora</div>`
+      :`<div style="font-weight:700;color:var(--yellow);margin-bottom:4px">⚠ Nenhum proxy configurado</div><div style="color:var(--g2)">Usando IP direto — limite: <strong style="color:var(--white)">1.000 req/hora</strong></div>`;
+    const list=document.getElementById('proxy-list');
+    list.innerHTML=d.proxies.filter(p=>p.proxy!=='IP direto').map(p=>`
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:8px">
+        <span style="font-size:14px">${p.disponivel?'🟢':'🔴'}</span>
+        <code style="font-size:11px;color:var(--g2);flex:1">${e(p.proxy)}</code>
+        <span style="font-family:var(--mono);font-size:10px;color:${p.disponivel?'var(--green)':'var(--yellow)'}">
+          ${p.disponivel?'Disponível':`Bloqueado por ${p.libera_em}s`}
+        </span>
+      </div>`).join('');
+  }catch{document.getElementById('proxy-cap').innerHTML='<div style="color:var(--red)">Backend offline.</div>';}
 }
 async function dretomar(id){
   if(!confirm(`Retomar job ${id.slice(0,8)}? O sistema continuará das chaves ainda não processadas.`))return;
