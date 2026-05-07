@@ -607,9 +607,10 @@ function updTable(rows){
   }).join('');
 }
 function updBadge(s){
-  const m={running:'<span class="bdg b-r pulse">● Executando</span>',done:'<span class="bdg b-d">✓ Concluído</span>',pending:'<span class="bdg b-w">⏳ Aguardando</span>',cancelled:'<span class="bdg b-e">✗ Cancelado</span>'};
+  const m={running:'<span class="bdg b-r pulse">● Executando</span>',done:'<span class="bdg b-d">✓ Concluído</span>',pending:'<span class="bdg b-w">⏳ Aguardando</span>',cancelled:'<span class="bdg b-e">✗ Cancelado</span>',aguardando_rate_limit:'<span class="bdg b-w pulse">⏸ Limite — aguardando liberação</span>'};
   document.getElementById('jbdg').innerHTML=m[s]||'';
 }
+
 async function dcancel(){if(!jobId||!confirm('Cancelar?'))return;await fetch(`${API}/cancelar/${jobId}`,{method:'POST'});clearInterval(pollT);document.getElementById('bcan').style.display='none';document.getElementById('bst').style.display='inline-flex';}
 function ddl(){if(jobId)window.open(`${API}/download/${jobId}`,'_blank');}
 

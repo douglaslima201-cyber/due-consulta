@@ -710,6 +710,13 @@ async def consultar_via_api(
                     resultado["obs"] = f"HTTP 403: {msg[:150]}"
                 return resultado, novo_csrf
 
+            if resp.status == 422:
+                msg = body.get("message", "") if isinstance(body, dict) else str(body)
+                resultado["status_nfe"] = "Erro Rate Limit"
+                resultado["obs"] = msg[:400]
+                log(job_id, "WARN", f"HTTP 422 rate limit para {chave[:10]}...: {msg[:200]}")
+                return resultado, novo_csrf
+
             if resp.status != 200:
                 detalhe = str(body)[:300] if body else ""
                 log(job_id, "WARN", f"HTTP {resp.status} para {chave[:10]}...: {detalhe}")
@@ -766,6 +773,19 @@ async def consultar_via_api(
         return resultado, csrf_token
 
     return resultado, novo_csrf
+
+
+def _calcular_espera_rate_limit(msg: str) -> int:
+    """Extrai o horário de liberação da mensagem 422 e retorna segundos a aguardar."""
+    m = re.search(r'após as (\d{2}:\d{2}:\d{2})', msg)
+    if m:
+        h, mi, s = map(int, m.group(1).split(':'))
+        agora = datetime.now()
+        target = agora.replace(hour=h, minute=mi, second=s, microsecond=0)
+        if target <= agora:
+            target = target.replace(day=agora.day + 1)
+        return max(int((target - agora).total_seconds()) + 10, 0)
+    return 3600  # fallback: aguardar 1 hora
 
 
 class RateLimiter:
@@ -835,8 +855,7 @@ async def processar_job_async(job_id: str, chaves: list[str]):
         if nova:
             c, t = nova
             http_session.cookie_jar.update_cookies(c)
-            rate_limiter.reset()
-            log(job_id, "INFO", "Sessão renovada — contador de requisições zerado")
+            log(job_id, "INFO", "Sessão renovada com sucesso")
             return c, t
         log(job_id, "ERROR", "Não foi possível renovar sessão")
         return None
@@ -851,22 +870,26 @@ async def processar_job_async(job_id: str, chaves: list[str]):
                 log(job_id, "INFO", "Job cancelado pelo usuário")
                 break
 
-            # Renovar sessão proativamente ao atingir o limite — nova sessão = contador zerado no portal
-            if rate_limiter.near_limit():
-                log(job_id, "WARN", f"Limite de 950 req/hora atingido — renovando sessão para continuar")
-                nova = await renovar_sessao(http)
-                if not nova:
-                    break
-                cookies, csrf_token = nova
-
             rate_limiter.record()
             total_global = base_processadas + idx + 1
             log(job_id, "INFO", f"Consultando {total_global}/{len(chaves)}: {chave[:10]}...{chave[-6:]}")
             resultado, csrf_token = await consultar_via_api(http, chave, csrf_token, job_id)
 
-            # Renovar sessão se CAPTCHA expirou inesperadamente (renovações ilimitadas)
+            # Rate limit atingido — aguardar até o horário de liberação e continuar
+            if resultado["status_nfe"] == "Erro Rate Limit":
+                espera = _calcular_espera_rate_limit(resultado["obs"])
+                log(job_id, "WARN",
+                    f"Limite de 1000 req/hora atingido — aguardando {espera}s (~{espera//60} min) para retomar automaticamente")
+                update_job(job_id, status="aguardando_rate_limit")
+                await asyncio.sleep(espera)
+                update_job(job_id, status="running")
+                rate_limiter.reset()
+                log(job_id, "INFO", "Retomando consultas após liberação do rate limit")
+                resultado, csrf_token = await consultar_via_api(http, chave, csrf_token, job_id)
+
+            # Renovar sessão se CAPTCHA expirou (renovações ilimitadas)
             if resultado["status_nfe"] == "Erro CAPTCHA":
-                log(job_id, "WARN", "Sessão expirou inesperadamente — renovando CAPTCHA...")
+                log(job_id, "WARN", "Sessão expirou — renovando CAPTCHA...")
                 nova = await renovar_sessao(http)
                 if nova:
                     cookies, csrf_token = nova
