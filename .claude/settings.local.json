@@ -38,7 +38,8 @@
       "Bash(taskkill /PID 13796 /F)",
       "Bash(taskkill /PID 22820 /F)",
       "Bash(python -c \"import flask, playwright; print\\('dependencias OK'\\)\")",
-      "Bash(findstr \":5000 \")"
+      "Bash(findstr \":5000 \")",
+      "Bash(findstr \"LISTENING\")"
     ]
   },
   "hooks": {
