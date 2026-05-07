@@ -11,6 +11,7 @@ import sqlite3
 import threading
 import time
 import uuid
+from collections import deque
 from datetime import datetime
 from pathlib import Path
 
@@ -767,6 +768,32 @@ async def consultar_via_api(
     return resultado, novo_csrf
 
 
+class RateLimiter:
+    """Janela deslizante: pausa automaticamente ao atingir o limite de req/hora."""
+
+    def __init__(self, max_requests: int = 950, window_seconds: int = 3600):
+        self.max_requests = max_requests
+        self.window_seconds = window_seconds
+        self._timestamps: deque[float] = deque()
+
+    async def acquire(self, job_id: str | None = None):
+        now = time.time()
+        while self._timestamps and now - self._timestamps[0] >= self.window_seconds:
+            self._timestamps.popleft()
+
+        if len(self._timestamps) >= self.max_requests:
+            espera = self.window_seconds - (now - self._timestamps[0]) + 1
+            if job_id:
+                log(job_id, "WARN",
+                    f"Limite de {self.max_requests} req/hora atingido — aguardando {espera:.0f}s (~{espera/60:.1f} min)")
+            await asyncio.sleep(espera)
+            now = time.time()
+            while self._timestamps and now - self._timestamps[0] >= self.window_seconds:
+                self._timestamps.popleft()
+
+        self._timestamps.append(time.time())
+
+
 async def processar_job_async(job_id: str, chaves: list[str]):
     import aiohttp
 
@@ -784,6 +811,7 @@ async def processar_job_async(job_id: str, chaves: list[str]):
 
     # Fase 2 — consultar todas as chaves sem abrir browser
     captcha_expirou = False
+    rate_limiter = RateLimiter(max_requests=950, window_seconds=3600)
     async with aiohttp.ClientSession(cookies=cookies) as http:
         for idx, chave in enumerate(chaves):
             # Verificar cancelamento
@@ -794,6 +822,7 @@ async def processar_job_async(job_id: str, chaves: list[str]):
                 log(job_id, "INFO", "Job cancelado pelo usuário")
                 break
 
+            await rate_limiter.acquire(job_id)
             log(job_id, "INFO", f"Consultando {idx+1}/{len(chaves)}: {chave[:10]}...{chave[-6:]}")
             resultado, csrf_token = await consultar_via_api(http, chave, csrf_token, job_id)
 
