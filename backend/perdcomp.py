@@ -53,7 +53,6 @@ async def _ecac_download_async(job_id: str, periodo_ini: str, periodo_fim: str):
             )
             ctx = await browser.new_context(
                 accept_downloads=True,
-                downloads_path=str(dest),
                 viewport={"width": 1280, "height": 900},
             )
             _elog(job_id, "Nova janela do Chrome aberta para o eCAC.")
