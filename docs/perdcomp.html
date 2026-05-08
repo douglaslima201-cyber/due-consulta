@@ -973,13 +973,17 @@ function renderRelatorio(){
 const ECAC_SCRIPT = `(async function(){
   const API='http://localhost:5000/api/perdcomp';
   await fetch(API+'/ecac/limpar-capturas',{method:'POST'});
-  const KW=['imprimir','print','impressao','impressão','printer'];
   const getBotoes=()=>{
+    const icons=[...document.querySelectorAll('i.icon-print,i[class*="icon-print"]')];
+    if(icons.length>0) return icons.map(i=>i.parentElement&&['A','BUTTON'].includes(i.parentElement.tagName)?i.parentElement:i);
     const ths=[...document.querySelectorAll('th,td.headerRow')];
-    const th=ths.find(h=>KW.some(k=>h.textContent.trim().toLowerCase().startsWith(k)));
-    if(th){const idx=th.cellIndex,tab=th.closest('table');if(tab&&idx>=0){const b=[];[...tab.querySelectorAll('tr td:nth-child('+(idx+1)+')')].forEach(td=>{const el=td.querySelector('a,button,img,input[type=button],input[type=image]');if(el)b.push(el);});if(b.length)return b;}}
-    const chk=el=>{const s=[el.src,el.title,el.alt,el.className,el.getAttribute&&el.getAttribute('onclick')||'',el.href||'',el.textContent.trim()].join(' ').toLowerCase();const p=el.parentElement;const ps=p?[p.title||'',p.getAttribute&&p.getAttribute('onclick')||''].join(' ').toLowerCase():'';return KW.some(k=>s.includes(k)||ps.includes(k));};
-    return[...document.querySelectorAll('img,button,a,input[type=button],input[type=image]')].filter(chk);
+    const th=ths.find(h=>['imprimir','print'].some(k=>h.textContent.trim().toLowerCase().startsWith(k)));
+    if(th){const idx=th.cellIndex,tab=th.closest('table');if(tab&&idx>=0){const b=[];[...tab.querySelectorAll('tr td:nth-child('+(idx+1)+')')].forEach(td=>{const el=td.querySelector('a,button,img,input[type=button]');if(el)b.push(el);});if(b.length)return b;}}
+    const kw=['imprimir','print','impressao','printer'];
+    return[...document.querySelectorAll('img,button,a,i,input[type=button]')].filter(el=>{
+      const s=[el.className,el.id,el.title,el.alt||'',el.src||'',el.getAttribute('ng-click')||'',el.getAttribute('aria-label')||''].join(' ').toLowerCase();
+      return kw.some(k=>s.includes(k));
+    });
   };
   const botoes=getBotoes();
   if(!botoes.length){alert('Nenhum botão de impressão encontrado. Verifique se está na lista de Documentos Entregues.');return;}
