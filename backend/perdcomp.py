@@ -57,24 +57,12 @@ async def _ecac_download_async(job_id: str, periodo_ini: str, periodo_fim: str):
         _elog(job_id, "Chrome não encontrado. Verifique a instalação.")
         job["status"] = "erro"; return
 
-    # Encerrar Chrome e limpar arquivos de lock do perfil
-    _elog(job_id, "Encerrando Chrome e limpando locks do perfil...")
-    subprocess.run(["taskkill", "/F", "/IM", "chrome.exe"],
-                   capture_output=True, text=True)
-    await asyncio.sleep(2)
+    import tempfile, shutil
 
-    # Remover lock files que impedem Chrome de usar o perfil
-    for lock in [
-        Path(_CHROME_PROFILE) / "lockfile",
-        Path(_CHROME_PROFILE) / "SingletonLock",
-        Path(_CHROME_PROFILE) / "SingletonSocket",
-        Path(_CHROME_PROFILE) / "Default" / "LOCK",
-    ]:
-        try:
-            lock.unlink(missing_ok=True)
-        except Exception:
-            pass
-    await asyncio.sleep(1)
+    # Usar perfil temporário limpo — evita conflito de lock com Chrome aberto
+    # O certificado A3 fica no token de hardware/Windows, não no perfil
+    temp_profile = tempfile.mkdtemp(prefix="ecac_tmp_")
+    _elog(job_id, f"Perfil temporário criado: {temp_profile}")
 
     proc = None
     async with async_playwright() as p:
@@ -82,10 +70,11 @@ async def _ecac_download_async(job_id: str, periodo_ini: str, periodo_fim: str):
             proc = subprocess.Popen([
                 chrome_exe,
                 f"--remote-debugging-port={_CDP_PORT}",
-                f"--user-data-dir={_CHROME_PROFILE}",
+                f"--user-data-dir={temp_profile}",
                 "--no-first-run",
                 "--no-default-browser-check",
                 "--start-maximized",
+                "--disable-extensions",
                 _ECAC_URL,
             ])
             _elog(job_id, "Chrome aberto. Aguardando porta de debug ficar disponível...")
@@ -292,6 +281,10 @@ async def _ecac_download_async(job_id: str, periodo_ini: str, periodo_fim: str):
         await browser.disconnect()
         if proc:
             proc.terminate()
+        try:
+            shutil.rmtree(temp_profile, ignore_errors=True)
+        except Exception:
+            pass
 
 def _ecac_thread(job_id: str, periodo_ini: str, periodo_fim: str):
     asyncio.run(_ecac_download_async(job_id, periodo_ini, periodo_fim))
@@ -785,6 +778,33 @@ def health():
                     "chrome_disponivel": not _chrome_bloqueado()})
 
 # ─── ROTAS ECAC ──────────────────────────────────────────────────────────────
+
+@bp.route('/api/perdcomp/ecac/iniciar', methods=['POST'])
+def ecac_iniciar():
+    data = request.json or {}
+    periodo_ini = data.get("periodo_ini", "").strip()
+    periodo_fim = data.get("periodo_fim", "").strip()
+    if not periodo_ini or not periodo_fim:
+        return jsonify({"error": "Informe o período inicial e final (MM/AAAA)."}), 400
+    job_id = str(uuid.uuid4())
+    _ECAC_JOBS[job_id] = {"status": "iniciando", "log": [], "arquivos": []}
+    threading.Thread(target=_ecac_thread, args=(job_id, periodo_ini, periodo_fim), daemon=True).start()
+    return jsonify({"job_id": job_id})
+
+@bp.route('/api/perdcomp/ecac/status/<job_id>')
+def ecac_status(job_id):
+    job = _ECAC_JOBS.get(job_id)
+    if not job:
+        return jsonify({"error": "Job não encontrado"}), 404
+    return jsonify(job)
+
+@bp.route('/api/perdcomp/ecac/confirmar/<job_id>', methods=['POST'])
+def ecac_confirmar(job_id):
+    job = _ECAC_JOBS.get(job_id)
+    if not job:
+        return jsonify({"error": "Job não encontrado"}), 404
+    job["usuario_confirmou"] = True
+    return jsonify({"ok": True})
 
 @bp.route('/api/perdcomp/ecac/pasta')
 def ecac_pasta():

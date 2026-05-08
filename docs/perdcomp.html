@@ -361,9 +361,37 @@ td.name{font-family:var(--body);font-size:12px;color:var(--g2);max-width:180px;o
 
     <!-- BAIXAR ECAC -->
     <div class="panel" id="p-ecac">
-      <div class="sec-label">Importar do eCAC</div>
-      <h2 class="sec-title">Importar Declarações do eCAC</h2>
-      <p class="sec-sub">Baixe os PDFs do eCAC normalmente no seu Chrome e salve na pasta indicada. O sistema analisa tudo com um clique.</p>
+      <div class="sec-label">Download eCAC</div>
+      <h2 class="sec-title">Declarações do eCAC</h2>
+      <p class="sec-sub">Download automático em massa ou importação manual via pasta.</p>
+
+      <!-- Download automático -->
+      <div class="card" style="margin-bottom:16px;border-color:rgba(249,115,22,.2)">
+        <div class="card-title">⚡ Download Automático em Massa</div>
+        <div style="font-size:13px;color:var(--g2);margin-bottom:14px">O sistema abre um Chrome limpo, você faz login com certificado, e o download é automático. <strong style="color:var(--white)">Chrome pode ficar aberto normalmente.</strong></div>
+        <div class="form-grid" style="margin-bottom:16px">
+          <div class="fg"><label>Período inicial (MM/AAAA)</label><input type="text" id="ecac-ini" placeholder="01/2024" maxlength="7"/></div>
+          <div class="fg"><label>Período final (MM/AAAA)</label><input type="text" id="ecac-fim" placeholder="12/2024" maxlength="7"/></div>
+        </div>
+        <div class="btn-row" style="margin-top:0">
+          <button class="btn btn-p" id="btn-ecac-start" onclick="ecacIniciar()">⬇ Iniciar Download Automático</button>
+          <button class="btn btn-g" id="btn-ecac-confirmou" onclick="ecacConfirmar()" style="display:none">✅ Já estou na lista de PER/DCOMPs</button>
+        </div>
+        <div id="ecac-status-box" style="display:none;margin-top:16px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+            <span id="ecac-status-ic" style="font-size:20px">⏳</span>
+            <span style="font-weight:600;font-size:13px" id="ecac-status-txt">Iniciando...</span>
+          </div>
+          <div class="term" id="ecac-log" style="max-height:180px"></div>
+          <div id="ecac-arquivos-box" style="display:none;margin-top:12px">
+            <div style="font-size:12px;color:var(--green);font-weight:600;margin-bottom:8px" id="ecac-arquivos-count"></div>
+            <div id="ecac-arquivos-list"></div>
+            <div class="btn-row"><button class="btn btn-p btn-sm" onclick="ecacAnalisarJob()">🔍 Analisar arquivos baixados</button></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="text-align:center;color:var(--g3);font-size:12px;margin:8px 0">— ou —</div>
 
       <!-- Passo 1: Pasta -->
       <div class="card" style="margin-bottom:16px">
@@ -934,6 +962,64 @@ function renderRelatorio(){
     <div style="font-size:11px;color:var(--g4);padding:12px 0">
       Relatório gerado em ${new Date().toLocaleString('pt-BR')} · PER/DCOMP Analyzer — Rumo Brasil · Uso interno · Caráter auxiliar — não substitui análise especializada.
     </div>`;
+}
+
+// ─── ECAC AUTOMÁTICO ─────────────────────────────────────────────────────────
+let _ecacJobId=null, _ecacPoll=null;
+const ECAC_IC={iniciando:'⏳',aguardando_login:'🔐',navegando:'🔍',aguardando_navegacao:'🖱',baixando:'⬇',concluido:'✅',sem_arquivos:'⚠',erro:'❌'};
+
+async function ecacIniciar(){
+  const ini=document.getElementById('ecac-ini').value.trim();
+  const fim=document.getElementById('ecac-fim').value.trim();
+  if(!/^\d{2}\/\d{4}$/.test(ini)||!/^\d{2}\/\d{4}$/.test(fim)){alert('Formato: MM/AAAA');return;}
+  document.getElementById('btn-ecac-start').disabled=true;
+  document.getElementById('ecac-status-box').style.display='block';
+  document.getElementById('ecac-arquivos-box').style.display='none';
+  try{
+    const r=await fetch(`${API}/ecac/iniciar`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({periodo_ini:ini,periodo_fim:fim})});
+    const d=await r.json(); if(!r.ok) throw new Error(d.error);
+    _ecacJobId=d.job_id;
+    _ecacPoll=setInterval(ecacPoll,2500);
+  }catch(err){alert('Erro: '+err.message);document.getElementById('btn-ecac-start').disabled=false;}
+}
+async function ecacPoll(){
+  if(!_ecacJobId) return;
+  try{
+    const r=await fetch(`${API}/ecac/status/${_ecacJobId}`); const d=await r.json();
+    const s=d.status||'iniciando';
+    document.getElementById('ecac-status-ic').textContent=ECAC_IC[s]||'⏳';
+    document.getElementById('ecac-status-txt').textContent=s.replace(/_/g,' ');
+    const log=document.getElementById('ecac-log');
+    log.innerHTML=(d.log||[]).slice(-20).map(l=>`<div class="tr"><span class="tm">${e(l)}</span></div>`).join('');
+    log.scrollTop=9999;
+    document.getElementById('btn-ecac-confirmou').style.display=s==='aguardando_navegacao'?'inline-flex':'none';
+    if(d.arquivos&&d.arquivos.length){
+      document.getElementById('ecac-arquivos-box').style.display='block';
+      document.getElementById('ecac-arquivos-count').textContent=`${d.arquivos.length} arquivo(s) baixado(s)`;
+      document.getElementById('ecac-arquivos-list').innerHTML=d.arquivos.map(f=>`<div class="fitem"><span>📄</span><span class="fitem-name">${e(f)}</span></div>`).join('');
+    }
+    if(['concluido','sem_arquivos','erro'].includes(s)){
+      clearInterval(_ecacPoll);_ecacPoll=null;
+      document.getElementById('btn-ecac-start').disabled=false;
+      if(s==='concluido') ecacAtualizarPasta();
+    }
+  }catch{}
+}
+async function ecacConfirmar(){
+  if(!_ecacJobId) return;
+  await fetch(`${API}/ecac/confirmar/${_ecacJobId}`,{method:'POST'});
+  document.getElementById('btn-ecac-confirmou').style.display='none';
+}
+async function ecacAnalisarJob(){
+  if(!_ecacJobId) return;
+  const btn=document.querySelector('#ecac-arquivos-box .btn-p');
+  btn.disabled=true; btn.textContent='⏳ Analisando...';
+  try{
+    const r=await fetch(`${API}/ecac/analisar`,{method:'POST'});
+    const d=await r.json(); if(!r.ok) throw new Error(d.error);
+    DADOS=d; renderTudo(); sp('p-dash');
+  }catch(err){alert('Erro: '+err.message);}
+  finally{btn.disabled=false; btn.textContent='🔍 Analisar arquivos baixados';}
 }
 
 // ─── ECAC PASTA ───────────────────────────────────────────────────────────────
