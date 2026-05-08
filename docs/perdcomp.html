@@ -233,7 +233,7 @@ td.name{font-family:var(--body);font-size:12px;color:var(--g2);max-width:180px;o
     <div class="s-item" onclick="sp('p-registros')"><span>📋</span>Registros <span class="s-badge sb-ok" id="sb-reg" style="display:none">0</span></div>
     <div class="s-item" onclick="sp('p-alertas')"><span>🚨</span>Alertas <span class="s-badge sb-red" id="sb-alt" style="display:none">0</span></div>
     <div class="s-item" onclick="sp('p-per');renderPer(null)"><span>🔗</span>Análise por PER <span class="s-badge sb-ok" id="sb-per" style="display:none">0</span></div>
-    <div class="s-item" onclick="sp('p-ecac');ecacAtualizarPasta()"><span>⬇</span>Importar eCAC</div>
+    <div class="s-item" onclick="sp('p-ecac');ecacAtualizarPasta()"><span>⬇</span>Download eCAC</div>
     <div class="s-sec" style="margin-top:12px">Exportar</div>
     <div class="s-item" onclick="sp('p-relatorio')"><span>📄</span>Relatório</div>
   </aside>
@@ -361,14 +361,19 @@ td.name{font-family:var(--body);font-size:12px;color:var(--g2);max-width:180px;o
 
     <!-- BAIXAR ECAC -->
     <div class="panel" id="p-ecac">
-      <div class="sec-label">Download eCAC</div>
-      <h2 class="sec-title">Declarações do eCAC</h2>
-      <p class="sec-sub">Download automático em massa ou importação manual via pasta.</p>
+      <div class="sec-label">Automação eCAC</div>
+      <h2 class="sec-title">Download Automático de Declarações</h2>
+      <p class="sec-sub">Faça login no eCAC no seu Chrome, clique em iniciar — o sistema usa sua sessão para baixar todas as declarações do período automaticamente.</p>
 
       <!-- Download automático -->
       <div class="card" style="margin-bottom:16px;border-color:rgba(249,115,22,.2)">
-        <div class="card-title">⚡ Download Automático em Massa</div>
-        <div style="font-size:13px;color:var(--g2);margin-bottom:14px">O sistema abre um Chrome limpo, você faz login com certificado, e o download é automático. <strong style="color:var(--white)">Chrome pode ficar aberto normalmente.</strong></div>
+        <div class="card-title">⚡ Como funciona</div>
+        <div style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--g2);margin-bottom:16px;line-height:1.7">
+          <div><span style="color:var(--orange);font-family:var(--mono);margin-right:8px">01</span>Faça login no eCAC no seu Chrome normalmente (certificado A1)</div>
+          <div><span style="color:var(--orange);font-family:var(--mono);margin-right:8px">02</span>Informe o período e clique em <strong style="color:var(--white)">"Iniciar Download"</strong></div>
+          <div><span style="color:var(--orange);font-family:var(--mono);margin-right:8px">03</span>O sistema lê sua sessão do Chrome e abre automaticamente a lista de PER/DCOMPs</div>
+          <div><span style="color:var(--orange);font-family:var(--mono);margin-right:8px">04</span>Os PDFs são baixados e ficam prontos para análise — clique em <strong style="color:var(--white)">"Analisar"</strong></div>
+        </div>
         <div class="form-grid" style="margin-bottom:16px">
           <div class="fg"><label>Período inicial (MM/AAAA)</label><input type="text" id="ecac-ini" placeholder="01/2024" maxlength="7"/></div>
           <div class="fg"><label>Período final (MM/AAAA)</label><input type="text" id="ecac-fim" placeholder="12/2024" maxlength="7"/></div>
@@ -391,12 +396,12 @@ td.name{font-family:var(--body);font-size:12px;color:var(--g2);max-width:180px;o
         </div>
       </div>
 
-      <div style="text-align:center;color:var(--g3);font-size:12px;margin:8px 0">— ou —</div>
-
-      <!-- Passo 1: Pasta -->
-      <div class="card" style="margin-bottom:16px">
-        <div class="card-title">📁 Passo 1 — Pasta de entrada</div>
-        <div style="font-size:13px;color:var(--g2);margin-bottom:14px">Salve os PDFs baixados do eCAC nesta pasta:</div>
+      <div style="margin-top:24px;border-top:1px solid rgba(255,255,255,.06);padding-top:20px">
+        <div style="font-size:11px;font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--g3);margin-bottom:12px">Fallback — download manual</div>
+        <div style="font-size:12px;color:var(--g3);margin-bottom:12px">Se preferir baixar manualmente do eCAC, salve os PDFs na pasta abaixo e clique em "Analisar PDFs da pasta".</div>
+        <div class="card" style="margin-bottom:16px;background:rgba(255,255,255,.02)">
+        <div class="card-title" style="font-size:13px;color:var(--g3)">📁 Pasta de entrada manual</div>
+        <div style="font-size:13px;color:var(--g2);margin-bottom:14px">Salve os PDFs do eCAC nesta pasta:</div>
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
           <code id="ecac-pasta-path" style="font-family:var(--mono);font-size:12px;color:var(--orange);background:rgba(249,115,22,.06);border:1px solid rgba(249,115,22,.15);padding:10px 16px;border-radius:var(--r);flex:1">Carregando...</code>
           <button class="btn btn-g btn-sm" onclick="ecacCopiarPasta()">📋 Copiar</button>
@@ -406,27 +411,12 @@ td.name{font-family:var(--body);font-size:12px;color:var(--g2);max-width:180px;o
         <div id="ecac-pasta-lista" style="margin-top:10px;display:flex;flex-direction:column;gap:6px"></div>
       </div>
 
-      <!-- Passo 2: Como baixar -->
-      <div class="card" style="margin-bottom:16px;border-color:rgba(59,130,246,.2)">
-        <div class="card-title" style="color:var(--blue-l)">ℹ Passo 2 — Como baixar do eCAC</div>
-        <div style="display:flex;flex-direction:column;gap:8px;font-size:13px;color:var(--g2);line-height:1.7">
-          <div><span style="color:var(--orange);font-family:var(--mono);margin-right:8px">01</span>Acesse <strong>cav.receita.fazenda.gov.br/eCAC</strong> no Chrome com seu certificado digital</div>
-          <div><span style="color:var(--orange);font-family:var(--mono);margin-right:8px">02</span>Navegue até <strong>Restituição, Compensação, Ressarcimento → PER/DCOMP Web</strong></div>
-          <div><span style="color:var(--orange);font-family:var(--mono);margin-right:8px">03</span>Filtre pelo período desejado e abra cada declaração</div>
-          <div><span style="color:var(--orange);font-family:var(--mono);margin-right:8px">04</span>Use <strong>Ctrl+P → Salvar como PDF</strong> (ou o botão de download do eCAC) e salve na pasta acima</div>
-          <div><span style="color:var(--orange);font-family:var(--mono);margin-right:8px">05</span>Volte aqui e clique em <strong>"Analisar PDFs da pasta"</strong></div>
-        </div>
-      </div>
-
-      <!-- Passo 3: Analisar -->
-      <div class="card">
-        <div class="card-title">🔍 Passo 3 — Analisar</div>
-        <div style="font-size:13px;color:var(--g2);margin-bottom:16px">Quando os PDFs estiverem na pasta, clique para processar.</div>
         <div class="btn-row" style="margin-top:0">
-          <button class="btn btn-p" id="btn-ecac-analisar" onclick="ecacAnalisarPasta()">🔍 Analisar PDFs da pasta</button>
-          <button class="btn btn-g btn-sm" onclick="ecacLimparPasta()" style="color:#FCA5A5">🗑 Limpar pasta</button>
+          <button class="btn btn-g btn-sm" id="btn-ecac-analisar" onclick="ecacAnalisarPasta()">🔍 Analisar PDFs da pasta</button>
+          <button class="btn btn-g btn-sm" onclick="ecacLimparPasta()" style="color:#FCA5A5">🗑 Limpar</button>
         </div>
         <div id="ecac-analisar-err" style="display:none;margin-top:12px;padding:10px 14px;background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.2);border-radius:var(--r);font-size:12px;color:#FCA5A5"></div>
+        </div>
       </div>
     </div>
 
