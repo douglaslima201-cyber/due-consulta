@@ -26,38 +26,77 @@ _ECAC_DIR  = Path(__file__).parent / "ecac_downloads"
 _ECAC_DIR.mkdir(exist_ok=True)
 _ECAC_URL  = "https://cav.receita.fazenda.gov.br/eCAC/"
 _CHROME_PROFILE = os.path.expandvars(r"%LOCALAPPDATA%\Google\Chrome\User Data")
+_CDP_PORT = 9223
 
 def _elog(job_id: str, msg: str):
     _ECAC_JOBS[job_id]["log"].append(msg)
     print(f"[ECAC][{job_id[:8]}] {msg}")
 
-def _chrome_bloqueado() -> bool:
-    lock = Path(_CHROME_PROFILE) / "lockfile"
-    return lock.exists()
+def _encontrar_chrome() -> str | None:
+    candidatos = [
+        r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+        r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+        os.path.expandvars(r"%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe"),
+    ]
+    for c in candidatos:
+        if Path(c).exists():
+            return c
+    return None
 
 async def _ecac_download_async(job_id: str, periodo_ini: str, periodo_fim: str):
+    import subprocess
     from playwright.async_api import async_playwright, TimeoutError as PwTimeout
 
     job = _ECAC_JOBS[job_id]
     dest = _ECAC_DIR / job_id
     dest.mkdir(exist_ok=True)
 
+    # ── Lançar Chrome NATIVO (sem flags Playwright) para certificado A3 ───────
+    chrome_exe = _encontrar_chrome()
+    if not chrome_exe:
+        _elog(job_id, "Chrome não encontrado. Verifique a instalação.")
+        job["status"] = "erro"; return
+
+    proc = None
     async with async_playwright() as p:
-        # ── Abrir Chrome com perfil do usuário (necessário para certificado A3) ─
         try:
-            ctx = await p.chromium.launch_persistent_context(
-                user_data_dir=_CHROME_PROFILE,
-                channel="chrome",
-                headless=False,
-                accept_downloads=True,
-                args=["--disable-blink-features=AutomationControlled",
-                      "--start-maximized"],
-                viewport=None,
-            )
-            _elog(job_id, "Chrome aberto com perfil do usuário (certificado disponível).")
+            proc = subprocess.Popen([
+                chrome_exe,
+                f"--remote-debugging-port={_CDP_PORT}",
+                f"--user-data-dir={_CHROME_PROFILE}",
+                "--no-first-run",
+                "--no-default-browser-check",
+                "--start-maximized",
+                _ECAC_URL,
+            ])
+            _elog(job_id, "Chrome aberto. Faça login com seu certificado digital.")
+            job["status"] = "aguardando_login"
         except Exception as exc:
-            _elog(job_id, f"Erro ao abrir Chrome: {exc}. Verifique se o Chrome está completamente fechado.")
+            _elog(job_id, f"Erro ao abrir Chrome: {exc}")
             job["status"] = "erro"; return
+
+        # Aguardar Chrome inicializar e CDP ficar disponível
+        await asyncio.sleep(4)
+
+        # Conectar via CDP (Playwright só automação, Chrome roda limpo)
+        for tentativa in range(10):
+            try:
+                browser = await p.chromium.connect_over_cdp(f"http://localhost:{_CDP_PORT}")
+                break
+            except Exception:
+                await asyncio.sleep(2)
+        else:
+            _elog(job_id, "Não foi possível conectar ao Chrome via CDP.")
+            job["status"] = "erro"
+            if proc: proc.terminate()
+            return
+
+        ctx = browser.contexts[0] if browser.contexts else None
+        if not ctx:
+            _elog(job_id, "Nenhum contexto disponível no Chrome.")
+            job["status"] = "erro"
+            if proc: proc.terminate()
+            return
 
         page = ctx.pages[0] if ctx.pages else await ctx.new_page()
         job["status"] = "aguardando_login"
@@ -210,7 +249,9 @@ async def _ecac_download_async(job_id: str, periodo_ini: str, periodo_fim: str):
         job["arquivos"] = arquivos_baixados
         job["status"] = "concluido" if arquivos_baixados else "sem_arquivos"
         _elog(job_id, f"Concluído. {len(arquivos_baixados)} arquivo(s) baixado(s).")
-        await ctx.close()
+        await browser.close()
+        if proc:
+            proc.terminate()
 
 def _ecac_thread(job_id: str, periodo_ini: str, periodo_fim: str):
     asyncio.run(_ecac_download_async(job_id, periodo_ini, periodo_fim))
