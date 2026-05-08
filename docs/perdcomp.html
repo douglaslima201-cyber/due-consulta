@@ -365,9 +365,17 @@ td.name{font-family:var(--body);font-size:12px;color:var(--g2);max-width:180px;o
       <h2 class="sec-title">Baixar Declarações do eCAC</h2>
       <p class="sec-sub">O sistema abre o Chrome com seu perfil, você seleciona o certificado digital, e o download das declarações é feito automaticamente.</p>
 
-      <div style="padding:14px 18px;background:rgba(59,130,246,.05);border:1px solid rgba(59,130,246,.2);border-radius:var(--r);font-size:12px;color:var(--blue-l);margin-bottom:20px;display:flex;gap:12px;align-items:flex-start">
-        <span style="font-size:18px;flex-shrink:0">ℹ</span>
-        <div>Uma <strong>nova janela do Chrome</strong> será aberta automaticamente para o eCAC — não é necessário fechar o Chrome. Selecione seu <strong>certificado digital</strong> na janela que aparecer e faça login normalmente.</div>
+      <div style="padding:16px 18px;background:rgba(250,204,21,.05);border:1px solid rgba(250,204,21,.2);border-radius:var(--r);font-size:13px;color:var(--g2);margin-bottom:20px">
+        <div style="font-weight:700;color:var(--yellow);margin-bottom:10px">⚠ Como usar com certificado digital (ICP-Brasil A3)</div>
+        <div style="display:flex;flex-direction:column;gap:6px;line-height:1.7">
+          <div><span style="color:var(--orange);font-family:var(--mono);margin-right:8px">01</span>Se estiver usando o <strong>Chrome</strong>, abra esta página no <strong>Edge ou Firefox</strong>: <code style="font-family:var(--mono);font-size:11px;color:var(--blue-l)">http://localhost:5000/perdcomp.html</code></div>
+          <div><span style="color:var(--orange);font-family:var(--mono);margin-right:8px">02</span><strong>Feche o Chrome completamente</strong> (inclusive da bandeja do sistema)</div>
+          <div><span style="color:var(--orange);font-family:var(--mono);margin-right:8px">03</span>Informe o período e clique em <strong>"Iniciar Download"</strong> — o Chrome abre sozinho com seu perfil e certificado</div>
+          <div><span style="color:var(--orange);font-family:var(--mono);margin-right:8px">04</span>Selecione o certificado e faça login normalmente no eCAC</div>
+        </div>
+        <div style="margin-top:10px">
+          <button class="btn btn-g btn-sm" onclick="abrirEdge()">Abrir no Edge →</button>
+        </div>
       </div>
 
       <div class="card" style="margin-bottom:20px">
@@ -960,6 +968,9 @@ const ECAC_STATUS_MAP = {
   erro:                      {ic:'❌', txt:'Erro durante o processo. Veja o log abaixo.'},
 };
 
+function abrirEdge(){
+  window.open('microsoft-edge:http://localhost:5000/perdcomp.html','_blank');
+}
 async function ecacIniciar(){
   const ini=document.getElementById('ecac-ini').value.trim();
   const fim=document.getElementById('ecac-fim').value.trim();

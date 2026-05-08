@@ -43,24 +43,23 @@ async def _ecac_download_async(job_id: str, periodo_ini: str, periodo_fim: str):
     dest.mkdir(exist_ok=True)
 
     async with async_playwright() as p:
-        # ── Abrir nova janela do Chrome (sem fechar o Chrome existente) ────
+        # ── Abrir Chrome com perfil do usuário (necessário para certificado A3) ─
         try:
-            browser = await p.chromium.launch(
+            ctx = await p.chromium.launch_persistent_context(
+                user_data_dir=_CHROME_PROFILE,
                 channel="chrome",
                 headless=False,
+                accept_downloads=True,
                 args=["--disable-blink-features=AutomationControlled",
                       "--start-maximized"],
+                viewport=None,
             )
-            ctx = await browser.new_context(
-                accept_downloads=True,
-                viewport={"width": 1280, "height": 900},
-            )
-            _elog(job_id, "Nova janela do Chrome aberta para o eCAC.")
+            _elog(job_id, "Chrome aberto com perfil do usuário (certificado disponível).")
         except Exception as exc:
-            _elog(job_id, f"Erro ao abrir Chrome: {exc}")
+            _elog(job_id, f"Erro ao abrir Chrome: {exc}. Verifique se o Chrome está completamente fechado.")
             job["status"] = "erro"; return
 
-        page = await ctx.new_page()
+        page = ctx.pages[0] if ctx.pages else await ctx.new_page()
         job["status"] = "aguardando_login"
 
         # ── Ir para eCAC ───────────────────────────────────────────────────
@@ -211,7 +210,7 @@ async def _ecac_download_async(job_id: str, periodo_ini: str, periodo_fim: str):
         job["arquivos"] = arquivos_baixados
         job["status"] = "concluido" if arquivos_baixados else "sem_arquivos"
         _elog(job_id, f"Concluído. {len(arquivos_baixados)} arquivo(s) baixado(s).")
-        await browser.close()
+        await ctx.close()
 
 def _ecac_thread(job_id: str, periodo_ini: str, periodo_fim: str):
     asyncio.run(_ecac_download_async(job_id, periodo_ini, periodo_fim))
