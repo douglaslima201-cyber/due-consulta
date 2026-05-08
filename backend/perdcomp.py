@@ -32,6 +32,75 @@ def _elog(job_id: str, msg: str):
     _ECAC_JOBS[job_id]["log"].append(msg)
     print(f"[ECAC][{job_id[:8]}] {msg}")
 
+def _extrair_cookies_chrome_windows(dominios: list[str]) -> list[dict]:
+    """Extrai e descriptografa cookies do Chrome no Windows via DPAPI + AES-GCM."""
+    import sqlite3, json, base64, tempfile
+    import win32crypt
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+    # 1. Ler chave de encriptação do Local State
+    local_state_path = Path(_CHROME_PROFILE) / "Local State"
+    with open(local_state_path, "r", encoding="utf-8") as f:
+        ls = json.load(f)
+
+    enc_key_b64 = ls.get("os_crypt", {}).get("encrypted_key", "")
+    if not enc_key_b64:
+        raise RuntimeError("Chave de encriptação não encontrada no perfil do Chrome.")
+
+    enc_key = base64.b64decode(enc_key_b64)[5:]  # Remove prefixo "DPAPI"
+    key = win32crypt.CryptUnprotectData(enc_key, None, None, None, 0)[1]
+
+    # 2. Copiar banco de cookies — Chrome mantém o arquivo bloqueado,
+    #    então usamos ctypes com FILE_SHARE_READ para ler mesmo assim
+    import ctypes, ctypes.wintypes
+
+    for caminho_cookies in [
+        Path(_CHROME_PROFILE) / "Default" / "Network" / "Cookies",
+        Path(_CHROME_PROFILE) / "Default" / "Cookies",
+    ]:
+        if caminho_cookies.exists():
+            break
+    else:
+        raise RuntimeError("Banco de cookies do Chrome não encontrado.")
+
+    # 3. Consultar cookies diretamente via SQLite imutable (ignora lock do Chrome)
+    dominios_limpos = [d.replace("https://", "").replace("http://", "") for d in dominios]
+    filtro = " OR ".join(f"host_key LIKE '%{d}%'" for d in dominios_limpos)
+
+    uri = f"file:{caminho_cookies.as_posix()}?mode=ro&immutable=1"
+    conn = sqlite3.connect(uri, uri=True)
+    rows = conn.execute(
+        f"SELECT host_key, name, encrypted_value, path, expires_utc, is_secure, is_httponly "
+        f"FROM cookies WHERE {filtro}"
+    ).fetchall()
+    conn.close()
+
+    # 4. Descriptografar cada cookie
+    cookies = []
+    for host, name, enc_val, path, expires_utc, is_secure, is_httponly in rows:
+        try:
+            if enc_val[:3] in (b'v10', b'v11'):
+                nonce = enc_val[3:15]
+                value = AESGCM(key).decrypt(nonce, enc_val[15:], None).decode('utf-8')
+            else:
+                value = win32crypt.CryptUnprotectData(enc_val, None, None, None, 0)[1].decode('utf-8')
+
+            cookie: dict = {
+                "name": name, "value": value,
+                "domain": host, "path": path or "/",
+                "secure": bool(is_secure), "httpOnly": bool(is_httponly),
+                "sameSite": "Lax",
+            }
+            # Chrome usa microsegundos desde 1601-01-01 → converter para Unix epoch
+            if expires_utc > 0:
+                cookie["expires"] = int(expires_utc / 1_000_000) - 11_644_473_600
+            cookies.append(cookie)
+        except Exception:
+            pass
+
+    return cookies
+
+
 def _encontrar_chrome() -> str | None:
     candidatos = [
         r"C:\Program Files\Google\Chrome\Application\chrome.exe",
@@ -45,69 +114,47 @@ def _encontrar_chrome() -> str | None:
 
 async def _ecac_download_async(job_id: str, periodo_ini: str, periodo_fim: str):
     from playwright.async_api import async_playwright, TimeoutError as PwTimeout
-    from pycookiecheat import chrome_cookies
 
     job = _ECAC_JOBS[job_id]
     dest = _ECAC_DIR / "entrada"
     dest.mkdir(exist_ok=True)
 
-    # ── Passo 1: Extrair cookies da sessão eCAC já autenticada no Chrome ──────
-    # Não usa debug port nem CDP — apenas lê o banco de cookies do Chrome
-    _elog(job_id, "Lendo sessão do eCAC no Chrome...")
-    cookies_pw = []
-    dominios = [
-        "https://cav.receita.fazenda.gov.br",
-        "https://acesso.gov.br",
-        "https://www3.acesso.gov.br",
-    ]
-    for url in dominios:
-        try:
-            c = chrome_cookies(url)
-            for nome, valor in c.items():
-                cookies_pw.append({
-                    "name": nome, "value": str(valor),
-                    "url": url, "path": "/",
-                })
-        except Exception as exc:
-            _elog(job_id, f"Aviso ({url}): {exc}")
-
-    if not cookies_pw:
-        _elog(job_id, "Nenhum cookie do eCAC encontrado. Faça login no eCAC no Chrome primeiro e tente novamente.")
-        job["status"] = "erro"; return
-
-    _elog(job_id, f"{len(cookies_pw)} cookies extraídos. Iniciando Playwright com sessão existente...")
-    job["status"] = "navegando"
+    _elog(job_id, "Abrindo Chrome para autenticação no eCAC...")
+    job["status"] = "aguardando_login"
 
     async with async_playwright() as p:
-        # ── Lança Chrome SEM flags de debug (sem problemas de certificado) ──
+        # Lança Chrome normal — sem debug port, sem flags extras
+        # Para A1 (software), o certificado do Windows Certificate Store fica acessível
         browser = await p.chromium.launch(
             channel="chrome",
             headless=False,
-            args=["--start-maximized"],
+            args=[
+                "--start-maximized",
+                "--disable-blink-features=AutomationControlled",
+            ],
         )
         ctx = await browser.new_context(
             accept_downloads=True,
             viewport={"width": 1280, "height": 900},
         )
-
-        # Injeta cookies da sessão autenticada
-        await ctx.add_cookies(cookies_pw)
         page = await ctx.new_page()
 
-        # ── Acessar eCAC com a sessão injetada ───────────────────────────────
+        # Ir para eCAC
         try:
-            await page.goto(_ECAC_URL, wait_until="networkidle", timeout=30000)
+            await page.goto(_ECAC_URL, wait_until="domcontentloaded", timeout=30000)
         except PwTimeout:
             pass
 
-        await asyncio.sleep(2)
-        url_atual = page.url.lower()
+        _elog(job_id, "Chrome aberto. Selecione seu certificado A1 e faça login no eCAC (até 5 min).")
 
-        if "acesso.gov" in url_atual or "login" in url_atual:
-            _elog(job_id, "Sessão expirada — o eCAC redirecionou para login. Faça login no eCAC no Chrome e tente novamente.")
+        # Aguardar login — detecta retorno ao domínio do eCAC após autenticação
+        try:
+            await page.wait_for_url("*cav.receita*", timeout=300_000)
+            await asyncio.sleep(3)
+            _elog(job_id, "Login detectado. Navegando para PER/DCOMP...")
+        except PwTimeout:
+            _elog(job_id, "Timeout: login não completado.")
             job["status"] = "erro"; await browser.close(); return
-
-        _elog(job_id, f"Sessão válida. URL: {page.url[:80]}")
 
         # ── Navegar para PER/DCOMP ───────────────────────────────────────────
         nav_ok = False
