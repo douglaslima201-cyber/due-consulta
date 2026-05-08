@@ -906,6 +906,94 @@ def ecac_analisar_capturas():
         }
     })
 
+@bp.route('/api/perdcomp/ecac-script.js')
+def ecac_script_js():
+    """Serve o script de captura com suporte a paginação — usado pelo bookmarklet."""
+    script = r"""
+(async function(){
+  const API='http://localhost:5000/api/perdcomp';
+
+  const isBotao=el=>{
+    const t=(el.title+el.alt+(el.getAttribute&&el.getAttribute('onclick')||'')+el.textContent).toLowerCase();
+    return (t.includes('imprimir')||t.includes('print'))&&['IMG','BUTTON','A','SPAN','INPUT'].includes(el.tagName);
+  };
+
+  const getBotoes=()=>[...document.querySelectorAll('img,button,a,span,input')].filter(isBotao);
+
+  const getProxPag=()=>{
+    const els=[...document.querySelectorAll('a,button,span,li,td')];
+    for(const el of els){
+      if(el.offsetParent===null) continue;
+      const txt=el.textContent.trim();
+      const tit=(el.title||'').toLowerCase();
+      const cls=(el.className||'').toLowerCase();
+      const isNext=txt==='>'||txt==='>>'||txt==='»'||
+        tit.includes('próxima')||tit.includes('proxima')||tit.includes('next')||
+        txt.toLowerCase()==='próxima'||txt.toLowerCase()==='próximo'||
+        cls.includes('proximo')||cls.includes('next');
+      const disabled=el.disabled||cls.includes('disabled')||el.getAttribute('disabled')!==null||
+        (el.closest&&el.closest('.disabled'));
+      if(isNext&&!disabled) return el;
+    }
+    return null;
+  };
+
+  await fetch(API+'/ecac/limpar-capturas',{method:'POST'});
+  let total=0,pag=1;
+  const origOpen=window.open;
+
+  while(true){
+    const botoes=getBotoes();
+    if(!botoes.length&&pag===1){
+      alert('Nenhum botão de impressão encontrado.\nVá para Documentos Entregues, filtre o período e tente novamente.');
+      return;
+    }
+    console.log('[Analyzer] Página '+pag+': '+botoes.length+' declaração(ões)');
+
+    for(let i=0;i<botoes.length;i++){
+      console.log('[Analyzer] Capturando '+(i+1)+'/'+botoes.length+' (pág.'+pag+')...');
+      const jan=[];
+      window.open=function(...a){const w=origOpen.apply(window,a);if(w)jan.push(w);return w;};
+      botoes[i].click();
+      await new Promise(r=>setTimeout(r,3500));
+      window.open=origOpen;
+      if(!jan.length){console.warn('[Analyzer] Sem janela no doc '+(i+1));continue;}
+      const jn=jan[0];
+      for(let t=0;t<25;t++){await new Promise(r=>setTimeout(r,200));if(jn.document&&jn.document.readyState==='complete')break;}
+      try{
+        const html=jn.document.documentElement.outerHTML;
+        const r=await fetch(API+'/ecac/capturar-html',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({html,indice:total})});
+        if(r.ok){total++;console.log('[Analyzer] ✓ Doc capturado (total:'+total+')');}
+        else console.error('[Analyzer] Erro HTTP');
+      }catch(ex){console.error('[Analyzer] Erro:',ex);}
+      try{jn.close();}catch(e){}
+      await new Promise(r=>setTimeout(r,500));
+    }
+
+    const prox=getProxPag();
+    if(!prox){console.log('[Analyzer] Última página.');break;}
+
+    const fp=getBotoes().length+'|'+document.body.innerText.slice(0,300);
+    prox.click();
+    let mudou=false;
+    for(let t=0;t<50;t++){
+      await new Promise(r=>setTimeout(r,200));
+      if((getBotoes().length+'|'+document.body.innerText.slice(0,300))!==fp){mudou=true;break;}
+    }
+    if(!mudou){console.log('[Analyzer] Sem mudança de conteúdo — última página.');break;}
+    pag++;
+    await new Promise(r=>setTimeout(r,1000));
+  }
+
+  alert('[PER/DCOMP Analyzer]\n✓ '+total+' declaração(ões) capturada(s) em '+pag+' página(s).\n\nAcesse o painel e clique em "Analisar declarações capturadas".');
+})();
+"""
+    return script, 200, {
+        'Content-Type': 'application/javascript',
+        'Cache-Control': 'no-cache',
+        'Access-Control-Allow-Origin': '*',
+    }
+
 @bp.route('/api/perdcomp/ecac/abrir-pasta')
 def ecac_abrir_pasta():
     """Abre a pasta de entrada no Windows Explorer."""
