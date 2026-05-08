@@ -323,8 +323,8 @@ footer{
     <h1 class="hero-title">Ferramentas que<br><span class="hl">aceleram o negócio</span></h1>
     <p class="hero-sub">Hub centralizado com todas as ferramentas e calculadoras desenvolvidas para a Rumo Brasil. Acesse rapidamente qualquer solução, acompanhe o status e gerencie suas consultas.</p>
     <div class="hero-stats">
-      <div class="hst"><div class="hst-n">5</div><div class="hst-l">Ferramentas</div></div>
-      <div class="hst"><div class="hst-n">5</div><div class="hst-l">Ativas</div></div>
+      <div class="hst"><div class="hst-n">6</div><div class="hst-l">Ferramentas</div></div>
+      <div class="hst"><div class="hst-n">6</div><div class="hst-l">Ativas</div></div>
       <div class="hst"><div class="hst-n">100%</div><div class="hst-l">Local & seguro</div></div>
     </div>
   </div>
@@ -345,7 +345,7 @@ footer{
       <div class="sec-lbl">Catálogo</div>
       <h2 class="sec-ttl">Ferramentas disponíveis</h2>
     </div>
-    <span class="sec-count">5 ferramentas</span>
+    <span class="sec-count">6 ferramentas</span>
   </div>
 
   <div class="tool-grid reveal" id="tool-grid">
@@ -455,19 +455,24 @@ footer{
       </div>
     </div>
 
-    <!-- Slot futuro -->
-    <div class="card soon" style="border-style:dashed;background:transparent;">
+    <!-- Reforma Tributária Frota -->
+    <div class="card active" onclick="abrirFerramenta('reforma-frota.html')" title="Acessar Simulador de Reforma Tributária">
+      <div class="card-bar" style="background:linear-gradient(90deg,#22C55E,#16A34A);opacity:1;"></div>
       <div class="card-head">
-        <div class="card-icon ci-gray">＋</div>
-        <span class="badge b-plan">Planejado</span>
+        <div class="card-icon" style="background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);">🚛</div>
+        <span class="badge b-live">Ativa</span>
       </div>
-      <div class="card-title" style="color:var(--g3);">Nova ferramenta</div>
-      <div class="card-desc" style="color:var(--g4);">Slot reservado para próximas automações. Novas ferramentas são adicionadas continuamente conforme demanda do time.</div>
+      <div class="card-title">Reforma Tributária — Frota</div>
+      <div class="card-desc">Simulador de impacto da CBS e IBS na renovação de frota. Compara cenário atual vs pós-reforma, calcula créditos, VPL e identifica o melhor momento de compra (2025–2033).</div>
       <div class="card-tags">
-        <span class="tag">A definir</span>
+        <span class="tag">CBS/IBS</span>
+        <span class="tag">LC 214/2025</span>
+        <span class="tag">Transportadoras</span>
+        <span class="tag">VPL</span>
       </div>
       <div class="card-foot">
-        <span class="card-meta" style="color:var(--g4);">—</span>
+        <span class="card-meta">Simulação 2025–2033</span>
+        <button class="btn btn-orange btn-sm" onclick="event.stopPropagation();abrirFerramenta('reforma-frota.html')">Acessar →</button>
       </div>
     </div>
 
