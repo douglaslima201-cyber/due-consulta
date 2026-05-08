@@ -267,7 +267,13 @@ td.name{font-family:var(--body);font-size:12px;color:var(--g2);max-width:180px;o
 
       <div class="btn-row">
         <button class="btn btn-p" id="btn-analisar" onclick="analisar()" disabled>🔍 Analisar Documentos</button>
+        <button class="btn btn-g" id="btn-debug" onclick="debugTexto()" disabled>🔎 Ver texto extraído</button>
         <button class="btn btn-g" onclick="limpar()">✕ Limpar</button>
+      </div>
+
+      <div id="debug-box" style="display:none;margin-top:20px">
+        <div style="font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--orange);margin-bottom:8px">Texto extraído dos PDFs (debug)</div>
+        <div id="debug-content"></div>
       </div>
     </div>
 
@@ -414,6 +420,37 @@ function hfiles(files){
   }
   renderFlist();
 }
+
+async function debugTexto(){
+  if(!ARQUIVOS.length) return;
+  const btn=document.getElementById('btn-debug');
+  btn.disabled=true; btn.textContent='⏳ Extraindo...';
+  const fd=new FormData(); ARQUIVOS.forEach(f=>fd.append('files',f));
+  try{
+    const r=await fetch(`${API}/debug`,{method:'POST',body:fd});
+    const d=await r.json();
+    const box=document.getElementById('debug-box');
+    const content=document.getElementById('debug-content');
+    box.style.display='block';
+    content.innerHTML=d.map(x=>`
+      <div style="margin-bottom:16px;border:1px solid rgba(255,255,255,.07);border-radius:var(--r);overflow:hidden">
+        <div style="background:rgba(255,255,255,.04);padding:10px 14px;display:flex;gap:16px;font-size:12px">
+          <span style="font-weight:600">${e(x.arquivo)}</span>
+          <span style="color:var(--orange)">Tipo: ${e(x.tipo_detectado)}</span>
+          <span style="color:var(--blue-l)">Tributo: ${e(x.tributo_detectado||'não detectado')}</span>
+          <span style="color:var(--g3)">${x.chars} chars</span>
+        </div>
+        <pre style="padding:12px 14px;font-size:10px;font-family:var(--mono);color:var(--g2);white-space:pre-wrap;max-height:300px;overflow-y:auto;line-height:1.6">${e(x.texto)}</pre>
+      </div>`).join('');
+  }catch(err){alert('Erro no debug: '+err.message);}
+  finally{btn.disabled=false; btn.textContent='🔎 Ver texto extraído';}
+}
+function remArq(i){ARQUIVOS.splice(i,1);renderFlist();}
+function limpar(){
+  ARQUIVOS=[];DADOS=null;renderFlist();
+  document.getElementById('upload-err').style.display='none';
+  document.getElementById('debug-box').style.display='none';
+}
 function renderFlist(){
   const el=document.getElementById('flist');
   el.innerHTML=ARQUIVOS.map((f,i)=>`
@@ -423,10 +460,10 @@ function renderFlist(){
       <span class="fitem-size">${(f.size/1024).toFixed(0)} KB</span>
       <button class="fitem-rm" onclick="remArq(${i})" title="Remover">✕</button>
     </div>`).join('');
-  document.getElementById('btn-analisar').disabled = ARQUIVOS.length===0;
+  const dis=ARQUIVOS.length===0;
+  document.getElementById('btn-analisar').disabled=dis;
+  document.getElementById('btn-debug').disabled=dis;
 }
-function remArq(i){ARQUIVOS.splice(i,1);renderFlist();}
-function limpar(){ARQUIVOS=[];DADOS=null;renderFlist();document.getElementById('upload-err').style.display='none';}
 
 // ─── UPLOAD & ANALYZE ─────────────────────────────────────────────────────────
 async function analisar(){
