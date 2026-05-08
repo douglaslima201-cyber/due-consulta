@@ -57,11 +57,24 @@ async def _ecac_download_async(job_id: str, periodo_ini: str, periodo_fim: str):
         _elog(job_id, "Chrome não encontrado. Verifique a instalação.")
         job["status"] = "erro"; return
 
-    # Encerrar Chrome em segundo plano (impede que a porta de debug seja ignorada)
-    _elog(job_id, "Encerrando instâncias do Chrome em segundo plano...")
+    # Encerrar Chrome e limpar arquivos de lock do perfil
+    _elog(job_id, "Encerrando Chrome e limpando locks do perfil...")
     subprocess.run(["taskkill", "/F", "/IM", "chrome.exe"],
                    capture_output=True, text=True)
     await asyncio.sleep(2)
+
+    # Remover lock files que impedem Chrome de usar o perfil
+    for lock in [
+        Path(_CHROME_PROFILE) / "lockfile",
+        Path(_CHROME_PROFILE) / "SingletonLock",
+        Path(_CHROME_PROFILE) / "SingletonSocket",
+        Path(_CHROME_PROFILE) / "Default" / "LOCK",
+    ]:
+        try:
+            lock.unlink(missing_ok=True)
+        except Exception:
+            pass
+    await asyncio.sleep(1)
 
     proc = None
     async with async_playwright() as p:
@@ -75,23 +88,42 @@ async def _ecac_download_async(job_id: str, periodo_ini: str, periodo_fim: str):
                 "--start-maximized",
                 _ECAC_URL,
             ])
-            _elog(job_id, "Chrome aberto. Faça login com seu certificado digital.")
+            _elog(job_id, "Chrome aberto. Aguardando porta de debug ficar disponível...")
             job["status"] = "aguardando_login"
         except Exception as exc:
             _elog(job_id, f"Erro ao abrir Chrome: {exc}")
             job["status"] = "erro"; return
 
-        # Aguardar Chrome inicializar completamente
-        await asyncio.sleep(6)
+        # Verificar se a porta CDP está ativa via HTTP antes de conectar
+        import urllib.request
+        cdp_url = f"http://localhost:{_CDP_PORT}/json/version"
+        porta_ok = False
+        for tentativa in range(25):
+            await asyncio.sleep(2)
+            try:
+                urllib.request.urlopen(cdp_url, timeout=2)
+                porta_ok = True
+                _elog(job_id, f"Porta CDP {_CDP_PORT} ativa ({tentativa*2+2}s). Conectando...")
+                break
+            except Exception:
+                if tentativa % 5 == 4:
+                    _elog(job_id, f"Aguardando porta CDP... ({tentativa*2+2}s)")
 
-        # Conectar via CDP — tentar por até 40s
+        if not porta_ok:
+            _elog(job_id, f"Porta CDP {_CDP_PORT} não ficou disponível. Chrome pode ter falhado ao iniciar.")
+            job["status"] = "erro"
+            if proc: proc.terminate()
+            return
+
+        # Conectar via CDP
         browser = None
-        for tentativa in range(20):
+        for tentativa in range(5):
             try:
                 browser = await p.chromium.connect_over_cdp(f"http://localhost:{_CDP_PORT}")
                 _elog(job_id, "Conectado ao Chrome via CDP.")
                 break
-            except Exception:
+            except Exception as exc:
+                _elog(job_id, f"Tentativa {tentativa+1} de conexão CDP falhou: {exc}")
                 await asyncio.sleep(2)
 
         if not browser:
