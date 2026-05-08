@@ -913,12 +913,45 @@ def ecac_script_js():
 (async function(){
   const API='http://localhost:5000/api/perdcomp';
 
-  const isBotao=el=>{
-    const t=(el.title+el.alt+(el.getAttribute&&el.getAttribute('onclick')||'')+el.textContent).toLowerCase();
-    return (t.includes('imprimir')||t.includes('print'))&&['IMG','BUTTON','A','SPAN','INPUT'].includes(el.tagName);
-  };
+  const KEYWORDS=['imprimir','print','impressao','impressão','printer'];
 
-  const getBotoes=()=>[...document.querySelectorAll('img,button,a,span,input')].filter(isBotao);
+  const getBotoes=()=>{
+    // Estratégia 1: encontrar coluna "Imprimir" pelo cabeçalho da tabela
+    const ths=[...document.querySelectorAll('th,td.headerRow,td[class*="header" i]')];
+    const thImp=ths.find(th=>KEYWORDS.some(k=>th.textContent.trim().toLowerCase()===k||th.textContent.trim().toLowerCase().startsWith(k)));
+    if(thImp){
+      const idx=thImp.cellIndex;
+      const tab=thImp.closest('table');
+      if(tab&&idx>=0){
+        const cells=[...tab.querySelectorAll('tr td:nth-child('+(idx+1)+')')];
+        const botoes=[];
+        for(const td of cells){
+          const el=td.querySelector('a,button,img,input[type="button"],input[type="image"]');
+          if(el) botoes.push(el);
+        }
+        if(botoes.length>0){console.log('[Analyzer] Coluna Imprimir encontrada (idx='+idx+')');return botoes;}
+      }
+    }
+    // Estratégia 2: busca por atributos em qualquer elemento clicável
+    const check=el=>{
+      const src=(el.src||'').toLowerCase();
+      const title=(el.title||'').toLowerCase();
+      const alt=(el.alt||'').toLowerCase();
+      const cls=(el.className||'').toLowerCase();
+      const onclick=(el.getAttribute&&el.getAttribute('onclick')||'').toLowerCase();
+      const href=(el.href||'').toLowerCase();
+      const txt=el.textContent.trim().toLowerCase();
+      const par=el.parentElement;
+      const parTitle=par?(par.title||par.getAttribute('title')||'').toLowerCase():'';
+      const parOnclick=par?(par.getAttribute('onclick')||'').toLowerCase():'';
+      return KEYWORDS.some(k=>
+        src.includes(k)||title.includes(k)||alt.includes(k)||cls.includes(k)||
+        onclick.includes(k)||href.includes(k)||txt===k||
+        parTitle.includes(k)||parOnclick.includes(k)
+      );
+    };
+    return [...document.querySelectorAll('img,button,a,input[type="button"],input[type="image"]')].filter(check);
+  };
 
   const getProxPag=()=>{
     const els=[...document.querySelectorAll('a,button,span,li,td')];
