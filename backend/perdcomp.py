@@ -99,30 +99,29 @@ async def _ecac_download_async(job_id: str, periodo_ini: str, periodo_fim: str):
             return
 
         page = ctx.pages[0] if ctx.pages else await ctx.new_page()
-        job["status"] = "aguardando_login"
 
-        # ── Ir para eCAC ───────────────────────────────────────────────────
+        _elog(job_id, "Aguardando redirecionamento para seleção de certificado...")
+
+        # Passo 1: aguardar eCAC redirecionar para acesso.gov (página de certificado)
         try:
-            await page.goto(_ECAC_URL, wait_until="domcontentloaded", timeout=30000)
-        except Exception:
-            pass
+            await page.wait_for_url("*acesso.gov*", timeout=30000)
+            _elog(job_id, "Página de certificado detectada. Selecione seu certificado digital no Chrome.")
+            job["status"] = "aguardando_login"
+        except PwTimeout:
+            _elog(job_id, "Redirecionamento para certificado não detectado — pode já estar logado. Aguardando...")
 
-        _elog(job_id, "Aguardando autenticação com certificado digital (até 5 min)...")
-
-        # Detecta login bem-sucedido: URL muda para área autenticada
+        # Passo 2: aguardar retorno ao eCAC após login com certificado
+        _elog(job_id, "Aguardando conclusão do login com certificado (até 5 min)...")
         try:
-            await page.wait_for_function(
-                """() => {
-                    const u = location.href.toLowerCase();
-                    return (u.includes('ecac') || u.includes('eservicos')) &&
-                           !u.includes('login') && !u.includes('acesso.gov');
-                }""",
-                timeout=300_000,
-            )
+            await page.wait_for_url("*cav.receita*", timeout=300_000)
+            await asyncio.sleep(3)
             _elog(job_id, "Login detectado. Navegando para PER/DCOMP...")
         except PwTimeout:
             _elog(job_id, "Timeout: login não completado em 5 minutos.")
-            job["status"] = "erro"; await ctx.close(); return
+            job["status"] = "erro"
+            await browser.disconnect()
+            if proc: proc.terminate()
+            return
 
         job["status"] = "navegando"
 
@@ -153,7 +152,7 @@ async def _ecac_download_async(job_id: str, periodo_ini: str, periodo_fim: str):
                     break
             else:
                 _elog(job_id, "Timeout aguardando navegação manual.")
-                job["status"] = "erro"; await ctx.close(); return
+                job["status"] = "erro"; await browser.disconnect(); proc.terminate() if proc else None; return
             job["status"] = "navegando"
 
         # ── Aplicar filtro de período ──────────────────────────────────────
@@ -249,7 +248,7 @@ async def _ecac_download_async(job_id: str, periodo_ini: str, periodo_fim: str):
         job["arquivos"] = arquivos_baixados
         job["status"] = "concluido" if arquivos_baixados else "sem_arquivos"
         _elog(job_id, f"Concluído. {len(arquivos_baixados)} arquivo(s) baixado(s).")
-        await browser.close()
+        await browser.disconnect()
         if proc:
             proc.terminate()
 
