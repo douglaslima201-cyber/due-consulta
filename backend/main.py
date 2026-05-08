@@ -714,9 +714,19 @@ async def consultar_via_api(
 
             if resp.status == 422:
                 msg = body.get("message", "") if isinstance(body, dict) else str(body)
-                resultado["status_nfe"] = "Erro Rate Limit"
-                resultado["obs"] = msg[:400]
-                log(job_id, "WARN", f"HTTP 422 rate limit para {chave[:10]}...: {msg[:200]}")
+                msg_lower = msg.lower()
+                # Distinguir rate limit de "não encontrado"
+                is_rate_limit = any(kw in msg_lower for kw in [
+                    "limite de", "após as", "limit", "rate"
+                ])
+                if is_rate_limit:
+                    resultado["status_nfe"] = "Erro Rate Limit"
+                    resultado["obs"] = msg[:400]
+                    log(job_id, "WARN", f"HTTP 422 rate limit para {chave[:10]}...: {msg[:200]}")
+                else:
+                    resultado["status_nfe"] = "Não Encontrada"
+                    resultado["obs"] = msg[:400]
+                    log(job_id, "INFO", f"HTTP 422 sem resultado para {chave[:10]}...: {msg[:200]}")
                 return resultado, novo_csrf
 
             if resp.status != 200:
