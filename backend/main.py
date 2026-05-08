@@ -1305,6 +1305,9 @@ def listar_proxies():
 from piscofins import bp as piscofins_bp
 app.register_blueprint(piscofins_bp)
 
+from perdcomp import bp as perdcomp_bp
+app.register_blueprint(perdcomp_bp)
+
 # Serve static docs so browsers don't hit file:// CORS restrictions
 _DOCS_DIR = str(_BASE_DIR.parent / "docs")
 
