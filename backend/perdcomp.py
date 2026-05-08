@@ -156,63 +156,94 @@ async def _ecac_download_async(job_id: str, periodo_ini: str, periodo_fim: str):
             _elog(job_id, "Timeout: login não completado.")
             job["status"] = "erro"; await browser.close(); return
 
-        # ── Navegar para PER/DCOMP ───────────────────────────────────────────
-        nav_ok = False
-        for sel in [
-            'a[href*="perdcomp" i]', 'a:text-matches("PER/DCOMP", "i")',
-            'a:text-matches("Compensação", "i")', 'a:text-matches("Ressarcimento", "i")',
-        ]:
-            try:
-                el = page.locator(sel).first
-                if await el.is_visible(timeout=3000):
-                    await el.click()
-                    await page.wait_for_load_state("networkidle", timeout=15000)
-                    nav_ok = True
-                    _elog(job_id, f"Navegação automática OK.")
-                    break
-            except Exception:
-                continue
+        async def clicar(sels: list[str], label: str, timeout: int = 5000) -> bool:
+            for sel in sels:
+                try:
+                    el = page.locator(sel).first
+                    if await el.is_visible(timeout=timeout):
+                        await el.click()
+                        await asyncio.sleep(1)
+                        return True
+                except Exception:
+                    continue
+            return False
 
-        if not nav_ok:
-            job["status"] = "aguardando_navegacao"
-            _elog(job_id, "Navegação automática falhou. No Chrome aberto, navegue até a lista de PER/DCOMPs e clique em 'Já estou na lista'.")
-            for _ in range(300):
-                await asyncio.sleep(1)
-                if job.get("usuario_confirmou"):
-                    break
-            else:
-                _elog(job_id, "Timeout aguardando navegação manual.")
-                job["status"] = "erro"; await browser.close(); return
-            job["status"] = "navegando"
+        # ── Passo 1: Restituição e Compensação ───────────────────────────────
+        _elog(job_id, "Clicando em 'Restituição e Compensação'...")
+        ok = await clicar([
+            'a:text-matches("Restituição e Compensação", "i")',
+            'a:text-matches("Restituição", "i")',
+            'span:text-matches("Restituição e Compensação", "i")',
+        ], "Restituição e Compensação")
+        if ok:
+            await page.wait_for_load_state("networkidle", timeout=15000)
 
-        # ── Filtrar por período ───────────────────────────────────────────────
-        _elog(job_id, f"Filtrando por período: {periodo_ini} → {periodo_fim}...")
+        # ── Passo 2: Acessar PERDCOMP Web ────────────────────────────────────
+        _elog(job_id, "Clicando em 'Acessar PERDCOMP Web'...")
+        ok = await clicar([
+            'a:text-matches("Acessar.*PERDCOMP.*Web", "i")',
+            'a:text-matches("PERDCOMP Web", "i")',
+            'a[href*="perdcomp" i]',
+            'button:text-matches("PERDCOMP", "i")',
+        ], "PERDCOMP Web")
+        if ok:
+            await page.wait_for_load_state("networkidle", timeout=15000)
+
+        # ── Passo 3: Visualizar Documentos ───────────────────────────────────
+        _elog(job_id, "Clicando em 'Visualizar Documentos'...")
+        ok = await clicar([
+            'a:text-matches("Visualizar.*Documento", "i")',
+            'button:text-matches("Visualizar.*Documento", "i")',
+            ':text("Visualizar documentos")',
+        ], "Visualizar Documentos")
+        if ok:
+            await page.wait_for_load_state("networkidle", timeout=15000)
+
+        # ── Passo 4: Aba Documentos Entregues ────────────────────────────────
+        _elog(job_id, "Clicando na aba 'Documentos Entregues'...")
+        await clicar([
+            'a:text-matches("Documentos Entregues", "i")',
+            'button:text-matches("Documentos Entregues", "i")',
+            '[role="tab"]:text-matches("Documentos Entregues", "i")',
+            'li:text-matches("Documentos Entregues", "i")',
+        ], "Documentos Entregues")
         await asyncio.sleep(2)
+
+        # ── Passo 5: Preencher datas (DD/MM/AAAA) ────────────────────────────
+        _elog(job_id, f"Preenchendo período: {periodo_ini} → {periodo_fim}...")
 
         async def preencher(sels: list[str], valor: str) -> bool:
             for sel in sels:
                 try:
                     el = page.locator(sel).first
                     if await el.is_visible(timeout=2000):
-                        await el.fill("")
-                        await el.type(valor, delay=40)
+                        await el.triple_click()
+                        await el.type(valor, delay=50)
                         return True
                 except Exception:
                     continue
             return False
 
-        await preencher([
-            'input[name*="competenciaInicial" i]', 'input[placeholder*="início" i]',
-            'input[id*="inicio" i]', 'input[id*="periodoInicial" i]',
-        ], periodo_ini)
+        sels_data_ini = [
+            'input[id*="dataInicial" i]', 'input[name*="dataInicial" i]',
+            'input[placeholder*="inicial" i]', 'input[placeholder*="início" i]',
+            'input[id*="inicio" i]', 'input[id*="dtIni" i]',
+        ]
+        sels_data_fim = [
+            'input[id*="dataFinal" i]', 'input[name*="dataFinal" i]',
+            'input[placeholder*="final" i]', 'input[placeholder*="fim" i]',
+            'input[id*="fim" i]', 'input[id*="dtFin" i]',
+        ]
 
-        await preencher([
-            'input[name*="competenciaFinal" i]', 'input[placeholder*="final" i]',
-            'input[id*="fim" i]', 'input[id*="periodoFinal" i]',
-        ], periodo_fim)
+        await preencher(sels_data_ini, periodo_ini)
+        await preencher(sels_data_fim, periodo_fim)
 
-        for sel in ['button:text-matches("Pesquisar|Consultar|Buscar", "i")',
-                    'input[type="submit"]', 'button[type="submit"]']:
+        # ── Passo 6: Pesquisar ────────────────────────────────────────────────
+        _elog(job_id, "Pesquisando declarações...")
+        for sel in [
+            'button:text-matches("Pesquisar|Consultar|Buscar|Filtrar", "i")',
+            'input[type="submit"]', 'button[type="submit"]',
+        ]:
             try:
                 btn = page.locator(sel).first
                 if await btn.is_visible(timeout=2000):
@@ -225,25 +256,18 @@ async def _ecac_download_async(job_id: str, periodo_ini: str, periodo_fim: str):
 
         await asyncio.sleep(2)
 
-        # ── Selecionar todos e baixar PDFs ────────────────────────────────────
+        # ── Passo 7: Clicar em "Imprimir Documento" para cada declaração ─────
         job["status"] = "baixando"
         arquivos_baixados: list[str] = []
 
-        for sel in ['input[id*="todos" i][type="checkbox"]', 'input[id*="all" i][type="checkbox"]']:
-            try:
-                cb = page.locator(sel).first
-                if await cb.is_visible(timeout=1500):
-                    await cb.check(); break
-            except Exception:
-                pass
-
-        links = await page.locator(
-            'a[href*=".pdf" i], a[href*="download" i], a[href*="imprimir" i], '
-            'a:text-matches("PDF|Visualizar|Imprimir|Baixar", "i")'
+        icones_imprimir = await page.locator(
+            'button[title*="Imprimir" i], a[title*="Imprimir" i], '
+            'img[alt*="Imprimir" i], img[title*="Imprimir" i], '
+            'button:text-matches("Imprimir", "i"), a:text-matches("Imprimir", "i")'
         ).all()
 
-        if not links:
-            _elog(job_id, "Nenhum link automático encontrado. Use o Chrome aberto para baixar os arquivos e salve na pasta de entrada. Clique em 'Já estou na lista' quando terminar.")
+        if not icones_imprimir:
+            _elog(job_id, "Nenhum ícone de impressão encontrado. Navegue manualmente e clique em 'Já estou na lista' quando os documentos aparecerem.")
             job["status"] = "aguardando_navegacao"
             for _ in range(600):
                 await asyncio.sleep(1)
@@ -251,19 +275,27 @@ async def _ecac_download_async(job_id: str, periodo_ini: str, periodo_fim: str):
                     arquivos_baixados = [f.name for f in dest.glob("*.pdf")]
                     break
         else:
-            _elog(job_id, f"{len(links)} declaração(ões) encontrada(s). Baixando...")
-            for i, link in enumerate(links):
+            _elog(job_id, f"{len(icones_imprimir)} declaração(ões) encontrada(s). Salvando PDFs...")
+            for i, icone in enumerate(icones_imprimir):
                 try:
-                    async with page.expect_download(timeout=30000) as dl_info:
-                        await link.click()
-                    dl = await dl_info.value
-                    nome = dl.suggested_filename or f"perdcomp_{i+1}.pdf"
-                    await dl.save_as(str(dest / nome))
+                    # "Imprimir" no eCAC abre nova aba/popup com o documento
+                    async with ctx.expect_page() as nova_pg_info:
+                        await icone.click()
+                    nova_pg = await nova_pg_info.value
+                    await nova_pg.wait_for_load_state("networkidle", timeout=20000)
+                    await asyncio.sleep(1)
+
+                    nome = f"perdcomp_{i+1:03d}.pdf"
+                    # Salvar como PDF via Playwright (equivalente a Ctrl+P → Salvar PDF)
+                    await nova_pg.pdf(path=str(dest / nome), format="A4", print_background=True)
+                    await nova_pg.close()
+
                     arquivos_baixados.append(nome)
                     job["arquivos"] = arquivos_baixados[:]
-                    _elog(job_id, f"[{i+1}/{len(links)}] {nome}")
+                    _elog(job_id, f"[{i+1}/{len(icones_imprimir)}] Salvo: {nome}")
                 except Exception as exc:
-                    _elog(job_id, f"[{i+1}] Falha: {exc}")
+                    _elog(job_id, f"[{i+1}] Falha ao salvar: {exc}")
+                await asyncio.sleep(0.5)
 
         job["arquivos"] = arquivos_baixados
         job["status"] = "concluido" if arquivos_baixados else "sem_arquivos"
