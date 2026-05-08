@@ -41,7 +41,11 @@
       "Bash(findstr \":5000 \")",
       "Bash(findstr \"LISTENING\")",
       "Bash(python -c \"from perdcomp import bp; print\\('OK'\\)\")",
-      "Bash(findstr \":9222\")"
+      "Bash(findstr \":9222\")",
+      "Bash(taskkill /F /PID 15272 /PID 24148 /PID 36824)",
+      "Bash(taskkill //F //PID 15272)",
+      "Bash(taskkill //F //PID 24148)",
+      "Bash(taskkill //F //PID 36824)"
     ]
   },
   "hooks": {
