@@ -975,7 +975,7 @@ const ECAC_SCRIPT = `(async function(){
   await fetch(API+'/ecac/limpar-capturas',{method:'POST'});
   const getBotoes=()=>{
     const icons=[...document.querySelectorAll('i.icon-print,i[class*="icon-print"]')];
-    if(icons.length>0) return icons.map(i=>i.parentElement&&['A','BUTTON'].includes(i.parentElement.tagName)?i.parentElement:i);
+    if(icons.length>0) return icons.map(i=>i.parentElement||i);
     const ths=[...document.querySelectorAll('th,td.headerRow')];
     const th=ths.find(h=>['imprimir','print'].some(k=>h.textContent.trim().toLowerCase().startsWith(k)));
     if(th){const idx=th.cellIndex,tab=th.closest('table');if(tab&&idx>=0){const b=[];[...tab.querySelectorAll('tr td:nth-child('+(idx+1)+')')].forEach(td=>{const el=td.querySelector('a,button,img,input[type=button]');if(el)b.push(el);});if(b.length)return b;}}

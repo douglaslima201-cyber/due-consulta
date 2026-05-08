@@ -918,7 +918,7 @@ def ecac_script_js():
     const icons=[...document.querySelectorAll('i.icon-print,i[class*="icon-print"]')];
     if(icons.length>0){
       console.log('[Analyzer] Ícones icon-print encontrados: '+icons.length);
-      return icons.map(i=>i.parentElement&&(i.parentElement.tagName==='A'||i.parentElement.tagName==='BUTTON')?i.parentElement:i);
+      return icons.map(i=>i.parentElement||i);
     }
     // Estratégia 2: coluna Imprimir pelo cabeçalho de tabela (HTML clássico)
     const ths=[...document.querySelectorAll('th,td.headerRow')];
