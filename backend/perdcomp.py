@@ -43,24 +43,28 @@ async def _ecac_download_async(job_id: str, periodo_ini: str, periodo_fim: str):
     dest.mkdir(exist_ok=True)
 
     async with async_playwright() as p:
-        # ── Abrir Chrome com perfil do usuário ─────────────────────────────
+        # ── Abrir nova janela do Chrome (sem fechar o Chrome existente) ────
         try:
-            ctx = await p.chromium.launch_persistent_context(
-                user_data_dir=_CHROME_PROFILE,
+            browser = await p.chromium.launch(
                 channel="chrome",
                 headless=False,
                 accept_downloads=True,
                 downloads_path=str(dest),
                 args=["--disable-blink-features=AutomationControlled",
-                      "--start-maximized"],
-                viewport=None,
+                      "--start-maximized",
+                      "--new-window"],
             )
-            _elog(job_id, "Chrome aberto com seu perfil.")
+            ctx = await browser.new_context(
+                accept_downloads=True,
+                downloads_path=str(dest),
+                viewport={"width": 1280, "height": 900},
+            )
+            _elog(job_id, "Nova janela do Chrome aberta para o eCAC.")
         except Exception as exc:
             _elog(job_id, f"Erro ao abrir Chrome: {exc}")
             job["status"] = "erro"; return
 
-        page = ctx.pages[0] if ctx.pages else await ctx.new_page()
+        page = await ctx.new_page()
         job["status"] = "aguardando_login"
 
         # ── Ir para eCAC ───────────────────────────────────────────────────
@@ -211,7 +215,7 @@ async def _ecac_download_async(job_id: str, periodo_ini: str, periodo_fim: str):
         job["arquivos"] = arquivos_baixados
         job["status"] = "concluido" if arquivos_baixados else "sem_arquivos"
         _elog(job_id, f"Concluído. {len(arquivos_baixados)} arquivo(s) baixado(s).")
-        await ctx.close()
+        await browser.close()
 
 def _ecac_thread(job_id: str, periodo_ini: str, periodo_fim: str):
     asyncio.run(_ecac_download_async(job_id, periodo_ini, periodo_fim))
@@ -708,9 +712,6 @@ def health():
 
 @bp.route('/api/perdcomp/ecac/iniciar', methods=['POST'])
 def ecac_iniciar():
-    if _chrome_bloqueado():
-        return jsonify({"error": "Chrome está aberto. Feche o Chrome antes de iniciar o download automático."}), 400
-
     data = request.json or {}
     periodo_ini = data.get("periodo_ini", "").strip()
     periodo_fim = data.get("periodo_fim", "").strip()
