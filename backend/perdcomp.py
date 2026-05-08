@@ -1,6 +1,6 @@
 """
 PER/DCOMP Analyzer — Backend Blueprint
-Extração de PDFs + Motor de Compliance
+Extração de PDFs + Motor de Compliance + Vinculação PER↔DCOMP
 """
 import io
 import re
@@ -47,21 +47,16 @@ def primeiro_match(texto: str, padroes: list, flags=re.IGNORECASE) -> str | None
             return m.group(1).strip()
     return None
 
-def todos_matches(texto: str, padrao: str, flags=re.IGNORECASE) -> list:
-    return re.findall(padrao, texto, flags)
-
 # ─── DETECÇÃO DE TIPO ─────────────────────────────────────────────────────────
 
 def detectar_tipo(texto: str, tl: str) -> str:
-    # Título e cabeçalho têm prioridade
     primeiras = texto[:600].lower()
     if any(x in primeiras for x in ['declaração de compensação', 'dcomp', 'declaracao de compensacao']):
         return 'Compensação'
     if any(x in primeiras for x in ['pedido de ressarcimento', 'per - ressarcimento', 'ressarcimento']):
         return 'Ressarcimento'
-    if any(x in primeiras for x in ['pedido de restituição', 'pedido de restituicao', 'restituição', 'restituicao']):
+    if any(x in primeiras for x in ['pedido de restituição', 'pedido de restituicao', 'restituição']):
         return 'Restituição'
-    # Fallback no texto completo
     if 'compensação' in tl or 'compensacao' in tl:
         return 'Compensação'
     if 'ressarcimento' in tl:
@@ -71,78 +66,69 @@ def detectar_tipo(texto: str, tl: str) -> str:
     return 'PER/DCOMP'
 
 def detectar_tributo(texto: str) -> str | None:
-    """Detecta tributo considerando variações de nomenclatura da Receita Federal."""
     padroes = [
-        (r'PIS[/\s]Pasep', 'PIS'),
-        (r'\bPIS\b', 'PIS'),
-        (r'COFINS\s+N[ãa]o[- ]Cumulativ', 'COFINS'),
-        (r'\bCOFINS\b', 'COFINS'),
-        (r'\bCSLL\b', 'CSLL'),
-        (r'\bIRPJ\b', 'IRPJ'),
-        (r'\bIRRF\b', 'IRRF'),
-        (r'\bCSRF\b', 'CSRF'),
-        (r'\bIPI\b', 'IPI'),
-        (r'\bINSS\b', 'INSS'),
+        (r'PIS[/\s]Pasep', 'PIS'), (r'\bPIS\b', 'PIS'),
+        (r'COFINS\s+N[ãa]o[- ]Cumulativ', 'COFINS'), (r'\bCOFINS\b', 'COFINS'),
+        (r'\bCSLL\b', 'CSLL'), (r'\bIRPJ\b', 'IRPJ'), (r'\bIRRF\b', 'IRRF'),
+        (r'\bCSRF\b', 'CSRF'), (r'\bIPI\b', 'IPI'), (r'\bINSS\b', 'INSS'),
     ]
     for pat, nome in padroes:
         if re.search(pat, texto, re.IGNORECASE):
             return nome
     return None
 
-# ─── EXTRAÇÃO POR TIPO ────────────────────────────────────────────────────────
+# ─── EXTRAÇÃO DE VALORES POR TIPO ────────────────────────────────────────────
 
-# Padrões de valor monetário brasileiro
 _VAL = r'([\d]{1,3}(?:\.[\d]{3})*,\d{2})'
 
 def _val(texto: str, labels: list) -> float:
-    """Busca valor após um label, flexível quanto a espaços e tabs."""
     for label in labels:
-        pat = label + r'[\s\t:]*' + _VAL
-        m = re.search(pat, texto, re.IGNORECASE)
+        m = re.search(label + r'[\s\t:]*' + _VAL, texto, re.IGNORECASE)
         if m:
             return parse_valor(m.group(1))
     return 0.0
 
-def extrair_dcomp(texto: str, tl: str, nome: str) -> dict:
-    """
-    DCOMP tem duas seções principais:
-    - Crédito objeto da compensação (origem do crédito)
-    - Débito objeto da compensação (o que está sendo quitado)
-    """
-    # Valor do crédito disponível/original
+def extrair_referencia_per(texto: str) -> str | None:
+    """Extrai o número do PER referenciado dentro de uma DCOMP."""
+    return primeiro_match(texto, [
+        r'(?:N[úu]mero do )?PER[:\s]+(\d{5}\.\d{6}/\d{4}-\d{2})',
+        r'Pedido de Ressarcimento[:\s]+(\d{5}\.\d{6}/\d{4}-\d{2})',
+        r'Processo do Cr[eé]dito[:\s]+(\d{5}\.\d{6}/\d{4}-\d{2})',
+        r'N[úu]mero do Cr[eé]dito[:\s]+(\d{5}\.\d{6}/\d{4}-\d{2})',
+        r'Cr[eé]dito[^\n]{0,80}N[úu]mero[:\s]+(\d{5}\.\d{6}/\d{4}-\d{2})',
+    ])
+
+def extrair_competencia_credito(texto: str) -> str | None:
+    """Extrai a competência do CRÉDITO dentro de uma DCOMP (pode ser diferente do débito)."""
+    return primeiro_match(texto, [
+        r'Per[íi]odo de Apura[çc][aã]o do Cr[eé]dito[:\s]+(\d{2}/\d{4})',
+        r'Compet[eê]ncia do Cr[eé]dito[:\s]+(\d{2}/\d{4})',
+        r'Per[íi]odo do Cr[eé]dito[:\s]+(\d{2}/\d{4})',
+        r'Per[íi]odo de Apura[çc][aã]o[:\s]+(\d{2}/\d{4})',
+        r'Per[íi]odo[:\s]+(\d{2}/\d{4})',
+        r'Compet[eê]ncia[:\s]+(\d{2}/\d{4})',
+        r'(\d{2}/\d{4})',
+    ])
+
+def extrair_dcomp(texto: str, tl: str) -> dict:
     valor_credito = _val(texto, [
-        r'Valor do Cr[eé]dito Dispon[íi]vel',
-        r'Valor do Cr[eé]dito Original',
-        r'Valor Total do Cr[eé]dito',
-        r'Valor do Cr[eé]dito',
+        r'Valor do Cr[eé]dito Dispon[íi]vel', r'Valor do Cr[eé]dito Original',
+        r'Valor Total do Cr[eé]dito', r'Valor do Cr[eé]dito',
         r'Cr[eé]dito Dispon[íi]vel',
     ])
-
-    # Valor efetivamente compensado neste DCOMP
     valor_compensado = _val(texto, [
-        r'Valor Compensado',
-        r'Valor da Compensa[çc][aã]o',
-        r'Valor do D[eé]bito Compensado',
-        r'Valor Objeto da Compensa[çc][aã]o',
+        r'Valor Compensado', r'Valor da Compensa[çc][aã]o',
+        r'Valor do D[eé]bito Compensado', r'Valor Objeto da Compensa[çc][aã]o',
         r'Valor do D[eé]bito',
     ])
-
-    # Saldo após compensação
     saldo = _val(texto, [
-        r'Saldo do Cr[eé]dito ap[oó]s',
-        r'Saldo Remanescente',
-        r'Saldo a Compensar',
-        r'Saldo Dispon[íi]vel',
+        r'Saldo do Cr[eé]dito ap[oó]s', r'Saldo Remanescente',
+        r'Saldo a Compensar', r'Saldo Dispon[íi]vel',
     ])
-
-    # Se compensado não encontrado mas temos crédito e saldo, inferir
-    if valor_compensado == 0 and valor_credito > 0 and saldo >= 0:
+    if valor_compensado == 0 and valor_credito > 0 and saldo > 0:
         valor_compensado = max(0.0, valor_credito - saldo)
-
-    # Se saldo não encontrado, calcular
     if saldo == 0 and valor_credito > 0:
         saldo = max(0.0, valor_credito - valor_compensado)
-
     return {
         "valor_credito":      round(valor_credito, 2),
         "valor_compensado":   round(valor_compensado, 2),
@@ -152,27 +138,13 @@ def extrair_dcomp(texto: str, tl: str, nome: str) -> dict:
 
 def extrair_per_ressarcimento(texto: str, tl: str) -> dict:
     valor_credito = _val(texto, [
-        r'Valor do Ressarcimento',
-        r'Valor Solicitado',
-        r'Valor do Cr[eé]dito a Ressarcir',
-        r'Valor do Cr[eé]dito',
-        r'Total do Cr[eé]dito',
+        r'Valor do Ressarcimento', r'Valor Solicitado',
+        r'Valor do Cr[eé]dito a Ressarcir', r'Valor do Cr[eé]dito', r'Total do Cr[eé]dito',
     ])
-
-    valor_ressarcido = _val(texto, [
-        r'Valor Ressarcido',
-        r'Valor Pago',
-        r'Valor Deferido',
-    ])
-
-    saldo = _val(texto, [
-        r'Saldo Remanescente',
-        r'Saldo a Ressarcir',
-        r'Saldo Dispon[íi]vel',
-    ])
+    valor_ressarcido = _val(texto, [r'Valor Ressarcido', r'Valor Pago', r'Valor Deferido'])
+    saldo = _val(texto, [r'Saldo Remanescente', r'Saldo a Ressarcir', r'Saldo Dispon[íi]vel'])
     if saldo == 0 and valor_credito > 0:
         saldo = max(0.0, valor_credito - valor_ressarcido)
-
     return {
         "valor_credito":      round(valor_credito, 2),
         "valor_compensado":   0.0,
@@ -182,26 +154,13 @@ def extrair_per_ressarcimento(texto: str, tl: str) -> dict:
 
 def extrair_per_restituicao(texto: str, tl: str) -> dict:
     valor_credito = _val(texto, [
-        r'Valor da Restituição',
-        r'Valor da Restituicao',
-        r'Valor Solicitado',
-        r'Valor do Cr[eé]dito',
-        r'Valor a Restituir',
+        r'Valor da Restituição', r'Valor da Restituicao',
+        r'Valor Solicitado', r'Valor do Cr[eé]dito', r'Valor a Restituir',
     ])
-
-    valor_ressarcido = _val(texto, [
-        r'Valor Restitu[íi]do',
-        r'Valor Pago',
-        r'Valor Deferido',
-    ])
-
-    saldo = _val(texto, [
-        r'Saldo Remanescente',
-        r'Saldo a Restituir',
-    ])
+    valor_ressarcido = _val(texto, [r'Valor Restitu[íi]do', r'Valor Pago', r'Valor Deferido'])
+    saldo = _val(texto, [r'Saldo Remanescente', r'Saldo a Restituir'])
     if saldo == 0 and valor_credito > 0:
         saldo = max(0.0, valor_credito - valor_ressarcido)
-
     return {
         "valor_credito":      round(valor_credito, 2),
         "valor_compensado":   0.0,
@@ -213,23 +172,10 @@ def extrair_per_restituicao(texto: str, tl: str) -> dict:
 
 def extrair_numero(texto: str) -> str | None:
     return primeiro_match(texto, [
-        # Formato longo Receita Federal: 00000.000000/0000-00
         r'N[úu]mero do Processo[:\s]+(\d{5}\.\d{6}/\d{4}-\d{2})',
         r'Processo[:\s]+(\d{5}\.\d{6}/\d{4}-\d{2})',
-        # Formato PER/DCOMP antigo
         r'N[úu]mero do PER/DCOMP[:\s]+([A-Z0-9\-\/\.]{5,40})',
-        r'N[úu]mero[:\s]+([A-Z0-9\-\/\.]{5,40})',
-        # Genérico: sequência alfanumérica longa após keyword
-        r'(?:Processo|N[úu]mero)[:\s]+([A-Z0-9]{8,})',
-    ])
-
-def extrair_competencia(texto: str) -> str | None:
-    return primeiro_match(texto, [
-        r'Per[íi]odo de Apura[çc][aã]o[:\s]+(\d{2}/\d{4})',
-        r'Per[íi]odo[:\s]+(\d{2}/\d{4})',
-        r'Compet[eê]ncia[:\s]+(\d{2}/\d{4})',
-        r'M[eê]s/Ano[:\s]+(\d{2}/\d{4})',
-        r'Data de Apura[çc][aã]o[:\s]+\d{2}/(\d{2}/\d{4})',
+        r'N[úu]mero[:\s]+([A-Z0-9\-\/\.]{8,40})',
     ])
 
 def extrair_data_tx(texto: str) -> str | None:
@@ -240,10 +186,10 @@ def extrair_data_tx(texto: str) -> str | None:
         r'Data/Hora[:\s]+(\d{2}/\d{2}/\d{4})',
     ])
 
-def extrair_situacao(texto: str, tl: str) -> str | None:
-    for s in ['Deferido', 'Indeferido', 'Cancelado', 'Em Análise',
-              'Em análise', 'Ativo', 'Pendente', 'Em processamento',
-              'Homologado', 'Não Homologado']:
+def extrair_situacao(tl: str) -> str | None:
+    for s in ['Homologado', 'Não Homologado', 'Deferido', 'Indeferido',
+              'Cancelado', 'Em Análise', 'Em análise', 'Ativo',
+              'Pendente', 'Em processamento']:
         if s.lower() in tl:
             return s
     return None
@@ -255,72 +201,242 @@ def extrair_registro(texto: str, nome: str) -> dict:
     tipo = detectar_tipo(texto, tl)
 
     if tipo == 'Compensação':
-        vals = extrair_dcomp(texto, tl, nome)
+        vals = extrair_dcomp(texto, tl)
+        referencia_per = extrair_referencia_per(texto)
+        competencia = extrair_competencia_credito(texto)
     elif tipo == 'Ressarcimento':
         vals = extrair_per_ressarcimento(texto, tl)
-    elif tipo == 'Restituição':
-        vals = extrair_per_restituicao(texto, tl)
+        referencia_per = None
+        competencia = primeiro_match(texto, [
+            r'Per[íi]odo de Apura[çc][aã]o[:\s]+(\d{2}/\d{4})',
+            r'Compet[eê]ncia[:\s]+(\d{2}/\d{4})',
+            r'Per[íi]odo[:\s]+(\d{2}/\d{4})',
+            r'(\d{2}/\d{4})',
+        ])
     else:
-        vals = extrair_dcomp(texto, tl, nome)  # fallback
+        vals = extrair_per_restituicao(texto, tl)
+        referencia_per = None
+        competencia = primeiro_match(texto, [
+            r'Per[íi]odo de Apura[çc][aã]o[:\s]+(\d{2}/\d{4})',
+            r'(\d{2}/\d{4})',
+        ])
+
+    retificador = bool(re.search(r'retificador|retificadora', tl))
+    numero_original = None
+    if retificador:
+        numero_original = primeiro_match(texto, [
+            r'Processo Original[:\s]+(\d{5}\.\d{6}/\d{4}-\d{2})',
+            r'N[úu]mero Original[:\s]+(\d{5}\.\d{6}/\d{4}-\d{2})',
+            r'Retifica[çc][aã]o de[:\s]+(\d{5}\.\d{6}/\d{4}-\d{2})',
+        ])
 
     return {
-        "arquivo":            nome,
-        "numero":             extrair_numero(texto),
-        "tipo":               tipo,
-        "tributo":            detectar_tributo(texto),
-        "competencia":        extrair_competencia(texto),
-        "data_transmissao":   extrair_data_tx(texto),
-        "situacao":           extrair_situacao(texto, tl),
-        "retificador":        bool(re.search(r'retificador|retificadora', tl)),
+        "arquivo":          nome,
+        "numero":           extrair_numero(texto),
+        "numero_original":  numero_original,
+        "tipo":             tipo,
+        "tributo":          detectar_tributo(texto),
+        "competencia":      competencia,
+        "data_transmissao": extrair_data_tx(texto),
+        "situacao":         extrair_situacao(tl),
+        "retificador":      retificador,
+        "referencia_per":   referencia_per,
         **vals,
-        "_debug_preview":     texto[:1500],   # removido na resposta final
     }
+
+# ─── VINCULAÇÃO PER ↔ DCOMP ──────────────────────────────────────────────────
+
+def _normalizar_num(n: str | None) -> str:
+    if not n:
+        return ""
+    return re.sub(r'[\s\-/\.]', '', n).upper()
+
+def vincular_pers_dcomps(registros: list) -> tuple[list, list]:
+    """
+    Vincula DCOMPs aos PERs de origem.
+    Retificadoras substituem os originais.
+    """
+    pers_brutos   = [r for r in registros if r["tipo"] in ("Ressarcimento", "Restituição")]
+    dcomps        = [r for r in registros if r["tipo"] == "Compensação"]
+
+    # ── Passo 1: resolver retificadoras entre os PERs ────────────────────────
+    # Chave de agrupamento: tributo + competencia (identifica o mesmo crédito)
+    per_por_chave: dict[tuple, list] = {}
+    for p in pers_brutos:
+        chave = (p.get("tributo"), p.get("competencia"))
+        per_por_chave.setdefault(chave, []).append(p)
+
+    per_por_numero: dict[str, dict] = {}   # numero normalizado → PER efetivo
+    grupos_per: list[dict] = []
+
+    for chave, grupo in per_por_chave.items():
+        originais    = [p for p in grupo if not p.get("retificador")]
+        retificadoras = [p for p in grupo if p.get("retificador")]
+
+        if retificadoras:
+            efetivo = retificadoras[-1]          # mais recente
+            substituidos = originais + retificadoras[:-1]
+        elif originais:
+            efetivo = originais[-1]
+            substituidos = originais[:-1]
+        else:
+            continue
+
+        efetivo["_efetivo"] = True
+        for s in substituidos:
+            s["_efetivo"] = False
+            s["_substituido_por"] = efetivo.get("arquivo")
+
+        grupos_per.append({
+            "per_efetivo":   efetivo,
+            "substituidos":  substituidos,
+            "chave":         chave,
+        })
+        num = _normalizar_num(efetivo.get("numero"))
+        if num:
+            per_por_numero[num] = efetivo
+
+    # ── Passo 2: vincular cada DCOMP ao seu PER efetivo ──────────────────────
+    dcomps_por_per: dict[int, list] = {id(g["per_efetivo"]): [] for g in grupos_per}
+    dcomps_nao_vinculadas: list[dict] = []
+
+    for dcomp in dcomps:
+        vinculado_a = None
+
+        # 2a. Por número explícito referenciado no DCOMP
+        ref = _normalizar_num(dcomp.get("referencia_per"))
+        if ref and ref in per_por_numero:
+            vinculado_a = per_por_numero[ref]
+
+        # 2b. Por tributo + competência do crédito (mesmo crédito)
+        if not vinculado_a:
+            chave_dcomp = (dcomp.get("tributo"), dcomp.get("competencia"))
+            for g in grupos_per:
+                if g["chave"] == chave_dcomp:
+                    vinculado_a = g["per_efetivo"]
+                    break
+
+        if vinculado_a:
+            dcomps_por_per[id(vinculado_a)].append(dcomp)
+        else:
+            dcomps_nao_vinculadas.append(dcomp)
+
+    # ── Passo 3: montar resultado com validação de saldos ───────────────────
+    vinculos = []
+    for g in grupos_per:
+        per = g["per_efetivo"]
+        linked = dcomps_por_per.get(id(per), [])
+
+        credito      = per["valor_credito"]
+        total_comp   = round(sum(d["valor_compensado"] for d in linked), 2)
+        saldo_calc   = round(credito - total_comp, 2)
+        saldo_decl   = per.get("saldo_remanescente", 0.0)
+
+        # Validação de status
+        if credito == 0:
+            status = "SEM_VALOR"
+        elif total_comp > credito * 1.005:
+            status = "EXCEDIDO"
+        elif saldo_decl > 0 and abs(saldo_calc - saldo_decl) > max(credito * 0.02, 1.0):
+            status = "DIVERGENCIA"
+        elif not linked:
+            status = "SEM_DCOMPS"
+        else:
+            status = "OK"
+
+        alertas_vinc = []
+        if status == "EXCEDIDO":
+            alertas_vinc.append(f"Total compensado (R$ {total_comp:,.2f}) supera o crédito do PER (R$ {credito:,.2f}).")
+        if status == "DIVERGENCIA":
+            alertas_vinc.append(f"Saldo calculado (R$ {saldo_calc:,.2f}) diverge do saldo declarado no PER (R$ {saldo_decl:,.2f}).")
+        if g["substituidos"]:
+            nomes = ", ".join(s["arquivo"] for s in g["substituidos"])
+            alertas_vinc.append(f"Documento(s) substituído(s) por retificadora: {nomes}.")
+
+        vinculos.append({
+            "per_arquivo":          per["arquivo"],
+            "per_numero":           per.get("numero"),
+            "per_tributo":          per.get("tributo"),
+            "per_competencia":      per.get("competencia"),
+            "per_situacao":         per.get("situacao"),
+            "per_data_tx":          per.get("data_transmissao"),
+            "valor_credito":        credito,
+            "tem_retificadora":     bool(g["substituidos"]) or per.get("retificador", False),
+            "substituidos":         [{"arquivo": s["arquivo"], "numero": s.get("numero")} for s in g["substituidos"]],
+            "dcomps": [
+                {
+                    "arquivo":          d["arquivo"],
+                    "numero":           d.get("numero"),
+                    "valor_compensado": d["valor_compensado"],
+                    "data_transmissao": d.get("data_transmissao"),
+                    "situacao":         d.get("situacao"),
+                    "referencia_per":   d.get("referencia_per"),
+                }
+                for d in sorted(linked, key=lambda x: x.get("data_transmissao") or "")
+            ],
+            "total_compensado":     total_comp,
+            "saldo_calculado":      saldo_calc,
+            "saldo_declarado":      saldo_decl,
+            "percentual_utilizado": round(total_comp / credito * 100, 1) if credito > 0 else 0,
+            "status_validacao":     status,
+            "alertas_vinculo":      alertas_vinc,
+        })
+
+    return vinculos, dcomps_nao_vinculadas
 
 # ─── MOTOR DE COMPLIANCE ──────────────────────────────────────────────────────
 
-def analisar_compliance(registros: list) -> list:
+def analisar_compliance(registros: list, vinculos: list) -> list:
     alertas = []
     hoje = date.today()
 
-    # R1 — Possível dupla utilização (mesmo número base)
+    # R1 — Dupla utilização (mesmo número de processo)
     numeros_vistos: dict[str, dict] = {}
     for r in registros:
         if not r.get("numero"):
             continue
-        base = re.sub(r'[-/\s]', '', r["numero"])
+        base = _normalizar_num(r["numero"])
         if base in numeros_vistos:
             alertas.append({
-                "nivel": "alto",
-                "tipo": "Possível Dupla Utilização",
-                "descricao": f"Número '{r['numero']}' aparece em mais de um documento — risco de reutilização de crédito.",
+                "nivel": "alto", "tipo": "Possível Dupla Utilização",
+                "descricao": f"Número '{r['numero']}' aparece em mais de um documento.",
                 "arquivos": [numeros_vistos[base]["arquivo"], r["arquivo"]],
             })
         else:
             numeros_vistos[base] = r
 
-    # R2 — Crédito utilizado acima do disponível
-    for r in registros:
-        utilizado = r["valor_compensado"] + r["valor_ressarcido"]
-        if r["valor_credito"] > 0 and utilizado > r["valor_credito"] * 1.005:
+    # R2 — Saldo excedido por vinculação
+    for v in vinculos:
+        if v["status_validacao"] == "EXCEDIDO":
             alertas.append({
-                "nivel": "alto",
-                "tipo": "Crédito Acima do Saldo",
-                "descricao": (f"{r['arquivo']}: Valor utilizado R$ {utilizado:,.2f} supera "
-                              f"o crédito apurado R$ {r['valor_credito']:,.2f}."),
+                "nivel": "alto", "tipo": "Crédito do PER Excedido",
+                "descricao": (f"PER '{v['per_arquivo']}': total compensado R$ {v['total_compensado']:,.2f} "
+                              f"supera o crédito disponível R$ {v['valor_credito']:,.2f}."),
+                "arquivos": [v["per_arquivo"]] + [d["arquivo"] for d in v["dcomps"]],
+            })
+
+    # R3 — Divergência de saldo
+    for v in vinculos:
+        if v["status_validacao"] == "DIVERGENCIA":
+            alertas.append({
+                "nivel": "medio", "tipo": "Divergência de Saldo",
+                "descricao": (f"PER '{v['per_arquivo']}': saldo calculado R$ {v['saldo_calculado']:,.2f} "
+                              f"diverge do saldo declarado R$ {v['saldo_declarado']:,.2f}."),
+                "arquivos": [v["per_arquivo"]],
+            })
+
+    # R4 — DCOMPs sem PER vinculado
+    for r in registros:
+        if r["tipo"] == "Compensação" and not any(
+            d["arquivo"] == r["arquivo"] for v in vinculos for d in v["dcomps"]
+        ):
+            alertas.append({
+                "nivel": "medio", "tipo": "Compensação Sem PER Vinculado",
+                "descricao": f"{r['arquivo']}: Não foi possível identificar o PER de origem desta compensação.",
                 "arquivos": [r["arquivo"]],
             })
 
-    # R3 — Saldo negativo
-    for r in registros:
-        if r["saldo_remanescente"] < -0.01:
-            alertas.append({
-                "nivel": "alto",
-                "tipo": "Saldo Negativo",
-                "descricao": f"{r['arquivo']}: Saldo remanescente negativo (R$ {r['saldo_remanescente']:,.2f}).",
-                "arquivos": [r["arquivo"]],
-            })
-
-    # R4 — Prescrição e risco de prescrição
+    # R5 — Prescrição
     for r in registros:
         comp = r.get("competencia")
         if not comp:
@@ -330,67 +446,51 @@ def analisar_compliance(registros: list) -> list:
             if len(partes) != 2:
                 continue
             mes, ano = int(partes[0]), int(partes[1])
-            data_cred = date(ano, mes, 1)
-            anos = (hoje - data_cred).days / 365.25
+            anos = (hoje - date(ano, mes, 1)).days / 365.25
             if anos > 5:
                 alertas.append({
-                    "nivel": "alto",
-                    "tipo": "Risco de Prescrição",
-                    "descricao": f"{r['arquivo']}: Crédito de {comp} tem {anos:.1f} anos — provável prescrição (prazo: 5 anos).",
+                    "nivel": "alto", "tipo": "Risco de Prescrição",
+                    "descricao": f"{r['arquivo']}: Crédito de {comp} tem {anos:.1f} anos — possível prescrição.",
                     "arquivos": [r["arquivo"]],
                 })
             elif anos > 4:
                 alertas.append({
-                    "nivel": "medio",
-                    "tipo": "Crédito Próximo da Prescrição",
+                    "nivel": "medio", "tipo": "Crédito Próximo da Prescrição",
                     "descricao": f"{r['arquivo']}: Crédito de {comp} tem {anos:.1f} anos — monitorar prazo de 5 anos.",
                     "arquivos": [r["arquivo"]],
                 })
         except Exception:
             pass
 
-    # R5 — Dados não extraídos (revisão manual)
+    # R6 — Dados não extraídos
     for r in registros:
         falta = []
-        if not r.get("tributo"):        falta.append("tributo")
-        if not r.get("competencia"):    falta.append("competência")
+        if not r.get("tributo"):    falta.append("tributo")
+        if not r.get("competencia"): falta.append("competência")
         if r["valor_credito"] == 0 and r["valor_compensado"] == 0:
-            falta.append("valores")
+            falta.append("valores monetários")
         if falta:
             alertas.append({
-                "nivel": "medio",
-                "tipo": "Dados Não Extraídos",
-                "descricao": f"{r['arquivo']}: Não foi possível identificar {', '.join(falta)} — revisão manual necessária.",
+                "nivel": "medio", "tipo": "Dados Não Extraídos",
+                "descricao": f"{r['arquivo']}: Não identificado: {', '.join(falta)}. Revisão manual necessária.",
                 "arquivos": [r["arquivo"]],
             })
 
-    # R6 — Documentos retificadores
+    # R7 — Retificadoras
     for r in registros:
         if r.get("retificador"):
             alertas.append({
-                "nivel": "info",
-                "tipo": "Documento Retificador",
-                "descricao": f"{r['arquivo']}: Retificador identificado — verificar se o original está incluído na análise.",
+                "nivel": "info", "tipo": "Documento Retificador",
+                "descricao": f"{r['arquivo']}: Retificadora — substituiu documentos anteriores de mesmo tributo/competência.",
                 "arquivos": [r["arquivo"]],
             })
 
-    # R7 — Pedidos indeferidos ou cancelados
+    # R8 — Pedidos indeferidos/cancelados
     for r in registros:
         if r.get("situacao") in ("Indeferido", "Cancelado"):
             alertas.append({
-                "nivel": "medio",
-                "tipo": f"Pedido {r['situacao']}",
-                "descricao": f"{r['arquivo']}: Status '{r['situacao']}' — verificar se houve recurso ou retificação.",
-                "arquivos": [r["arquivo"]],
-            })
-
-    # R8 — Compensação sem crédito identificado
-    for r in registros:
-        if r["tipo"] == "Compensação" and r["valor_compensado"] > 0 and r["valor_credito"] == 0:
-            alertas.append({
-                "nivel": "medio",
-                "tipo": "Crédito Origem Não Identificado",
-                "descricao": f"{r['arquivo']}: Compensação de R$ {r['valor_compensado']:,.2f} sem crédito origem identificado no PDF.",
+                "nivel": "medio", "tipo": f"Pedido {r['situacao']}",
+                "descricao": f"{r['arquivo']}: Status '{r['situacao']}' — verificar recurso ou retificação.",
                 "arquivos": [r["arquivo"]],
             })
 
@@ -404,7 +504,6 @@ def health():
 
 @bp.route('/api/perdcomp/debug', methods=['POST'])
 def debug():
-    """Retorna o texto bruto extraído dos PDFs para diagnóstico."""
     if not PDF_OK:
         return jsonify({"error": "pdfplumber não instalado"}), 500
     files = request.files.getlist('files')
@@ -414,13 +513,14 @@ def debug():
             continue
         texto = extrair_texto(f.read())
         resultado.append({
-            "arquivo": f.filename,
-            "chars": len(texto),
-            "texto": texto[:3000],
-            "tipo_detectado": detectar_tipo(texto, texto.lower()),
-            "tributo_detectado": detectar_tributo(texto),
-            "numero_detectado": extrair_numero(texto),
-            "competencia_detectada": extrair_competencia(texto),
+            "arquivo":              f.filename,
+            "chars":                len(texto),
+            "texto":                texto[:3000],
+            "tipo_detectado":       detectar_tipo(texto, texto.lower()),
+            "tributo_detectado":    detectar_tributo(texto),
+            "numero_detectado":     extrair_numero(texto),
+            "competencia_detectada":extrair_competencia_credito(texto),
+            "referencia_per":       extrair_referencia_per(texto),
         })
     return jsonify(resultado)
 
@@ -434,7 +534,6 @@ def upload():
         return jsonify({"error": "Nenhum arquivo enviado"}), 400
 
     registros, erros = [], []
-
     for f in files:
         if not f.filename:
             continue
@@ -443,18 +542,17 @@ def upload():
             if not texto.strip() or texto.startswith("ERRO_EXTRACAO"):
                 erros.append({"arquivo": f.filename,
                               "erro": texto if texto.startswith("ERRO") else
-                              "PDF sem texto extraível — pode ser escaneado (OCR não suportado nesta versão)"})
+                              "PDF sem texto extraível — pode ser escaneado"})
                 continue
-            reg = extrair_registro(texto, f.filename)
-            reg.pop("_debug_preview", None)
-            registros.append(reg)
+            registros.append(extrair_registro(texto, f.filename))
         except Exception as e:
             erros.append({"arquivo": f.filename, "erro": str(e)[:300]})
 
     if not registros and erros:
         return jsonify({"error": "Nenhum arquivo processado", "detalhes": erros}), 400
 
-    alertas = analisar_compliance(registros)
+    vinculos, dcomps_nao_vinculadas = vincular_pers_dcomps(registros)
+    alertas = analisar_compliance(registros, vinculos)
 
     total_credito    = sum(r["valor_credito"]      for r in registros)
     total_compensado = sum(r["valor_compensado"]   for r in registros)
@@ -466,17 +564,20 @@ def upload():
     for r in registros:
         t  = r["tributo"] or "Não identificado"
         tp = r["tipo"]    or "Não identificado"
-        # Para distribuição de valores: usa compensado se DCOMP, crédito se PER
         val = r["valor_compensado"] if r["tipo"] == "Compensação" else r["valor_credito"]
-        dist_tributos[t]  = dist_tributos.get(t, 0)  + val
-        dist_tipos[tp]    = dist_tipos.get(tp, 0)    + 1
+        dist_tributos[t]  = round(dist_tributos.get(t, 0) + val, 2)
+        dist_tipos[tp]    = dist_tipos.get(tp, 0) + 1
 
     return jsonify({
-        "registros": registros,
-        "alertas":   alertas,
-        "erros":     erros,
+        "registros":              registros,
+        "vinculos":               vinculos,
+        "dcomps_nao_vinculadas":  [d["arquivo"] for d in dcomps_nao_vinculadas],
+        "alertas":                alertas,
+        "erros":                  erros,
         "sumario": {
             "total_arquivos":    len(registros),
+            "total_pers":        sum(1 for r in registros if r["tipo"] in ("Ressarcimento", "Restituição")),
+            "total_dcomps":      sum(1 for r in registros if r["tipo"] == "Compensação"),
             "total_credito":     round(total_credito, 2),
             "total_compensado":  round(total_compensado, 2),
             "total_ressarcido":  round(total_ressarcido, 2),
@@ -486,5 +587,8 @@ def upload():
             "alertas_info":      sum(1 for a in alertas if a["nivel"] == "info"),
             "dist_tributos":     dist_tributos,
             "dist_tipos":        dist_tipos,
+            "vinculos_ok":       sum(1 for v in vinculos if v["status_validacao"] == "OK"),
+            "vinculos_excedidos":sum(1 for v in vinculos if v["status_validacao"] == "EXCEDIDO"),
+            "vinculos_diverg":   sum(1 for v in vinculos if v["status_validacao"] == "DIVERGENCIA"),
         }
     })

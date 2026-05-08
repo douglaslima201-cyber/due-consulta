@@ -232,6 +232,7 @@ td.name{font-family:var(--body);font-size:12px;color:var(--g2);max-width:180px;o
     <div class="s-item" onclick="sp('p-dash')"><span>📊</span>Dashboard</div>
     <div class="s-item" onclick="sp('p-registros')"><span>📋</span>Registros <span class="s-badge sb-ok" id="sb-reg" style="display:none">0</span></div>
     <div class="s-item" onclick="sp('p-alertas')"><span>🚨</span>Alertas <span class="s-badge sb-red" id="sb-alt" style="display:none">0</span></div>
+    <div class="s-item" onclick="sp('p-per');renderPer(null)"><span>🔗</span>Análise por PER <span class="s-badge sb-ok" id="sb-per" style="display:none">0</span></div>
     <div class="s-sec" style="margin-top:12px">Exportar</div>
     <div class="s-item" onclick="sp('p-relatorio')"><span>📄</span>Relatório</div>
   </aside>
@@ -357,6 +358,70 @@ td.name{font-family:var(--body);font-size:12px;color:var(--g2);max-width:180px;o
       </div>
     </div>
 
+    <!-- ANÁLISE POR PER -->
+    <div class="panel" id="p-per">
+      <div class="sec-label">Vinculação PER ↔ DCOMP</div>
+      <h2 class="sec-title">Análise por PER</h2>
+      <p class="sec-sub">Selecione um Pedido de Ressarcimento/Restituição para ver todas as compensações vinculadas e a validação de saldos.</p>
+
+      <div id="per-empty" class="empty"><div class="empty-ic">🔗</div><div class="empty-t">Nenhuma análise disponível</div><div style="font-size:12px">Processe os documentos para vincular PERs e DCOMPs.</div></div>
+
+      <div id="per-body" style="display:none">
+        <!-- Selector -->
+        <div class="card" style="margin-bottom:20px">
+          <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+            <div style="flex:1;min-width:260px">
+              <div style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--g2);margin-bottom:6px">Selecionar PER / Pedido</div>
+              <select id="per-select" onchange="renderPer(this.value)" style="width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:var(--r);padding:10px 14px;color:var(--white);font-family:var(--body);font-size:13px;">
+                <option value="">— selecione um PER —</option>
+              </select>
+            </div>
+            <div id="per-status-pill" style="margin-top:20px"></div>
+          </div>
+        </div>
+
+        <!-- Detail -->
+        <div id="per-detail" style="display:none">
+          <!-- PER Info -->
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-title">📄 Dados do PER / Pedido (documento efetivo)</div>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px" id="per-info-grid"></div>
+            <div id="per-ret-warn" style="display:none;margin-top:14px;padding:12px 16px;background:rgba(250,204,21,.06);border:1px solid rgba(250,204,21,.2);border-radius:var(--r);font-size:12px;color:var(--yellow)"></div>
+          </div>
+
+          <!-- Saldo resumo -->
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px" id="per-saldo-grid"></div>
+
+          <!-- DCOMP table -->
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-title">🔗 Compensações Vinculadas</div>
+            <div id="per-dcomp-empty" style="color:var(--g3);font-size:13px;padding:8px 0">Nenhuma compensação vinculada a este PER.</div>
+            <div id="per-dcomp-table" style="display:none">
+              <div class="tw">
+                <table>
+                  <thead><tr>
+                    <th>Arquivo</th><th>Número</th><th>Data Transmissão</th>
+                    <th>Valor Compensado</th><th>Saldo Acumulado</th><th>Situação</th><th>Vinc. explícita</th>
+                  </tr></thead>
+                  <tbody id="per-dcomp-tbody"></tbody>
+                  <tfoot id="per-dcomp-tfoot" style="border-top:2px solid rgba(249,115,22,.3)"></tfoot>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Validation -->
+          <div id="per-validacao"></div>
+        </div>
+
+        <!-- DCOMPs não vinculadas -->
+        <div id="per-nao-vinc" style="display:none;margin-top:20px">
+          <div style="font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--yellow);margin-bottom:10px">⚠ Compensações sem PER identificado</div>
+          <div id="per-nao-vinc-list"></div>
+        </div>
+      </div>
+    </div>
+
     <!-- RELATÓRIO -->
     <div class="panel" id="p-relatorio">
       <div class="sec-label">Exportação</div>
@@ -396,7 +461,7 @@ function fecharModal(){
 function sp(id){
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('act'));
   document.getElementById(id).classList.add('act');
-  const m={'p-upload':0,'p-dash':1,'p-registros':2,'p-alertas':3,'p-relatorio':4};
+  const m={'p-upload':0,'p-dash':1,'p-registros':2,'p-alertas':3,'p-per':4,'p-relatorio':5};
   document.querySelectorAll('.s-item').forEach(n=>n.classList.remove('act'));
   if(m[id]!==undefined) document.querySelectorAll('.s-item')[m[id]]?.classList.add('act');
 }
@@ -496,12 +561,138 @@ function renderTudo(){
   renderDash();
   renderRegistros();
   renderAlertas();
+  renderPerSelector();
   renderRelatorio();
-  // Badges sidebar
   document.getElementById('sb-reg').textContent=DADOS.registros.length;
   document.getElementById('sb-reg').style.display='inline';
   const alto=DADOS.sumario.alertas_alto;
   if(alto>0){document.getElementById('sb-alt').textContent=alto;document.getElementById('sb-alt').style.display='inline';}
+  const nv=DADOS.vinculos?.length||0;
+  if(nv>0){document.getElementById('sb-per').textContent=nv;document.getElementById('sb-per').style.display='inline';}
+}
+
+// ─── ANÁLISE POR PER ──────────────────────────────────────────────────────────
+function renderPerSelector(){
+  if(!DADOS||!DADOS.vinculos) return;
+  document.getElementById('per-empty').style.display='none';
+  document.getElementById('per-body').style.display='block';
+
+  const sel=document.getElementById('per-select');
+  sel.innerHTML='<option value="">— selecione um PER —</option>';
+  DADOS.vinculos.forEach((v,i)=>{
+    const label=`${v.per_arquivo} | ${v.per_tributo||'?'} | ${v.per_competencia||'?'} | ${v.dcomps.length} DCOMP(s)`;
+    sel.innerHTML+=`<option value="${i}">${label}</option>`;
+  });
+
+  // DCOMPs não vinculadas
+  const nv=DADOS.dcomps_nao_vinculadas||[];
+  const nvEl=document.getElementById('per-nao-vinc');
+  if(nv.length){
+    nvEl.style.display='block';
+    document.getElementById('per-nao-vinc-list').innerHTML=nv.map(a=>`
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:rgba(250,204,21,.05);border:1px solid rgba(250,204,21,.15);border-radius:var(--r);margin-bottom:6px;font-size:12px">
+        <span>⚠</span><span style="color:var(--g2)">${e(a)}</span>
+      </div>`).join('');
+  } else {
+    nvEl.style.display='none';
+  }
+}
+
+const STATUS_CONFIG = {
+  OK:          {cls:'sb-ok',  lbl:'✅ Saldo OK',         desc:'Valores dentro do esperado.'},
+  EXCEDIDO:    {cls:'sb-red', lbl:'🔴 Crédito Excedido',  desc:'Total compensado supera o crédito disponível.'},
+  DIVERGENCIA: {cls:'sb-red', lbl:'🟡 Divergência de Saldo', desc:'Saldo calculado difere do declarado.'},
+  SEM_DCOMPS:  {cls:'',       lbl:'⚪ Sem Compensações',  desc:'Nenhuma DCOMP vinculada a este PER.'},
+  SEM_VALOR:   {cls:'',       lbl:'⚠ Valor Não Extraído', desc:'Valor do crédito não identificado no PDF.'},
+};
+
+function renderPer(idx){
+  if(idx===null||idx==='') {document.getElementById('per-detail').style.display='none'; return;}
+  const v=DADOS.vinculos[parseInt(idx)];
+  if(!v) return;
+
+  document.getElementById('per-detail').style.display='block';
+
+  // Status pill
+  const sc=STATUS_CONFIG[v.status_validacao]||STATUS_CONFIG.OK;
+  document.getElementById('per-status-pill').innerHTML=
+    `<span class="s-badge ${sc.cls}" style="font-size:12px;padding:6px 14px">${sc.lbl}</span>`;
+
+  // PER info grid
+  document.getElementById('per-info-grid').innerHTML=[
+    {l:'Arquivo',      v:v.per_arquivo},
+    {l:'Número',       v:v.per_numero||'—'},
+    {l:'Tributo',      v:v.per_tributo||'—'},
+    {l:'Competência',  v:v.per_competencia||'—'},
+    {l:'Data Transmissão', v:v.per_data_tx||'—'},
+    {l:'Situação',     v:v.per_situacao||'—'},
+    {l:'DCOMPs vinculadas', v:v.dcomps.length},
+    {l:'% Utilizado',  v:v.percentual_utilizado+'%'},
+  ].map(x=>`<div style="padding:12px 14px;background:rgba(255,255,255,.03);border-radius:var(--r)"><div style="font-size:13px;font-weight:600;color:var(--white);margin-bottom:3px">${e(String(x.v))}</div><div style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--g3)">${x.l}</div></div>`).join('');
+
+  // Retificadora warning
+  const retEl=document.getElementById('per-ret-warn');
+  if(v.tem_retificadora && v.substituidos?.length){
+    retEl.style.display='block';
+    retEl.innerHTML=`⚠ Este crédito possui retificadora. Documento(s) substituído(s): <strong>${v.substituidos.map(s=>s.arquivo).join(', ')}</strong>. Os valores do documento efetivo (retificadora) estão sendo utilizados.`;
+  } else if(v.tem_retificadora) {
+    retEl.style.display='block';
+    retEl.innerHTML='ℹ Este documento é uma <strong>retificadora</strong> e substituiu o PER original para efeito de cálculo de saldo.';
+  } else {
+    retEl.style.display='none';
+  }
+
+  // Saldo grid
+  document.getElementById('per-saldo-grid').innerHTML=[
+    {l:'Crédito disponível', v:brl(v.valor_credito),    c:'c-o'},
+    {l:'Total compensado',   v:brl(v.total_compensado), c:v.total_compensado>v.valor_credito?'c-r':'c-b'},
+    {l:'Saldo calculado',    v:brl(v.saldo_calculado),  c:v.saldo_calculado<0?'c-r':'c-g'},
+    {l:'Saldo declarado',    v:brl(v.saldo_declarado),  c:'c-w'},
+  ].map(x=>`<div class="stat ${x.c}"><div class="stat-n">${x.v}</div><div class="stat-l">${x.l}</div></div>`).join('');
+
+  // DCOMP table
+  if(!v.dcomps.length){
+    document.getElementById('per-dcomp-empty').style.display='block';
+    document.getElementById('per-dcomp-table').style.display='none';
+  } else {
+    document.getElementById('per-dcomp-empty').style.display='none';
+    document.getElementById('per-dcomp-table').style.display='block';
+    let acum=0;
+    document.getElementById('per-dcomp-tbody').innerHTML=v.dcomps.map(d=>{
+      acum+=d.valor_compensado;
+      const excede=acum>v.valor_credito*1.005;
+      return `<tr style="${excede?'background:rgba(239,68,68,.06)':''}">
+        <td class="name">${e(d.arquivo)}</td>
+        <td>${e(d.numero||'—')}</td>
+        <td>${e(d.data_transmissao||'—')}</td>
+        <td style="color:var(--blue-l)">${brl(d.valor_compensado)}</td>
+        <td style="color:${acum>v.valor_credito?'var(--red)':'var(--green)'}">${brl(acum)}</td>
+        <td>${e(d.situacao||'—')}</td>
+        <td style="text-align:center">${d.referencia_per?'<span style="color:var(--green);font-size:14px">✓</span>':'<span style="color:var(--g3)">—</span>'}</td>
+      </tr>`;
+    }).join('');
+    document.getElementById('per-dcomp-tfoot').innerHTML=`
+      <tr>
+        <td colspan="3" style="text-align:right;color:var(--g3);font-size:11px;padding:10px 12px">Total</td>
+        <td style="color:var(--blue-l);font-weight:700">${brl(v.total_compensado)}</td>
+        <td colspan="3"></td>
+      </tr>`;
+  }
+
+  // Validação
+  const valEl=document.getElementById('per-validacao');
+  const alertas=v.alertas_vinculo||[];
+  if(alertas.length){
+    valEl.innerHTML=alertas.map(a=>`
+      <div class="alert-item a-${v.status_validacao==='EXCEDIDO'?'alto':'medio'}" style="margin-bottom:8px">
+        <span class="alert-pill p-${v.status_validacao==='EXCEDIDO'?'alto':'medio'}">${v.status_validacao==='EXCEDIDO'?'🔴 Alto':'🟡 Médio'}</span>
+        <div class="alert-content"><div class="ab">${e(a)}</div></div>
+      </div>`).join('');
+  } else if(v.status_validacao==='OK'){
+    valEl.innerHTML=`<div class="alert-item a-info"><span class="alert-pill p-info">✅ OK</span><div class="alert-content"><div class="ab">Saldos e valores dentro do esperado. Nenhuma inconsistência identificada neste PER.</div></div></div>`;
+  } else {
+    valEl.innerHTML='';
+  }
 }
 
 // ─── DASHBOARD ────────────────────────────────────────────────────────────────
