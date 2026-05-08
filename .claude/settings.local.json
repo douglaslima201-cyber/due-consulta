@@ -40,7 +40,8 @@
       "Bash(python -c \"import flask, playwright; print\\('dependencias OK'\\)\")",
       "Bash(findstr \":5000 \")",
       "Bash(findstr \"LISTENING\")",
-      "Bash(python -c \"from perdcomp import bp; print\\('OK'\\)\")"
+      "Bash(python -c \"from perdcomp import bp; print\\('OK'\\)\")",
+      "Bash(findstr \":9222\")"
     ]
   },
   "hooks": {
