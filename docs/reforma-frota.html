@@ -201,17 +201,7 @@ td.pos{color:var(--green);}td.neg{color:var(--red);}td.neu{color:var(--g3);}td.h
       <h1 class="sec-title">Simulador de Reforma Tributária<br><span style="color:var(--orange)">para Renovação de Frota</span></h1>
       <p class="sec-sub">Analise o impacto da CBS e IBS na aquisição de veículos. Compare o cenário atual com o modelo pós-reforma e identifique o melhor momento para renovar a frota.</p>
 
-      <div class="timeline">
-        <div class="tl a"><div class="tl-yr">2025</div><div class="tl-lbl">Regime Atual</div></div>
-        <div class="tl t"><div class="tl-yr">2026</div><div class="tl-lbl">CBS Teste</div></div>
-        <div class="tl t"><div class="tl-yr">2027</div><div class="tl-lbl">CBS Pleno</div></div>
-        <div class="tl t"><div class="tl-yr">2028</div><div class="tl-lbl">CBS Pleno</div></div>
-        <div class="tl t"><div class="tl-yr">2029</div><div class="tl-lbl">IBS 1/5</div></div>
-        <div class="tl t"><div class="tl-yr">2030</div><div class="tl-lbl">IBS 2/5</div></div>
-        <div class="tl t"><div class="tl-yr">2031</div><div class="tl-lbl">IBS 3/5</div></div>
-        <div class="tl t"><div class="tl-yr">2032</div><div class="tl-lbl">IBS 4/5</div></div>
-        <div class="tl p"><div class="tl-yr">2033</div><div class="tl-lbl">Modelo Pleno</div></div>
-      </div>
+      <div class="timeline" id="timeline"></div>
 
       <div class="home-g">
         <div class="hc" onclick="sp('p-dados')"><div class="hc-ic">🚛</div><div class="hc-title">Nova Simulação</div><div class="hc-desc">Insira dados da frota e parâmetros tributários para gerar análise completa.</div></div>
@@ -244,17 +234,7 @@ td.pos{color:var(--green);}td.neg{color:var(--red);}td.neu{color:var(--g3);}td.h
           </div>
           <div class="fg"><label>Valor unitário estimado (R$)</label><input type="number" id="f-valor" value="600000" min="1000"/><span class="hint">Valor NF — base de cálculo dos créditos</span></div>
           <div class="fg"><label>Ano previsto da aquisição</label>
-            <select id="f-ano">
-              <option value="2025">2025 — Regime atual</option>
-              <option value="2026">2026 — CBS teste</option>
-              <option value="2027">2027 — CBS pleno</option>
-              <option value="2028">2028 — CBS pleno</option>
-              <option value="2029">2029 — IBS 1/5</option>
-              <option value="2030">2030 — IBS 2/5</option>
-              <option value="2031">2031 — IBS 3/5</option>
-              <option value="2032">2032 — IBS 4/5</option>
-              <option value="2033" selected>2033 — Modelo pleno</option>
-            </select>
+            <select id="f-ano"></select>
           </div>
           <div class="fg"><label>Forma de aquisição</label>
             <select id="f-forma">
@@ -344,11 +324,7 @@ td.pos{color:var(--green);}td.neg{color:var(--red);}td.neu{color:var(--g3);}td.h
         <div class="dvd"></div>
         <h3 style="font-family:var(--display);font-size:16px;font-weight:700;margin-bottom:16px">Evolução Ano a Ano — Comprar em cada ano</h3>
         <div class="tw"><table>
-          <thead><tr>
-            <th>Indicador</th>
-            <th>2025</th><th>2026</th><th>2027</th><th>2028</th>
-            <th>2029</th><th>2030</th><th>2031</th><th>2032</th><th>2033</th>
-          </tr></thead>
+          <thead><tr id="res-thead"><th>Indicador</th></tr></thead>
           <tbody id="res-tbody"></tbody>
         </table></div>
         <div class="btn-row">
@@ -402,21 +378,58 @@ td.pos{color:var(--green);}td.neg{color:var(--red);}td.neu{color:var(--g3);}td.h
 // ─── REFORMA TRIBUTÁRIA — TRANSIÇÃO ANUAL (LC 214/2025) ──────────────────────
 // pf/cf = fator das alíquotas PIS/COFINS | cbsF/ibsF = fator CBS/IBS | icmsF = fator ICMS
 const TR = {
-  2025:{pf:1.00,cf:1.00,cbsF:0,      ibsF:0,    icmsF:1.0,tipo:'a'},
-  2026:{pf:0.394,cf:0.395,cbsF:0.102,ibsF:0,    icmsF:1.0,tipo:'t'},
-  2027:{pf:0,   cf:0,    cbsF:1.0,   ibsF:0,    icmsF:1.0,tipo:'t'},
-  2028:{pf:0,   cf:0,    cbsF:1.0,   ibsF:0,    icmsF:1.0,tipo:'t'},
-  2029:{pf:0,   cf:0,    cbsF:1.0,   ibsF:0.20, icmsF:0.8,tipo:'t'},
-  2030:{pf:0,   cf:0,    cbsF:1.0,   ibsF:0.40, icmsF:0.6,tipo:'t'},
-  2031:{pf:0,   cf:0,    cbsF:1.0,   ibsF:0.60, icmsF:0.4,tipo:'t'},
-  2032:{pf:0,   cf:0,    cbsF:1.0,   ibsF:0.80, icmsF:0.2,tipo:'t'},
-  2033:{pf:0,   cf:0,    cbsF:1.0,   ibsF:1.0,  icmsF:0,  tipo:'p'},
+  2025:{pf:1.00, cf:1.00,  cbsF:0,     ibsF:0,    icmsF:1.0,tipo:'a'},
+  2026:{pf:0.394,cf:0.395, cbsF:0.102, ibsF:0,    icmsF:1.0,tipo:'t'},
+  2027:{pf:0,    cf:0,     cbsF:1.0,   ibsF:0,    icmsF:1.0,tipo:'t'},
+  2028:{pf:0,    cf:0,     cbsF:1.0,   ibsF:0,    icmsF:1.0,tipo:'t'},
+  2029:{pf:0,    cf:0,     cbsF:1.0,   ibsF:0.20, icmsF:0.8,tipo:'t'},
+  2030:{pf:0,    cf:0,     cbsF:1.0,   ibsF:0.40, icmsF:0.6,tipo:'t'},
+  2031:{pf:0,    cf:0,     cbsF:1.0,   ibsF:0.60, icmsF:0.4,tipo:'t'},
+  2032:{pf:0,    cf:0,     cbsF:1.0,   ibsF:0.80, icmsF:0.2,tipo:'t'},
+  2033:{pf:0,    cf:0,     cbsF:1.0,   ibsF:1.0,  icmsF:0,  tipo:'p'},
 };
-const ANOS = [2025,2026,2027,2028,2029,2030,2031,2032,2033];
+const ANO_FIM = 2033;
+const ANO_ATUAL = Math.min(new Date().getFullYear(), ANO_FIM);
+const ANOS = Array.from({length: ANO_FIM - ANO_ATUAL + 1}, (_, i) => ANO_ATUAL + i);
+
+// ─── LABELS DA REFORMA POR ANO ────────────────────────────────────────────────
+const TL_LABELS = {
+  2025:'Regime Atual',2026:'CBS Teste',2027:'CBS Pleno',2028:'CBS Pleno',
+  2029:'IBS 1/5',2030:'IBS 2/5',2031:'IBS 3/5',2032:'IBS 4/5',2033:'Modelo Pleno',
+};
+const ANO_OPT_LABELS = {
+  2025:'Regime atual',2026:'CBS teste',2027:'CBS pleno',2028:'CBS pleno',
+  2029:'IBS 1/5',2030:'IBS 2/5',2031:'IBS 3/5',2032:'IBS 4/5',2033:'Modelo pleno',
+};
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
 let SIM = null;
 let CHS = {};
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+function init(){
+  // Timeline
+  const tl = document.getElementById('timeline');
+  tl.innerHTML = ANOS.map(a=>{
+    const t = TR[a]||TR[2033];
+    const cls = t.tipo==='a'?'a':t.tipo==='p'?'p':'t';
+    return `<div class="tl ${cls}"><div class="tl-yr">${a}</div><div class="tl-lbl">${TL_LABELS[a]||'Transição'}</div></div>`;
+  }).join('');
+
+  // Dropdown
+  const sel = document.getElementById('f-ano');
+  sel.innerHTML = ANOS.map(a=>{
+    const sel = a===ANO_FIM ? ' selected' : '';
+    return `<option value="${a}"${sel}>${a} — ${ANO_OPT_LABELS[a]||'Transição'}</option>`;
+  }).join('');
+
+  // Table headers
+  const thead = document.getElementById('res-thead');
+  ANOS.forEach(a=>{ const th=document.createElement('th'); th.textContent=a; thead.appendChild(th); });
+
+  // Stat label
+  document.querySelector('#res-stats .stat:last-child .stat-l').textContent = `Economia vs ${ANO_ATUAL}`;
+}
 
 // ─── NAVIGATION ──────────────────────────────────────────────────────────────
 function sp(id){
@@ -588,11 +601,11 @@ function gerarAlertas(anos, a0, aE){
       b:`Em ${aE.ano}, a CBS garante crédito integral no próprio mês da aquisição — eliminando os ${a0.mMed} meses de espera do regime atual e melhorando significativamente o fluxo de caixa.`});
 
   if(ec>0)
-    alerts.push({cls:'alert-g',ic:'💰',t:`Economia de ${brlK(ec)} vs compra em 2025`,
-      b:`Considerando o valor presente dos créditos, adquirir em ${aE.ano} representa custo efetivo ${brlK(ec)} menor do que comprar hoje sob o regime atual.`});
-  else if(ec<0 && aE.ano>2025)
+    alerts.push({cls:'alert-g',ic:'💰',t:`Economia de ${brlK(ec)} vs compra em ${ANO_ATUAL}`,
+      b:`Considerando o valor presente dos créditos, adquirir em ${aE.ano} representa custo efetivo ${brlK(ec)} menor do que comprar em ${ANO_ATUAL} sob o regime atual.`});
+  else if(ec<0 && aE.ano>ANO_ATUAL)
     alerts.push({cls:'alert-y',ic:'⚠️',t:`Custo efetivo ${brlK(-ec)} maior em ${aE.ano}`,
-      b:`Para este cenário, comprar em 2025 ainda é financeiramente mais vantajoso considerando o valor do dinheiro no tempo. Avalie o prazo de recuperação de crédito como fator decisivo.`});
+      b:`Para este cenário, comprar em ${ANO_ATUAL} ainda é financeiramente mais vantajoso considerando o valor do dinheiro no tempo. Avalie o prazo de recuperação de crédito como fator decisivo.`});
 
   if(aE.ano===2026)
     alerts.push({cls:'alert-y',ic:'📅',t:'Período de Transição em 2026',
@@ -758,6 +771,9 @@ function delCen(id){
   localStorage.setItem('rffrota',JSON.stringify(cs.filter(x=>x.id!==id)));
   loadCenarios();
 }
+
+// ─── INICIALIZAR ──────────────────────────────────────────────────────────────
+init();
 </script>
 </body>
 </html>
