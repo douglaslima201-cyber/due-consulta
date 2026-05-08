@@ -48,11 +48,8 @@ async def _ecac_download_async(job_id: str, periodo_ini: str, periodo_fim: str):
             browser = await p.chromium.launch(
                 channel="chrome",
                 headless=False,
-                accept_downloads=True,
-                downloads_path=str(dest),
                 args=["--disable-blink-features=AutomationControlled",
-                      "--start-maximized",
-                      "--new-window"],
+                      "--start-maximized"],
             )
             ctx = await browser.new_context(
                 accept_downloads=True,
