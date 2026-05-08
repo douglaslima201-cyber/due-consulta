@@ -47,7 +47,8 @@
       "Bash(taskkill //F //PID 24148)",
       "Bash(taskkill //F //PID 36824)",
       "Bash(taskkill //F //PID 23816)",
-      "Bash(taskkill //F //PID 35180)"
+      "Bash(taskkill //F //PID 35180)",
+      "Bash(python -c \"from main import app; rules = [str\\(r\\) for r in app.url_map.iter_rules\\(\\) if 'perdcomp' in str\\(r\\)]; [print\\(r\\) for r in rules]\")"
     ]
   },
   "hooks": {
