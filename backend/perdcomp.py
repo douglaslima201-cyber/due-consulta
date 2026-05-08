@@ -1,11 +1,16 @@
 """
 PER/DCOMP Analyzer — Backend Blueprint
-Extração de PDFs + Motor de Compliance + Vinculação PER↔DCOMP
+Extração de PDFs + Motor de Compliance + Vinculação PER↔DCOMP + Download eCAC
 """
+import asyncio
 import io
+import os
 import re
+import threading
+import uuid
 from datetime import date
-from flask import Blueprint, request, jsonify
+from pathlib import Path
+from flask import Blueprint, request, jsonify, send_from_directory
 
 try:
     import pdfplumber
@@ -14,6 +19,202 @@ except ImportError:
     PDF_OK = False
 
 bp = Blueprint('perdcomp', __name__)
+
+# ─── ECAC DOWNLOAD ────────────────────────────────────────────────────────────
+_ECAC_JOBS: dict[str, dict] = {}
+_ECAC_DIR  = Path(__file__).parent / "ecac_downloads"
+_ECAC_DIR.mkdir(exist_ok=True)
+_ECAC_URL  = "https://cav.receita.fazenda.gov.br/eCAC/"
+_CHROME_PROFILE = os.path.expandvars(r"%LOCALAPPDATA%\Google\Chrome\User Data")
+
+def _elog(job_id: str, msg: str):
+    _ECAC_JOBS[job_id]["log"].append(msg)
+    print(f"[ECAC][{job_id[:8]}] {msg}")
+
+def _chrome_bloqueado() -> bool:
+    lock = Path(_CHROME_PROFILE) / "lockfile"
+    return lock.exists()
+
+async def _ecac_download_async(job_id: str, periodo_ini: str, periodo_fim: str):
+    from playwright.async_api import async_playwright, TimeoutError as PwTimeout
+
+    job = _ECAC_JOBS[job_id]
+    dest = _ECAC_DIR / job_id
+    dest.mkdir(exist_ok=True)
+
+    async with async_playwright() as p:
+        # ── Abrir Chrome com perfil do usuário ─────────────────────────────
+        try:
+            ctx = await p.chromium.launch_persistent_context(
+                user_data_dir=_CHROME_PROFILE,
+                channel="chrome",
+                headless=False,
+                accept_downloads=True,
+                downloads_path=str(dest),
+                args=["--disable-blink-features=AutomationControlled",
+                      "--start-maximized"],
+                viewport=None,
+            )
+            _elog(job_id, "Chrome aberto com seu perfil.")
+        except Exception as exc:
+            _elog(job_id, f"Erro ao abrir Chrome: {exc}")
+            job["status"] = "erro"; return
+
+        page = ctx.pages[0] if ctx.pages else await ctx.new_page()
+        job["status"] = "aguardando_login"
+
+        # ── Ir para eCAC ───────────────────────────────────────────────────
+        try:
+            await page.goto(_ECAC_URL, wait_until="domcontentloaded", timeout=30000)
+        except Exception:
+            pass
+
+        _elog(job_id, "Aguardando autenticação com certificado digital (até 5 min)...")
+
+        # Detecta login bem-sucedido: URL muda para área autenticada
+        try:
+            await page.wait_for_function(
+                """() => {
+                    const u = location.href.toLowerCase();
+                    return (u.includes('ecac') || u.includes('eservicos')) &&
+                           !u.includes('login') && !u.includes('acesso.gov');
+                }""",
+                timeout=300_000,
+            )
+            _elog(job_id, "Login detectado. Navegando para PER/DCOMP...")
+        except PwTimeout:
+            _elog(job_id, "Timeout: login não completado em 5 minutos.")
+            job["status"] = "erro"; await ctx.close(); return
+
+        job["status"] = "navegando"
+
+        # ── Tentar navegar automaticamente para PER/DCOMP ─────────────────
+        nav_ok = False
+        for sel in [
+            'a[href*="perdcomp" i]', 'a:text-matches("PER/DCOMP", "i")',
+            'a:text-matches("Compensação", "i")', 'a:text-matches("Restituição", "i")',
+        ]:
+            try:
+                el = page.locator(sel).first
+                if await el.is_visible(timeout=3000):
+                    await el.click()
+                    await page.wait_for_load_state("networkidle", timeout=15000)
+                    nav_ok = True
+                    _elog(job_id, f"Navegação automática OK ({sel}).")
+                    break
+            except Exception:
+                continue
+
+        if not nav_ok:
+            job["status"] = "aguardando_navegacao"
+            _elog(job_id, "Navegação automática falhou. Navegue manualmente até a lista de PER/DCOMPs e clique em 'Já estou na lista' no painel.")
+            # Aguardar confirmação do usuário via flag
+            for _ in range(300):   # 5 min
+                await asyncio.sleep(1)
+                if job.get("usuario_confirmou"):
+                    break
+            else:
+                _elog(job_id, "Timeout aguardando navegação manual.")
+                job["status"] = "erro"; await ctx.close(); return
+            job["status"] = "navegando"
+
+        # ── Aplicar filtro de período ──────────────────────────────────────
+        _elog(job_id, f"Aplicando filtro: {periodo_ini} a {periodo_fim}...")
+        await asyncio.sleep(2)
+
+        async def preencher(sels: list[str], valor: str) -> bool:
+            for sel in sels:
+                try:
+                    el = page.locator(sel).first
+                    if await el.is_visible(timeout=2000):
+                        await el.fill("")
+                        await el.type(valor, delay=40)
+                        return True
+                except Exception:
+                    continue
+            return False
+
+        await preencher([
+            'input[name*="competenciaInicial" i]', 'input[placeholder*="início" i]',
+            'input[id*="inicio" i]', 'input[id*="periodoInicial" i]',
+        ], periodo_ini)
+
+        await preencher([
+            'input[name*="competenciaFinal" i]', 'input[placeholder*="final" i]',
+            'input[id*="fim" i]', 'input[id*="periodoFinal" i]',
+        ], periodo_fim)
+
+        # Pesquisar
+        for sel in ['button:text-matches("Pesquisar|Consultar|Buscar", "i")',
+                    'input[type="submit"]', 'button[type="submit"]']:
+            try:
+                btn = page.locator(sel).first
+                if await btn.is_visible(timeout=2000):
+                    await btn.click()
+                    await page.wait_for_load_state("networkidle", timeout=20000)
+                    _elog(job_id, "Pesquisa executada.")
+                    break
+            except Exception:
+                continue
+
+        await asyncio.sleep(2)
+
+        # ── Coletar e baixar PDFs ──────────────────────────────────────────
+        job["status"] = "baixando"
+        arquivos_baixados: list[str] = []
+
+        # Selecionar todos os itens (checkbox "Todos", se existir)
+        for sel in ['input[id*="todos" i][type="checkbox"]',
+                    'input[id*="all" i][type="checkbox"]']:
+            try:
+                cb = page.locator(sel).first
+                if await cb.is_visible(timeout=1500):
+                    await cb.check()
+                    break
+            except Exception:
+                pass
+
+        # Links de download individuais
+        links = await page.locator(
+            'a[href*=".pdf" i], a[href*="download" i], a[href*="imprimir" i], '
+            'a:text-matches("PDF|Visualizar|Imprimir|Baixar", "i")'
+        ).all()
+
+        if not links:
+            _elog(job_id, "Nenhum link de download encontrado. Tente usar o botão 'Exportar Selecionados' manualmente.")
+            job["status"] = "aguardando_download_manual"
+            # Aguardar up to 10 min que o usuário baixe manualmente para a pasta
+            for _ in range(600):
+                await asyncio.sleep(1)
+                novos = list(dest.glob("*.pdf"))
+                if novos and len(novos) > len(arquivos_baixados):
+                    _elog(job_id, f"{len(novos)} arquivo(s) detectado(s) na pasta de destino.")
+                    arquivos_baixados = [f.name for f in novos]
+                if job.get("usuario_confirmou_download"):
+                    break
+        else:
+            _elog(job_id, f"{len(links)} declaração(ões) encontrada(s). Baixando...")
+            for i, link in enumerate(links):
+                try:
+                    async with page.expect_download(timeout=30000) as dl_info:
+                        await link.click()
+                    dl = await dl_info.value
+                    nome = dl.suggested_filename or f"perdcomp_{i+1}.pdf"
+                    caminho = dest / nome
+                    await dl.save_as(str(caminho))
+                    arquivos_baixados.append(nome)
+                    job["arquivos"] = arquivos_baixados[:]
+                    _elog(job_id, f"[{i+1}/{len(links)}] Baixado: {nome}")
+                except Exception as exc:
+                    _elog(job_id, f"[{i+1}] Falha no download: {exc}")
+
+        job["arquivos"] = arquivos_baixados
+        job["status"] = "concluido" if arquivos_baixados else "sem_arquivos"
+        _elog(job_id, f"Concluído. {len(arquivos_baixados)} arquivo(s) baixado(s).")
+        await ctx.close()
+
+def _ecac_thread(job_id: str, periodo_ini: str, periodo_fim: str):
+    asyncio.run(_ecac_download_async(job_id, periodo_ini, periodo_fim))
 
 # ─── UTILITÁRIOS ──────────────────────────────────────────────────────────────
 
@@ -500,7 +701,117 @@ def analisar_compliance(registros: list, vinculos: list) -> list:
 
 @bp.route('/api/perdcomp/health')
 def health():
-    return jsonify({"ok": True, "pdfplumber": PDF_OK})
+    return jsonify({"ok": True, "pdfplumber": PDF_OK,
+                    "chrome_disponivel": not _chrome_bloqueado()})
+
+# ─── ROTAS ECAC ──────────────────────────────────────────────────────────────
+
+@bp.route('/api/perdcomp/ecac/iniciar', methods=['POST'])
+def ecac_iniciar():
+    if _chrome_bloqueado():
+        return jsonify({"error": "Chrome está aberto. Feche o Chrome antes de iniciar o download automático."}), 400
+
+    data = request.json or {}
+    periodo_ini = data.get("periodo_ini", "").strip()
+    periodo_fim = data.get("periodo_fim", "").strip()
+    if not periodo_ini or not periodo_fim:
+        return jsonify({"error": "Informe o período inicial e final (MM/AAAA)."}), 400
+
+    job_id = str(uuid.uuid4())
+    _ECAC_JOBS[job_id] = {"status": "iniciando", "log": [], "arquivos": []}
+    threading.Thread(target=_ecac_thread, args=(job_id, periodo_ini, periodo_fim), daemon=True).start()
+    return jsonify({"job_id": job_id})
+
+@bp.route('/api/perdcomp/ecac/status/<job_id>')
+def ecac_status(job_id):
+    job = _ECAC_JOBS.get(job_id)
+    if not job:
+        return jsonify({"error": "Job não encontrado"}), 404
+    return jsonify(job)
+
+@bp.route('/api/perdcomp/ecac/confirmar/<job_id>', methods=['POST'])
+def ecac_confirmar(job_id):
+    """Usuário confirma que navegou manualmente para a lista de PER/DCOMPs."""
+    job = _ECAC_JOBS.get(job_id)
+    if not job:
+        return jsonify({"error": "Job não encontrado"}), 404
+    job["usuario_confirmou"] = True
+    return jsonify({"ok": True})
+
+@bp.route('/api/perdcomp/ecac/confirmar-download/<job_id>', methods=['POST'])
+def ecac_confirmar_download(job_id):
+    """Usuário confirma que terminou de baixar manualmente."""
+    job = _ECAC_JOBS.get(job_id)
+    if not job:
+        return jsonify({"error": "Job não encontrado"}), 404
+    job["usuario_confirmou_download"] = True
+    # Escanear pasta
+    dest = _ECAC_DIR / job_id
+    if dest.exists():
+        job["arquivos"] = [f.name for f in dest.glob("*.pdf")]
+    return jsonify({"ok": True, "arquivos": job["arquivos"]})
+
+@bp.route('/api/perdcomp/ecac/analisar/<job_id>', methods=['POST'])
+def ecac_analisar(job_id):
+    """Analisa os PDFs baixados do eCAC exatamente como o upload normal."""
+    if not PDF_OK:
+        return jsonify({"error": "pdfplumber não instalado"}), 500
+    dest = _ECAC_DIR / job_id
+    if not dest.exists():
+        return jsonify({"error": "Pasta de downloads não encontrada"}), 404
+
+    pdfs = list(dest.glob("*.pdf"))
+    if not pdfs:
+        return jsonify({"error": "Nenhum PDF na pasta de downloads"}), 400
+
+    registros, erros = [], []
+    for pdf in pdfs:
+        try:
+            texto = extrair_texto(pdf.read_bytes())
+            if not texto.strip():
+                erros.append({"arquivo": pdf.name, "erro": "PDF sem texto extraível"})
+                continue
+            registros.append(extrair_registro(texto, pdf.name))
+        except Exception as exc:
+            erros.append({"arquivo": pdf.name, "erro": str(exc)[:200]})
+
+    vinculos, dcomps_nao_vinculadas = vincular_pers_dcomps(registros)
+    alertas = analisar_compliance(registros, vinculos)
+
+    total_credito    = sum(r["valor_credito"]      for r in registros)
+    total_compensado = sum(r["valor_compensado"]   for r in registros)
+    total_ressarcido = sum(r["valor_ressarcido"]   for r in registros)
+    saldo_total      = sum(r["saldo_remanescente"] for r in registros)
+
+    dist_tributos: dict[str, float] = {}
+    dist_tipos:    dict[str, int]   = {}
+    for r in registros:
+        t  = r["tributo"] or "Não identificado"
+        tp = r["tipo"]    or "Não identificado"
+        val = r["valor_compensado"] if r["tipo"] == "Compensação" else r["valor_credito"]
+        dist_tributos[t]  = round(dist_tributos.get(t, 0) + val, 2)
+        dist_tipos[tp]    = dist_tipos.get(tp, 0) + 1
+
+    return jsonify({
+        "registros": registros, "vinculos": vinculos,
+        "dcomps_nao_vinculadas": [d["arquivo"] for d in dcomps_nao_vinculadas],
+        "alertas": alertas, "erros": erros,
+        "sumario": {
+            "total_arquivos": len(registros), "total_credito": round(total_credito, 2),
+            "total_compensado": round(total_compensado, 2),
+            "total_ressarcido": round(total_ressarcido, 2),
+            "saldo_disponivel": round(saldo_total, 2),
+            "alertas_alto":   sum(1 for a in alertas if a["nivel"] == "alto"),
+            "alertas_medio":  sum(1 for a in alertas if a["nivel"] == "medio"),
+            "alertas_info":   sum(1 for a in alertas if a["nivel"] == "info"),
+            "dist_tributos": dist_tributos, "dist_tipos": dist_tipos,
+            "vinculos_ok":        sum(1 for v in vinculos if v["status_validacao"] == "OK"),
+            "vinculos_excedidos": sum(1 for v in vinculos if v["status_validacao"] == "EXCEDIDO"),
+            "vinculos_diverg":    sum(1 for v in vinculos if v["status_validacao"] == "DIVERGENCIA"),
+            "total_pers":  sum(1 for r in registros if r["tipo"] in ("Ressarcimento","Restituição")),
+            "total_dcomps":sum(1 for r in registros if r["tipo"] == "Compensação"),
+        }
+    })
 
 @bp.route('/api/perdcomp/debug', methods=['POST'])
 def debug():
