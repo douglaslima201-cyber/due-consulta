@@ -49,7 +49,10 @@
       "Bash(taskkill //F //PID 23816)",
       "Bash(taskkill //F //PID 35180)",
       "Bash(python -c \"from main import app; rules = [str\\(r\\) for r in app.url_map.iter_rules\\(\\) if 'perdcomp' in str\\(r\\)]; [print\\(r\\) for r in rules]\")",
-      "Bash(taskkill //F //PID 8816)"
+      "Bash(taskkill //F //PID 8816)",
+      "Bash(python -c \"import pycookiecheat; print\\('pycookiecheat OK'\\)\")",
+      "Bash(pip install *)",
+      "Bash(python -c \"from pycookiecheat import chrome_cookies; print\\('OK'\\)\")"
     ]
   },
   "hooks": {

@@ -44,122 +44,76 @@ def _encontrar_chrome() -> str | None:
     return None
 
 async def _ecac_download_async(job_id: str, periodo_ini: str, periodo_fim: str):
-    import subprocess
     from playwright.async_api import async_playwright, TimeoutError as PwTimeout
+    from pycookiecheat import chrome_cookies
 
     job = _ECAC_JOBS[job_id]
-    dest = _ECAC_DIR / job_id
+    dest = _ECAC_DIR / "entrada"
     dest.mkdir(exist_ok=True)
 
-    # ── Lançar Chrome NATIVO (sem flags Playwright) para certificado A3 ───────
-    chrome_exe = _encontrar_chrome()
-    if not chrome_exe:
-        _elog(job_id, "Chrome não encontrado. Verifique a instalação.")
+    # ── Passo 1: Extrair cookies da sessão eCAC já autenticada no Chrome ──────
+    # Não usa debug port nem CDP — apenas lê o banco de cookies do Chrome
+    _elog(job_id, "Lendo sessão do eCAC no Chrome...")
+    cookies_pw = []
+    dominios = [
+        "https://cav.receita.fazenda.gov.br",
+        "https://acesso.gov.br",
+        "https://www3.acesso.gov.br",
+    ]
+    for url in dominios:
+        try:
+            c = chrome_cookies(url)
+            for nome, valor in c.items():
+                cookies_pw.append({
+                    "name": nome, "value": str(valor),
+                    "url": url, "path": "/",
+                })
+        except Exception as exc:
+            _elog(job_id, f"Aviso ({url}): {exc}")
+
+    if not cookies_pw:
+        _elog(job_id, "Nenhum cookie do eCAC encontrado. Faça login no eCAC no Chrome primeiro e tente novamente.")
         job["status"] = "erro"; return
 
-    import tempfile, shutil
+    _elog(job_id, f"{len(cookies_pw)} cookies extraídos. Iniciando Playwright com sessão existente...")
+    job["status"] = "navegando"
 
-    # Usar perfil temporário limpo — evita conflito de lock com Chrome aberto
-    # O certificado A3 fica no token de hardware/Windows, não no perfil
-    temp_profile = tempfile.mkdtemp(prefix="ecac_tmp_")
-    _elog(job_id, f"Perfil temporário criado: {temp_profile}")
-
-    proc = None
     async with async_playwright() as p:
+        # ── Lança Chrome SEM flags de debug (sem problemas de certificado) ──
+        browser = await p.chromium.launch(
+            channel="chrome",
+            headless=False,
+            args=["--start-maximized"],
+        )
+        ctx = await browser.new_context(
+            accept_downloads=True,
+            viewport={"width": 1280, "height": 900},
+        )
+
+        # Injeta cookies da sessão autenticada
+        await ctx.add_cookies(cookies_pw)
+        page = await ctx.new_page()
+
+        # ── Acessar eCAC com a sessão injetada ───────────────────────────────
         try:
-            proc = subprocess.Popen([
-                chrome_exe,
-                f"--remote-debugging-port={_CDP_PORT}",
-                f"--user-data-dir={temp_profile}",
-                "--no-first-run",
-                "--no-default-browser-check",
-                "--start-maximized",
-                "--disable-extensions",
-                _ECAC_URL,
-            ])
-            _elog(job_id, "Chrome aberto. Aguardando porta de debug ficar disponível...")
-            job["status"] = "aguardando_login"
-        except Exception as exc:
-            _elog(job_id, f"Erro ao abrir Chrome: {exc}")
-            job["status"] = "erro"; return
-
-        # Verificar se a porta CDP está ativa via HTTP antes de conectar
-        import urllib.request
-        cdp_url = f"http://localhost:{_CDP_PORT}/json/version"
-        porta_ok = False
-        for tentativa in range(25):
-            await asyncio.sleep(2)
-            try:
-                urllib.request.urlopen(cdp_url, timeout=2)
-                porta_ok = True
-                _elog(job_id, f"Porta CDP {_CDP_PORT} ativa ({tentativa*2+2}s). Conectando...")
-                break
-            except Exception:
-                if tentativa % 5 == 4:
-                    _elog(job_id, f"Aguardando porta CDP... ({tentativa*2+2}s)")
-
-        if not porta_ok:
-            _elog(job_id, f"Porta CDP {_CDP_PORT} não ficou disponível. Chrome pode ter falhado ao iniciar.")
-            job["status"] = "erro"
-            if proc: proc.terminate()
-            return
-
-        # Conectar via CDP
-        browser = None
-        for tentativa in range(5):
-            try:
-                browser = await p.chromium.connect_over_cdp(f"http://localhost:{_CDP_PORT}")
-                _elog(job_id, "Conectado ao Chrome via CDP.")
-                break
-            except Exception as exc:
-                _elog(job_id, f"Tentativa {tentativa+1} de conexão CDP falhou: {exc}")
-                await asyncio.sleep(2)
-
-        if not browser:
-            _elog(job_id, "Não foi possível conectar ao Chrome via CDP.")
-            job["status"] = "erro"
-            if proc: proc.terminate()
-            return
-
-        ctx = browser.contexts[0] if browser.contexts else None
-        if not ctx:
-            _elog(job_id, "Nenhum contexto disponível no Chrome.")
-            job["status"] = "erro"
-            if proc: proc.terminate()
-            return
-
-        page = ctx.pages[0] if ctx.pages else await ctx.new_page()
-
-        _elog(job_id, "Aguardando redirecionamento para seleção de certificado...")
-
-        # Passo 1: aguardar eCAC redirecionar para acesso.gov (página de certificado)
-        try:
-            await page.wait_for_url("*acesso.gov*", timeout=30000)
-            _elog(job_id, "Página de certificado detectada. Selecione seu certificado digital no Chrome.")
-            job["status"] = "aguardando_login"
+            await page.goto(_ECAC_URL, wait_until="networkidle", timeout=30000)
         except PwTimeout:
-            _elog(job_id, "Redirecionamento para certificado não detectado — pode já estar logado. Aguardando...")
+            pass
 
-        # Passo 2: aguardar retorno ao eCAC após login com certificado
-        _elog(job_id, "Aguardando conclusão do login com certificado (até 5 min)...")
-        try:
-            await page.wait_for_url("*cav.receita*", timeout=300_000)
-            await asyncio.sleep(3)
-            _elog(job_id, "Login detectado. Navegando para PER/DCOMP...")
-        except PwTimeout:
-            _elog(job_id, "Timeout: login não completado em 5 minutos.")
-            job["status"] = "erro"
-            await browser.disconnect()
-            if proc: proc.terminate()
-            return
+        await asyncio.sleep(2)
+        url_atual = page.url.lower()
 
-        job["status"] = "navegando"
+        if "acesso.gov" in url_atual or "login" in url_atual:
+            _elog(job_id, "Sessão expirada — o eCAC redirecionou para login. Faça login no eCAC no Chrome e tente novamente.")
+            job["status"] = "erro"; await browser.close(); return
 
-        # ── Tentar navegar automaticamente para PER/DCOMP ─────────────────
+        _elog(job_id, f"Sessão válida. URL: {page.url[:80]}")
+
+        # ── Navegar para PER/DCOMP ───────────────────────────────────────────
         nav_ok = False
         for sel in [
             'a[href*="perdcomp" i]', 'a:text-matches("PER/DCOMP", "i")',
-            'a:text-matches("Compensação", "i")', 'a:text-matches("Restituição", "i")',
+            'a:text-matches("Compensação", "i")', 'a:text-matches("Ressarcimento", "i")',
         ]:
             try:
                 el = page.locator(sel).first
@@ -167,26 +121,25 @@ async def _ecac_download_async(job_id: str, periodo_ini: str, periodo_fim: str):
                     await el.click()
                     await page.wait_for_load_state("networkidle", timeout=15000)
                     nav_ok = True
-                    _elog(job_id, f"Navegação automática OK ({sel}).")
+                    _elog(job_id, f"Navegação automática OK.")
                     break
             except Exception:
                 continue
 
         if not nav_ok:
             job["status"] = "aguardando_navegacao"
-            _elog(job_id, "Navegação automática falhou. Navegue manualmente até a lista de PER/DCOMPs e clique em 'Já estou na lista' no painel.")
-            # Aguardar confirmação do usuário via flag
-            for _ in range(300):   # 5 min
+            _elog(job_id, "Navegação automática falhou. No Chrome aberto, navegue até a lista de PER/DCOMPs e clique em 'Já estou na lista'.")
+            for _ in range(300):
                 await asyncio.sleep(1)
                 if job.get("usuario_confirmou"):
                     break
             else:
                 _elog(job_id, "Timeout aguardando navegação manual.")
-                job["status"] = "erro"; await browser.disconnect(); proc.terminate() if proc else None; return
+                job["status"] = "erro"; await browser.close(); return
             job["status"] = "navegando"
 
-        # ── Aplicar filtro de período ──────────────────────────────────────
-        _elog(job_id, f"Aplicando filtro: {periodo_ini} a {periodo_fim}...")
+        # ── Filtrar por período ───────────────────────────────────────────────
+        _elog(job_id, f"Filtrando por período: {periodo_ini} → {periodo_fim}...")
         await asyncio.sleep(2)
 
         async def preencher(sels: list[str], valor: str) -> bool:
@@ -211,7 +164,6 @@ async def _ecac_download_async(job_id: str, periodo_ini: str, periodo_fim: str):
             'input[id*="fim" i]', 'input[id*="periodoFinal" i]',
         ], periodo_fim)
 
-        # Pesquisar
         for sel in ['button:text-matches("Pesquisar|Consultar|Buscar", "i")',
                     'input[type="submit"]', 'button[type="submit"]']:
             try:
@@ -226,38 +178,30 @@ async def _ecac_download_async(job_id: str, periodo_ini: str, periodo_fim: str):
 
         await asyncio.sleep(2)
 
-        # ── Coletar e baixar PDFs ──────────────────────────────────────────
+        # ── Selecionar todos e baixar PDFs ────────────────────────────────────
         job["status"] = "baixando"
         arquivos_baixados: list[str] = []
 
-        # Selecionar todos os itens (checkbox "Todos", se existir)
-        for sel in ['input[id*="todos" i][type="checkbox"]',
-                    'input[id*="all" i][type="checkbox"]']:
+        for sel in ['input[id*="todos" i][type="checkbox"]', 'input[id*="all" i][type="checkbox"]']:
             try:
                 cb = page.locator(sel).first
                 if await cb.is_visible(timeout=1500):
-                    await cb.check()
-                    break
+                    await cb.check(); break
             except Exception:
                 pass
 
-        # Links de download individuais
         links = await page.locator(
             'a[href*=".pdf" i], a[href*="download" i], a[href*="imprimir" i], '
             'a:text-matches("PDF|Visualizar|Imprimir|Baixar", "i")'
         ).all()
 
         if not links:
-            _elog(job_id, "Nenhum link de download encontrado. Tente usar o botão 'Exportar Selecionados' manualmente.")
-            job["status"] = "aguardando_download_manual"
-            # Aguardar up to 10 min que o usuário baixe manualmente para a pasta
+            _elog(job_id, "Nenhum link automático encontrado. Use o Chrome aberto para baixar os arquivos e salve na pasta de entrada. Clique em 'Já estou na lista' quando terminar.")
+            job["status"] = "aguardando_navegacao"
             for _ in range(600):
                 await asyncio.sleep(1)
-                novos = list(dest.glob("*.pdf"))
-                if novos and len(novos) > len(arquivos_baixados):
-                    _elog(job_id, f"{len(novos)} arquivo(s) detectado(s) na pasta de destino.")
-                    arquivos_baixados = [f.name for f in novos]
-                if job.get("usuario_confirmou_download"):
+                if job.get("usuario_confirmou"):
+                    arquivos_baixados = [f.name for f in dest.glob("*.pdf")]
                     break
         else:
             _elog(job_id, f"{len(links)} declaração(ões) encontrada(s). Baixando...")
@@ -267,24 +211,17 @@ async def _ecac_download_async(job_id: str, periodo_ini: str, periodo_fim: str):
                         await link.click()
                     dl = await dl_info.value
                     nome = dl.suggested_filename or f"perdcomp_{i+1}.pdf"
-                    caminho = dest / nome
-                    await dl.save_as(str(caminho))
+                    await dl.save_as(str(dest / nome))
                     arquivos_baixados.append(nome)
                     job["arquivos"] = arquivos_baixados[:]
-                    _elog(job_id, f"[{i+1}/{len(links)}] Baixado: {nome}")
+                    _elog(job_id, f"[{i+1}/{len(links)}] {nome}")
                 except Exception as exc:
-                    _elog(job_id, f"[{i+1}] Falha no download: {exc}")
+                    _elog(job_id, f"[{i+1}] Falha: {exc}")
 
         job["arquivos"] = arquivos_baixados
         job["status"] = "concluido" if arquivos_baixados else "sem_arquivos"
-        _elog(job_id, f"Concluído. {len(arquivos_baixados)} arquivo(s) baixado(s).")
-        await browser.disconnect()
-        if proc:
-            proc.terminate()
-        try:
-            shutil.rmtree(temp_profile, ignore_errors=True)
-        except Exception:
-            pass
+        _elog(job_id, f"Concluído. {len(arquivos_baixados)} arquivo(s) na pasta de entrada.")
+        await browser.close()
 
 def _ecac_thread(job_id: str, periodo_ini: str, periodo_fim: str):
     asyncio.run(_ecac_download_async(job_id, periodo_ini, periodo_fim))
