@@ -233,7 +233,7 @@ td.name{font-family:var(--body);font-size:12px;color:var(--g2);max-width:180px;o
     <div class="s-item" onclick="sp('p-registros')"><span>📋</span>Registros <span class="s-badge sb-ok" id="sb-reg" style="display:none">0</span></div>
     <div class="s-item" onclick="sp('p-alertas')"><span>🚨</span>Alertas <span class="s-badge sb-red" id="sb-alt" style="display:none">0</span></div>
     <div class="s-item" onclick="sp('p-per');renderPer(null)"><span>🔗</span>Análise por PER <span class="s-badge sb-ok" id="sb-per" style="display:none">0</span></div>
-    <div class="s-item" onclick="sp('p-ecac')"><span>⬇</span>Baixar eCAC</div>
+    <div class="s-item" onclick="sp('p-ecac');ecacAtualizarPasta()"><span>⬇</span>Importar eCAC</div>
     <div class="s-sec" style="margin-top:12px">Exportar</div>
     <div class="s-item" onclick="sp('p-relatorio')"><span>📄</span>Relatório</div>
   </aside>
@@ -361,59 +361,44 @@ td.name{font-family:var(--body);font-size:12px;color:var(--g2);max-width:180px;o
 
     <!-- BAIXAR ECAC -->
     <div class="panel" id="p-ecac">
-      <div class="sec-label">Automação eCAC</div>
-      <h2 class="sec-title">Baixar Declarações do eCAC</h2>
-      <p class="sec-sub">O sistema abre o Chrome com seu perfil, você seleciona o certificado digital, e o download das declarações é feito automaticamente.</p>
+      <div class="sec-label">Importar do eCAC</div>
+      <h2 class="sec-title">Importar Declarações do eCAC</h2>
+      <p class="sec-sub">Baixe os PDFs do eCAC normalmente no seu Chrome e salve na pasta indicada. O sistema analisa tudo com um clique.</p>
 
-      <div style="padding:16px 18px;background:rgba(250,204,21,.05);border:1px solid rgba(250,204,21,.2);border-radius:var(--r);font-size:13px;color:var(--g2);margin-bottom:20px">
-        <div style="font-weight:700;color:var(--yellow);margin-bottom:10px">⚠ Como usar com certificado digital (ICP-Brasil A3)</div>
-        <div style="display:flex;flex-direction:column;gap:6px;line-height:1.7">
-          <div><span style="color:var(--orange);font-family:var(--mono);margin-right:8px">01</span>Se estiver usando o <strong>Chrome</strong>, abra esta página no <strong>Edge ou Firefox</strong>: <code style="font-family:var(--mono);font-size:11px;color:var(--blue-l)">http://localhost:5000/perdcomp.html</code></div>
-          <div><span style="color:var(--orange);font-family:var(--mono);margin-right:8px">02</span><strong>Feche o Chrome completamente</strong> (inclusive da bandeja do sistema)</div>
-          <div><span style="color:var(--orange);font-family:var(--mono);margin-right:8px">03</span>Informe o período e clique em <strong>"Iniciar Download"</strong> — o Chrome abre sozinho com seu perfil e certificado</div>
-          <div><span style="color:var(--orange);font-family:var(--mono);margin-right:8px">04</span>Selecione o certificado e faça login normalmente no eCAC</div>
+      <!-- Passo 1: Pasta -->
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-title">📁 Passo 1 — Pasta de entrada</div>
+        <div style="font-size:13px;color:var(--g2);margin-bottom:14px">Salve os PDFs baixados do eCAC nesta pasta:</div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <code id="ecac-pasta-path" style="font-family:var(--mono);font-size:12px;color:var(--orange);background:rgba(249,115,22,.06);border:1px solid rgba(249,115,22,.15);padding:10px 16px;border-radius:var(--r);flex:1">Carregando...</code>
+          <button class="btn btn-g btn-sm" onclick="ecacCopiarPasta()">📋 Copiar</button>
+          <button class="btn btn-g btn-sm" onclick="ecacAtualizarPasta()">🔄 Atualizar</button>
         </div>
-        <div style="margin-top:10px">
-          <button class="btn btn-g btn-sm" onclick="abrirEdge()">Abrir no Edge →</button>
+        <div style="margin-top:12px;font-size:12px;color:var(--g3)" id="ecac-pasta-count">Nenhum PDF na pasta.</div>
+        <div id="ecac-pasta-lista" style="margin-top:10px;display:flex;flex-direction:column;gap:6px"></div>
+      </div>
+
+      <!-- Passo 2: Como baixar -->
+      <div class="card" style="margin-bottom:16px;border-color:rgba(59,130,246,.2)">
+        <div class="card-title" style="color:var(--blue-l)">ℹ Passo 2 — Como baixar do eCAC</div>
+        <div style="display:flex;flex-direction:column;gap:8px;font-size:13px;color:var(--g2);line-height:1.7">
+          <div><span style="color:var(--orange);font-family:var(--mono);margin-right:8px">01</span>Acesse <strong>cav.receita.fazenda.gov.br/eCAC</strong> no Chrome com seu certificado digital</div>
+          <div><span style="color:var(--orange);font-family:var(--mono);margin-right:8px">02</span>Navegue até <strong>Restituição, Compensação, Ressarcimento → PER/DCOMP Web</strong></div>
+          <div><span style="color:var(--orange);font-family:var(--mono);margin-right:8px">03</span>Filtre pelo período desejado e abra cada declaração</div>
+          <div><span style="color:var(--orange);font-family:var(--mono);margin-right:8px">04</span>Use <strong>Ctrl+P → Salvar como PDF</strong> (ou o botão de download do eCAC) e salve na pasta acima</div>
+          <div><span style="color:var(--orange);font-family:var(--mono);margin-right:8px">05</span>Volte aqui e clique em <strong>"Analisar PDFs da pasta"</strong></div>
         </div>
       </div>
 
-      <div class="card" style="margin-bottom:20px">
-        <div class="card-title">⚙️ Configurar Download</div>
-        <div class="form-grid" style="margin-bottom:20px">
-          <div class="fg"><label>Período inicial (MM/AAAA)</label><input type="text" id="ecac-ini" placeholder="01/2024" maxlength="7"/></div>
-          <div class="fg"><label>Período final (MM/AAAA)</label><input type="text" id="ecac-fim" placeholder="12/2024" maxlength="7"/></div>
-        </div>
+      <!-- Passo 3: Analisar -->
+      <div class="card">
+        <div class="card-title">🔍 Passo 3 — Analisar</div>
+        <div style="font-size:13px;color:var(--g2);margin-bottom:16px">Quando os PDFs estiverem na pasta, clique para processar.</div>
         <div class="btn-row" style="margin-top:0">
-          <button class="btn btn-p" id="btn-ecac-start" onclick="ecacIniciar()">⬇ Iniciar Download Automático</button>
-          <button class="btn btn-g" id="btn-ecac-confirmou" onclick="ecacConfirmar()" style="display:none">✅ Já estou na lista de PER/DCOMPs</button>
-          <button class="btn btn-g" id="btn-ecac-confirmou-dl" onclick="ecacConfirmarDownload()" style="display:none">📁 Terminei de baixar manualmente</button>
+          <button class="btn btn-p" id="btn-ecac-analisar" onclick="ecacAnalisarPasta()">🔍 Analisar PDFs da pasta</button>
+          <button class="btn btn-g btn-sm" onclick="ecacLimparPasta()" style="color:#FCA5A5">🗑 Limpar pasta</button>
         </div>
-      </div>
-
-      <!-- Status -->
-      <div id="ecac-status-box" style="display:none">
-        <div class="card" style="margin-bottom:16px">
-          <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
-            <div id="ecac-status-ic" style="font-size:22px">⏳</div>
-            <div>
-              <div style="font-weight:700;font-size:14px" id="ecac-status-txt">Iniciando...</div>
-              <div style="font-size:11px;color:var(--g3);font-family:var(--mono)" id="ecac-job-id"></div>
-            </div>
-          </div>
-          <div class="term" id="ecac-log" style="max-height:220px"></div>
-        </div>
-
-        <!-- Arquivos baixados -->
-        <div id="ecac-arquivos-box" style="display:none">
-          <div class="card">
-            <div class="card-title">📁 Arquivos Baixados</div>
-            <div id="ecac-arquivos-list"></div>
-            <div class="btn-row">
-              <button class="btn btn-p" onclick="ecacAnalisar()">🔍 Analisar no Compliance</button>
-            </div>
-          </div>
-        </div>
+        <div id="ecac-analisar-err" style="display:none;margin-top:12px;padding:10px 14px;background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.2);border-radius:var(--r);font-size:12px;color:#FCA5A5"></div>
       </div>
     </div>
 
@@ -951,111 +936,46 @@ function renderRelatorio(){
     </div>`;
 }
 
-// ─── ECAC DOWNLOAD ────────────────────────────────────────────────────────────
-let _ecacJobId = null;
-let _ecacPoll  = null;
-
-const ECAC_STATUS_MAP = {
-  iniciando:                 {ic:'⏳', txt:'Iniciando...'},
-  abrindo_browser:           {ic:'🌐', txt:'Abrindo Chrome com seu perfil...'},
-  aguardando_login:          {ic:'🔐', txt:'Aguardando autenticação com certificado digital. Selecione seu certificado na janela do Windows.'},
-  navegando:                 {ic:'🔍', txt:'Navegando no eCAC...'},
-  aguardando_navegacao:      {ic:'🖱', txt:'Navegue manualmente até a lista de PER/DCOMPs e clique no botão abaixo.'},
-  baixando:                  {ic:'⬇', txt:'Baixando declarações...'},
-  aguardando_download_manual:{ic:'📁', txt:'Clique em "Baixar" ou "Exportar" no eCAC, salve os PDFs. Quando terminar, clique no botão abaixo.'},
-  concluido:                 {ic:'✅', txt:'Download concluído!'},
-  sem_arquivos:              {ic:'⚠', txt:'Nenhum arquivo encontrado no período informado.'},
-  erro:                      {ic:'❌', txt:'Erro durante o processo. Veja o log abaixo.'},
-};
-
-function abrirEdge(){
-  window.open('microsoft-edge:http://localhost:5000/perdcomp.html','_blank');
-}
-async function ecacIniciar(){
-  const ini=document.getElementById('ecac-ini').value.trim();
-  const fim=document.getElementById('ecac-fim').value.trim();
-  if(!/^\d{2}\/\d{4}$/.test(ini)||!/^\d{2}\/\d{4}$/.test(fim)){
-    alert('Informe o período no formato MM/AAAA');return;
-  }
-  document.getElementById('btn-ecac-start').disabled=true;
+// ─── ECAC PASTA ───────────────────────────────────────────────────────────────
+async function ecacAtualizarPasta(){
   try{
-    const r=await fetch(`${API}/ecac/iniciar`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({periodo_ini:ini,periodo_fim:fim})});
+    const r=await fetch(`${API}/ecac/pasta`); const d=await r.json();
+    document.getElementById('ecac-pasta-path').textContent=d.pasta;
+    const n=d.total;
+    document.getElementById('ecac-pasta-count').textContent=
+      n>0?`${n} PDF(s) encontrado(s) — pronto para analisar.`:'Nenhum PDF na pasta ainda.';
+    document.getElementById('ecac-pasta-lista').innerHTML=
+      (d.arquivos||[]).map(f=>`<div class="fitem"><span class="fitem-ic">📄</span><span class="fitem-name">${e(f)}</span></div>`).join('');
+    document.getElementById('btn-ecac-analisar').disabled=n===0;
+  }catch(err){console.error(err);}
+}
+
+function ecacCopiarPasta(){
+  const txt=document.getElementById('ecac-pasta-path').textContent;
+  navigator.clipboard.writeText(txt).then(()=>alert('Caminho copiado:\n'+txt));
+}
+
+async function ecacLimparPasta(){
+  if(!confirm('Remover todos os PDFs da pasta de entrada?')) return;
+  await fetch(`${API}/ecac/limpar`,{method:'POST'});
+  ecacAtualizarPasta();
+}
+
+async function ecacAnalisarPasta(){
+  const btn=document.getElementById('btn-ecac-analisar');
+  const errEl=document.getElementById('ecac-analisar-err');
+  btn.disabled=true; btn.textContent='⏳ Analisando...'; errEl.style.display='none';
+  try{
+    const r=await fetch(`${API}/ecac/analisar`,{method:'POST'});
     const d=await r.json();
     if(!r.ok) throw new Error(d.error);
-    _ecacJobId=d.job_id;
-    document.getElementById('ecac-job-id').textContent='Job: '+d.job_id.slice(0,8);
-    document.getElementById('ecac-status-box').style.display='block';
-    document.getElementById('ecac-arquivos-box').style.display='none';
-    _ecacPoll=setInterval(ecacPollStatus,2000);
+    DADOS=d; renderTudo(); sp('p-dash');
   }catch(err){
-    alert('Erro: '+err.message);
-    document.getElementById('btn-ecac-start').disabled=false;
+    errEl.style.display='block'; errEl.textContent='Erro: '+err.message;
+  }finally{
+    btn.disabled=false; btn.textContent='🔍 Analisar PDFs da pasta';
+    ecacAtualizarPasta();
   }
-}
-
-async function ecacPollStatus(){
-  if(!_ecacJobId) return;
-  try{
-    const r=await fetch(`${API}/ecac/status/${_ecacJobId}`);
-    const d=await r.json();
-    const s=d.status||'iniciando';
-    const cfg=ECAC_STATUS_MAP[s]||{ic:'⏳',txt:s};
-    document.getElementById('ecac-status-ic').textContent=cfg.ic;
-    document.getElementById('ecac-status-txt').textContent=cfg.txt;
-    // Log
-    const logEl=document.getElementById('ecac-log');
-    logEl.innerHTML=(d.log||[]).slice(-30).map(l=>`<div class="tr"><span class="tm">${e(l)}</span></div>`).join('');
-    logEl.scrollTop=9999;
-    // Botões contextuais
-    document.getElementById('btn-ecac-confirmou').style.display=
-      s==='aguardando_navegacao'?'inline-flex':'none';
-    document.getElementById('btn-ecac-confirmou-dl').style.display=
-      s==='aguardando_download_manual'?'inline-flex':'none';
-    // Arquivos
-    if(d.arquivos&&d.arquivos.length){
-      document.getElementById('ecac-arquivos-box').style.display='block';
-      document.getElementById('ecac-arquivos-list').innerHTML=d.arquivos.map(f=>`
-        <div class="fitem"><span class="fitem-ic">📄</span><span class="fitem-name">${e(f)}</span></div>`).join('');
-    }
-    // Parar poll quando terminar
-    if(['concluido','sem_arquivos','erro'].includes(s)){
-      clearInterval(_ecacPoll);_ecacPoll=null;
-      document.getElementById('btn-ecac-start').disabled=false;
-    }
-  }catch{}
-}
-
-async function ecacConfirmar(){
-  if(!_ecacJobId) return;
-  await fetch(`${API}/ecac/confirmar/${_ecacJobId}`,{method:'POST'});
-  document.getElementById('btn-ecac-confirmou').style.display='none';
-}
-
-async function ecacConfirmarDownload(){
-  if(!_ecacJobId) return;
-  const r=await fetch(`${API}/ecac/confirmar-download/${_ecacJobId}`,{method:'POST'});
-  const d=await r.json();
-  document.getElementById('btn-ecac-confirmou-dl').style.display='none';
-  if(d.arquivos&&d.arquivos.length){
-    document.getElementById('ecac-arquivos-box').style.display='block';
-    document.getElementById('ecac-arquivos-list').innerHTML=d.arquivos.map(f=>`
-      <div class="fitem"><span class="fitem-ic">📄</span><span class="fitem-name">${e(f)}</span></div>`).join('');
-  }
-}
-
-async function ecacAnalisar(){
-  if(!_ecacJobId) return;
-  const btn=document.querySelector('#ecac-arquivos-box .btn-p');
-  btn.disabled=true; btn.textContent='⏳ Analisando...';
-  try{
-    const r=await fetch(`${API}/ecac/analisar/${_ecacJobId}`,{method:'POST'});
-    const d=await r.json();
-    if(!r.ok) throw new Error(d.error);
-    DADOS=d;
-    renderTudo();
-    sp('p-dash');
-  }catch(err){alert('Erro na análise: '+err.message);}
-  finally{btn.disabled=false; btn.textContent='🔍 Analisar no Compliance';}
 }
 
 // ─── EXPORT CSV ───────────────────────────────────────────────────────────────

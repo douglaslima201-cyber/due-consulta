@@ -786,56 +786,38 @@ def health():
 
 # ─── ROTAS ECAC ──────────────────────────────────────────────────────────────
 
-@bp.route('/api/perdcomp/ecac/iniciar', methods=['POST'])
-def ecac_iniciar():
-    data = request.json or {}
-    periodo_ini = data.get("periodo_ini", "").strip()
-    periodo_fim = data.get("periodo_fim", "").strip()
-    if not periodo_ini or not periodo_fim:
-        return jsonify({"error": "Informe o período inicial e final (MM/AAAA)."}), 400
+@bp.route('/api/perdcomp/ecac/pasta')
+def ecac_pasta():
+    """Retorna o caminho da pasta de entrada para PDFs do eCAC."""
+    pasta = _ECAC_DIR / "entrada"
+    pasta.mkdir(exist_ok=True)
+    return jsonify({
+        "pasta": str(pasta.resolve()),
+        "arquivos": [f.name for f in pasta.glob("*.pdf")],
+        "total": len(list(pasta.glob("*.pdf"))),
+    })
 
-    job_id = str(uuid.uuid4())
-    _ECAC_JOBS[job_id] = {"status": "iniciando", "log": [], "arquivos": []}
-    threading.Thread(target=_ecac_thread, args=(job_id, periodo_ini, periodo_fim), daemon=True).start()
-    return jsonify({"job_id": job_id})
+@bp.route('/api/perdcomp/ecac/limpar', methods=['POST'])
+def ecac_limpar():
+    """Remove todos os PDFs da pasta de entrada."""
+    pasta = _ECAC_DIR / "entrada"
+    pasta.mkdir(exist_ok=True)
+    removidos = 0
+    for f in pasta.glob("*.pdf"):
+        try:
+            f.unlink()
+            removidos += 1
+        except Exception:
+            pass
+    return jsonify({"removidos": removidos})
 
-@bp.route('/api/perdcomp/ecac/status/<job_id>')
-def ecac_status(job_id):
-    job = _ECAC_JOBS.get(job_id)
-    if not job:
-        return jsonify({"error": "Job não encontrado"}), 404
-    return jsonify(job)
-
-@bp.route('/api/perdcomp/ecac/confirmar/<job_id>', methods=['POST'])
-def ecac_confirmar(job_id):
-    """Usuário confirma que navegou manualmente para a lista de PER/DCOMPs."""
-    job = _ECAC_JOBS.get(job_id)
-    if not job:
-        return jsonify({"error": "Job não encontrado"}), 404
-    job["usuario_confirmou"] = True
-    return jsonify({"ok": True})
-
-@bp.route('/api/perdcomp/ecac/confirmar-download/<job_id>', methods=['POST'])
-def ecac_confirmar_download(job_id):
-    """Usuário confirma que terminou de baixar manualmente."""
-    job = _ECAC_JOBS.get(job_id)
-    if not job:
-        return jsonify({"error": "Job não encontrado"}), 404
-    job["usuario_confirmou_download"] = True
-    # Escanear pasta
-    dest = _ECAC_DIR / job_id
-    if dest.exists():
-        job["arquivos"] = [f.name for f in dest.glob("*.pdf")]
-    return jsonify({"ok": True, "arquivos": job["arquivos"]})
-
-@bp.route('/api/perdcomp/ecac/analisar/<job_id>', methods=['POST'])
-def ecac_analisar(job_id):
-    """Analisa os PDFs baixados do eCAC exatamente como o upload normal."""
+@bp.route('/api/perdcomp/ecac/analisar', methods=['POST'])
+def ecac_analisar():
+    """Analisa todos os PDFs da pasta de entrada."""
     if not PDF_OK:
         return jsonify({"error": "pdfplumber não instalado"}), 500
-    dest = _ECAC_DIR / job_id
-    if not dest.exists():
-        return jsonify({"error": "Pasta de downloads não encontrada"}), 404
+    dest = _ECAC_DIR / "entrada"
+    dest.mkdir(exist_ok=True)
 
     pdfs = list(dest.glob("*.pdf"))
     if not pdfs:
