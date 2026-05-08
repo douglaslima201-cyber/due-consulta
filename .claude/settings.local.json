@@ -45,7 +45,8 @@
       "Bash(taskkill /F /PID 15272 /PID 24148 /PID 36824)",
       "Bash(taskkill //F //PID 15272)",
       "Bash(taskkill //F //PID 24148)",
-      "Bash(taskkill //F //PID 36824)"
+      "Bash(taskkill //F //PID 36824)",
+      "Bash(taskkill //F //PID 23816)"
     ]
   },
   "hooks": {
