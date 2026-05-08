@@ -824,14 +824,121 @@ def ecac_confirmar(job_id):
 
 @bp.route('/api/perdcomp/ecac/pasta')
 def ecac_pasta():
-    """Retorna o caminho da pasta de entrada para PDFs do eCAC."""
     pasta = _ECAC_DIR / "entrada"
     pasta.mkdir(exist_ok=True)
+    pdfs = list(pasta.glob("*.pdf"))
     return jsonify({
         "pasta": str(pasta.resolve()),
-        "arquivos": [f.name for f in pasta.glob("*.pdf")],
-        "total": len(list(pasta.glob("*.pdf"))),
+        "arquivos": [f.name for f in pdfs],
+        "total": len(pdfs),
     })
+
+_ecac_capturas: list[dict] = []  # HTML capturado via console script
+
+@bp.route('/api/perdcomp/ecac/capturar-html', methods=['POST'])
+def ecac_capturar_html():
+    """Recebe HTML de uma declaração capturada pelo script do console."""
+    import html as html_mod
+    import re as _re
+    data = request.json or {}
+    html_raw = data.get("html", "")
+    indice   = data.get("indice", len(_ecac_capturas))
+
+    # Extrair texto puro do HTML
+    texto = _re.sub(r'<[^>]+>', ' ', html_raw)
+    texto = html_mod.unescape(texto)
+    texto = _re.sub(r'\s+', ' ', texto).strip()
+
+    nome = f"ecac_captura_{indice+1:03d}.html"
+    reg  = extrair_registro(texto, nome)
+    _ecac_capturas.append(reg)
+    return jsonify({"ok": True, "total": len(_ecac_capturas), "tipo": reg["tipo"]})
+
+@bp.route('/api/perdcomp/ecac/capturas')
+def ecac_capturas_status():
+    return jsonify({"total": len(_ecac_capturas),
+                    "registros": [{"arquivo": r["arquivo"], "tipo": r["tipo"],
+                                   "numero": r["numero"]} for r in _ecac_capturas]})
+
+@bp.route('/api/perdcomp/ecac/limpar-capturas', methods=['POST'])
+def ecac_limpar_capturas():
+    _ecac_capturas.clear()
+    return jsonify({"ok": True})
+
+@bp.route('/api/perdcomp/ecac/analisar-capturas', methods=['POST'])
+def ecac_analisar_capturas():
+    if not _ecac_capturas:
+        return jsonify({"error": "Nenhuma declaração capturada ainda."}), 400
+    registros = list(_ecac_capturas)
+    vinculos, nv = vincular_pers_dcomps(registros)
+    alertas = analisar_compliance(registros, vinculos)
+    total_credito    = sum(r["valor_credito"]      for r in registros)
+    total_compensado = sum(r["valor_compensado"]   for r in registros)
+    total_ressarcido = sum(r["valor_ressarcido"]   for r in registros)
+    saldo_total      = sum(r["saldo_remanescente"] for r in registros)
+    dist_tributos: dict[str, float] = {}
+    dist_tipos:    dict[str, int]   = {}
+    for r in registros:
+        t  = r["tributo"] or "Não identificado"
+        tp = r["tipo"]    or "Não identificado"
+        val = r["valor_compensado"] if r["tipo"] == "Compensação" else r["valor_credito"]
+        dist_tributos[t]  = round(dist_tributos.get(t, 0) + val, 2)
+        dist_tipos[tp]    = dist_tipos.get(tp, 0) + 1
+    return jsonify({
+        "registros": registros, "vinculos": vinculos,
+        "dcomps_nao_vinculadas": [d["arquivo"] for d in nv],
+        "alertas": alertas, "erros": [],
+        "sumario": {
+            "total_arquivos": len(registros),
+            "total_credito": round(total_credito, 2),
+            "total_compensado": round(total_compensado, 2),
+            "total_ressarcido": round(total_ressarcido, 2),
+            "saldo_disponivel": round(saldo_total, 2),
+            "alertas_alto":   sum(1 for a in alertas if a["nivel"] == "alto"),
+            "alertas_medio":  sum(1 for a in alertas if a["nivel"] == "medio"),
+            "alertas_info":   sum(1 for a in alertas if a["nivel"] == "info"),
+            "dist_tributos": dist_tributos, "dist_tipos": dist_tipos,
+            "vinculos_ok":        sum(1 for v in vinculos if v["status_validacao"] == "OK"),
+            "vinculos_excedidos": sum(1 for v in vinculos if v["status_validacao"] == "EXCEDIDO"),
+            "vinculos_diverg":    sum(1 for v in vinculos if v["status_validacao"] == "DIVERGENCIA"),
+            "total_pers":  sum(1 for r in registros if r["tipo"] in ("Ressarcimento","Restituição")),
+            "total_dcomps":sum(1 for r in registros if r["tipo"] == "Compensação"),
+        }
+    })
+
+@bp.route('/api/perdcomp/ecac/abrir-pasta')
+def ecac_abrir_pasta():
+    """Abre a pasta de entrada no Windows Explorer."""
+    import subprocess as sp
+    pasta = (_ECAC_DIR / "entrada")
+    pasta.mkdir(exist_ok=True)
+    sp.Popen(["explorer", str(pasta.resolve())])
+    return jsonify({"ok": True})
+
+@bp.route('/api/perdcomp/ecac/extrair-zip', methods=['POST'])
+def ecac_extrair_zip():
+    """Extrai PDFs de ZIPs enviados para a pasta de entrada."""
+    import zipfile
+    pasta = _ECAC_DIR / "entrada"
+    pasta.mkdir(exist_ok=True)
+    files = request.files.getlist('files')
+    extraidos = 0
+    erros = []
+    for f in files:
+        if not f.filename.lower().endswith('.zip'):
+            continue
+        try:
+            with zipfile.ZipFile(io.BytesIO(f.read())) as z:
+                for name in z.namelist():
+                    if name.lower().endswith('.pdf'):
+                        data = z.read(name)
+                        dest = pasta / Path(name).name
+                        dest.write_bytes(data)
+                        extraidos += 1
+        except Exception as exc:
+            erros.append({"arquivo": f.filename, "erro": str(exc)})
+    pdfs = list(pasta.glob("*.pdf"))
+    return jsonify({"extraidos": extraidos, "total_pasta": len(pdfs), "erros": erros})
 
 @bp.route('/api/perdcomp/ecac/limpar', methods=['POST'])
 def ecac_limpar():

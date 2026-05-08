@@ -233,7 +233,7 @@ td.name{font-family:var(--body);font-size:12px;color:var(--g2);max-width:180px;o
     <div class="s-item" onclick="sp('p-registros')"><span>📋</span>Registros <span class="s-badge sb-ok" id="sb-reg" style="display:none">0</span></div>
     <div class="s-item" onclick="sp('p-alertas')"><span>🚨</span>Alertas <span class="s-badge sb-red" id="sb-alt" style="display:none">0</span></div>
     <div class="s-item" onclick="sp('p-per');renderPer(null)"><span>🔗</span>Análise por PER <span class="s-badge sb-ok" id="sb-per" style="display:none">0</span></div>
-    <div class="s-item" onclick="sp('p-ecac');ecacAtualizarPasta()"><span>⬇</span>Download eCAC</div>
+    <div class="s-item" onclick="sp('p-ecac');ecacMontarScript();ecacAtualizarCapturas();ecacAtualizarPasta()"><span>⬇</span>Download eCAC</div>
     <div class="s-sec" style="margin-top:12px">Exportar</div>
     <div class="s-item" onclick="sp('p-relatorio')"><span>📄</span>Relatório</div>
   </aside>
@@ -361,62 +361,63 @@ td.name{font-family:var(--body);font-size:12px;color:var(--g2);max-width:180px;o
 
     <!-- BAIXAR ECAC -->
     <div class="panel" id="p-ecac">
-      <div class="sec-label">Automação eCAC</div>
-      <h2 class="sec-title">Download Automático de Declarações</h2>
-      <p class="sec-sub">Faça login no eCAC no seu Chrome, clique em iniciar — o sistema usa sua sessão para baixar todas as declarações do período automaticamente.</p>
+      <div class="sec-label">Captura via console</div>
+      <h2 class="sec-title">Captura Automática do eCAC</h2>
+      <p class="sec-sub">Estando na página de Documentos Entregues do PER/DCOMP Web, cole o script abaixo no console do Chrome — ele captura todas as declarações automaticamente.</p>
 
-      <!-- Download automático -->
+      <!-- Script de captura -->
       <div class="card" style="margin-bottom:16px;border-color:rgba(249,115,22,.2)">
-        <div class="card-title">⚡ Como funciona</div>
-        <div style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--g2);margin-bottom:16px;line-height:1.7">
-          <div><span style="color:var(--orange);font-family:var(--mono);margin-right:8px">01</span>Faça login no eCAC no seu Chrome normalmente (certificado A1)</div>
-          <div><span style="color:var(--orange);font-family:var(--mono);margin-right:8px">02</span>Informe o período e clique em <strong style="color:var(--white)">"Iniciar Download"</strong></div>
-          <div><span style="color:var(--orange);font-family:var(--mono);margin-right:8px">03</span>O sistema lê sua sessão do Chrome e abre automaticamente a lista de PER/DCOMPs</div>
-          <div><span style="color:var(--orange);font-family:var(--mono);margin-right:8px">04</span>Os PDFs são baixados e ficam prontos para análise — clique em <strong style="color:var(--white)">"Analisar"</strong></div>
+        <div class="card-title">⚡ Passo 1 — Copie o script</div>
+        <div style="font-size:13px;color:var(--g2);margin-bottom:12px">No eCAC, vá em <strong style="color:var(--white)">Restituição e Compensação → PERDCOMP Web → Visualizar Documentos → Documentos Entregues</strong>, filtre o período e então:</div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+          <div style="font-size:12px;color:var(--g3)">Pressione <kbd style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);padding:2px 8px;border-radius:4px;font-family:var(--mono)">F12</kbd> → aba <kbd style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);padding:2px 8px;border-radius:4px;font-family:var(--mono)">Console</kbd> → cole o script abaixo e pressione Enter</div>
+          <button class="btn btn-p btn-sm" onclick="ecacCopiarScript()">📋 Copiar script</button>
         </div>
-        <div class="form-grid" style="margin-bottom:16px">
-          <div class="fg"><label>Data inicial (DD/MM/AAAA)</label><input type="text" id="ecac-ini" placeholder="01/01/2024" maxlength="10"/></div>
-          <div class="fg"><label>Data final (DD/MM/AAAA)</label><input type="text" id="ecac-fim" placeholder="31/12/2024" maxlength="10"/></div>
-        </div>
-        <div class="btn-row" style="margin-top:0">
-          <button class="btn btn-p" id="btn-ecac-start" onclick="ecacIniciar()">⬇ Iniciar Download Automático</button>
-          <button class="btn btn-g" id="btn-ecac-confirmou" onclick="ecacConfirmar()" style="display:none">✅ Já estou na lista de PER/DCOMPs</button>
-        </div>
-        <div id="ecac-status-box" style="display:none;margin-top:16px">
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-            <span id="ecac-status-ic" style="font-size:20px">⏳</span>
-            <span style="font-weight:600;font-size:13px" id="ecac-status-txt">Iniciando...</span>
+        <pre id="ecac-script-box" style="background:#03080F;border:1px solid rgba(249,115,22,.15);border-radius:var(--r);padding:12px;font-family:var(--mono);font-size:10px;color:#6D97C0;line-height:1.6;overflow-x:auto;white-space:pre-wrap;max-height:180px"></pre>
+      </div>
+
+      <!-- Status capturas -->
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-title">📊 Passo 2 — Aguardar capturas</div>
+        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+          <div>
+            <div style="font-family:var(--display);font-size:28px;font-weight:800;color:var(--orange)" id="ecac-cap-count">0</div>
+            <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--g3)">declarações capturadas</div>
           </div>
-          <div class="term" id="ecac-log" style="max-height:180px"></div>
-          <div id="ecac-arquivos-box" style="display:none;margin-top:12px">
-            <div style="font-size:12px;color:var(--green);font-weight:600;margin-bottom:8px" id="ecac-arquivos-count"></div>
-            <div id="ecac-arquivos-list"></div>
-            <div class="btn-row"><button class="btn btn-p btn-sm" onclick="ecacAnalisarJob()">🔍 Analisar arquivos baixados</button></div>
+          <div style="flex:1;font-size:12px;color:var(--g3)" id="ecac-cap-list">Nenhuma captura ainda. Execute o script no eCAC.</div>
+          <div class="btn-row" style="margin:0">
+            <button class="btn btn-g btn-sm" onclick="ecacAtualizarCapturas()">🔄 Atualizar</button>
+            <button class="btn btn-g btn-sm" onclick="ecacLimparCapturas()" style="color:#FCA5A5">🗑 Limpar</button>
           </div>
         </div>
       </div>
 
-      <div style="margin-top:24px;border-top:1px solid rgba(255,255,255,.06);padding-top:20px">
-        <div style="font-size:11px;font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--g3);margin-bottom:12px">Fallback — download manual</div>
-        <div style="font-size:12px;color:var(--g3);margin-bottom:12px">Se preferir baixar manualmente do eCAC, salve os PDFs na pasta abaixo e clique em "Analisar PDFs da pasta".</div>
-        <div class="card" style="margin-bottom:16px;background:rgba(255,255,255,.02)">
-        <div class="card-title" style="font-size:13px;color:var(--g3)">📁 Pasta de entrada manual</div>
-        <div style="font-size:13px;color:var(--g2);margin-bottom:14px">Salve os PDFs do eCAC nesta pasta:</div>
+      <!-- Analisar -->
+      <div class="card">
+        <div class="card-title">🔍 Passo 3 — Analisar</div>
+        <div style="font-size:13px;color:var(--g2);margin-bottom:14px">Quando todas as declarações forem capturadas, clique para rodar o compliance.</div>
+        <div class="btn-row" style="margin-top:0">
+          <button class="btn btn-p" id="btn-ecac-analisar-cap" onclick="ecacAnalisarCapturas()">🔍 Analisar declarações capturadas</button>
+        </div>
+        <div id="ecac-cap-err" style="display:none;margin-top:12px;padding:10px 14px;background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.2);border-radius:var(--r);font-size:12px;color:#FCA5A5"></div>
+      </div>
+
+      <!-- Fallback pasta -->
+      <div style="margin-top:20px;border-top:1px solid rgba(255,255,255,.05);padding-top:16px">
+        <div style="font-size:11px;font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--g4);margin-bottom:10px">Alternativa — pasta de PDFs</div>
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-          <code id="ecac-pasta-path" style="font-family:var(--mono);font-size:12px;color:var(--orange);background:rgba(249,115,22,.06);border:1px solid rgba(249,115,22,.15);padding:10px 16px;border-radius:var(--r);flex:1">Carregando...</code>
-          <button class="btn btn-g btn-sm" onclick="ecacCopiarPasta()">📋 Copiar</button>
-          <button class="btn btn-g btn-sm" onclick="ecacAtualizarPasta()">🔄 Atualizar</button>
+          <code id="ecac-pasta-path" style="font-family:var(--mono);font-size:11px;color:var(--g3);background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);padding:8px 12px;border-radius:var(--r);flex:1">Carregando...</code>
+          <button class="btn btn-g btn-sm" onclick="ecacCopiarPasta()">📋</button>
+          <button class="btn btn-g btn-sm" onclick="ecacAbrirExplorer()">📂 Abrir</button>
+          <button class="btn btn-g btn-sm" onclick="ecacAtualizarPasta()">🔄</button>
         </div>
-        <div style="margin-top:12px;font-size:12px;color:var(--g3)" id="ecac-pasta-count">Nenhum PDF na pasta.</div>
-        <div id="ecac-pasta-lista" style="margin-top:10px;display:flex;flex-direction:column;gap:6px"></div>
-      </div>
-
-        <div class="btn-row" style="margin-top:0">
+        <div style="margin-top:8px;font-size:11px;color:var(--g4)" id="ecac-pasta-count"></div>
+        <div id="ecac-pasta-lista" style="margin-top:6px;display:flex;flex-direction:column;gap:4px"></div>
+        <div class="btn-row" style="margin-top:10px">
           <button class="btn btn-g btn-sm" id="btn-ecac-analisar" onclick="ecacAnalisarPasta()">🔍 Analisar PDFs da pasta</button>
-          <button class="btn btn-g btn-sm" onclick="ecacLimparPasta()" style="color:#FCA5A5">🗑 Limpar</button>
+          <button class="btn btn-g btn-sm" onclick="ecacLimparPasta()" style="color:#FCA5A5">🗑</button>
         </div>
-        <div id="ecac-analisar-err" style="display:none;margin-top:12px;padding:10px 14px;background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.2);border-radius:var(--r);font-size:12px;color:#FCA5A5"></div>
-        </div>
+        <div id="ecac-analisar-err" style="display:none;margin-top:8px;padding:8px 12px;background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.2);border-radius:var(--r);font-size:12px;color:#FCA5A5"></div>
       </div>
     </div>
 
@@ -952,6 +953,77 @@ function renderRelatorio(){
     <div style="font-size:11px;color:var(--g4);padding:12px 0">
       Relatório gerado em ${new Date().toLocaleString('pt-BR')} · PER/DCOMP Analyzer — Rumo Brasil · Uso interno · Caráter auxiliar — não substitui análise especializada.
     </div>`;
+}
+
+// ─── ECAC SCRIPT DE CAPTURA ──────────────────────────────────────────────────
+const ECAC_SCRIPT = `(async function(){
+  const API='http://localhost:5000/api/perdcomp';
+  await fetch(API+'/ecac/limpar-capturas',{method:'POST'});
+  const isImprimirEl=el=>{
+    const t=(el.title+el.alt+(el.getAttribute&&el.getAttribute('onclick')||'')+el.textContent).toLowerCase();
+    return t.includes('imprimir')&&['IMG','BUTTON','A','SPAN'].includes(el.tagName);
+  };
+  const botoes=[...document.querySelectorAll('img,button,a,span')].filter(isImprimirEl);
+  if(!botoes.length){alert('Nenhum botão de impressão encontrado. Verifique se está na lista de Documentos Entregues.');return;}
+  console.log('[Analyzer] '+botoes.length+' declarações encontradas.');
+  const origOpen=window.open;
+  let capturados=0,erros=0;
+  for(let i=0;i<botoes.length;i++){
+    console.log('[Analyzer] Capturando '+(i+1)+'/'+botoes.length+'...');
+    const janelas=[];
+    window.open=function(...a){const w=origOpen.apply(window,a);if(w)janelas.push(w);return w;};
+    botoes[i].click();
+    await new Promise(r=>setTimeout(r,3500));
+    window.open=origOpen;
+    if(!janelas.length){console.warn('[Analyzer] Nenhuma janela aberta no doc '+(i+1));erros++;continue;}
+    const jn=janelas[0];
+    for(let t=0;t<25;t++){await new Promise(r=>setTimeout(r,200));if(jn.document&&jn.document.readyState==='complete')break;}
+    try{
+      const html=jn.document.documentElement.outerHTML;
+      const r=await fetch(API+'/ecac/capturar-html',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({html,indice:i})});
+      if(r.ok){capturados++;console.log('[Analyzer] ✓ Doc '+(i+1)+' capturado');}
+      else{erros++;console.error('[Analyzer] Erro HTTP doc '+(i+1));}
+    }catch(ex){erros++;console.error('[Analyzer] Erro doc '+(i+1),ex);}
+    try{jn.close();}catch(e){}
+    await new Promise(r=>setTimeout(r,500));
+  }
+  alert('[PER/DCOMP Analyzer] '+capturados+' de '+botoes.length+' declarações capturadas. Acesse o painel e clique em Analisar.');
+})();`;
+
+function ecacMontarScript(){
+  const el=document.getElementById('ecac-script-box');
+  if(el) el.textContent=ECAC_SCRIPT;
+}
+function ecacCopiarScript(){
+  navigator.clipboard.writeText(ECAC_SCRIPT).then(()=>alert('Script copiado! Cole no console do Chrome (F12 → Console) e pressione Enter.'));
+}
+async function ecacAtualizarCapturas(){
+  try{
+    const r=await fetch(`${API}/ecac/capturas`); const d=await r.json();
+    document.getElementById('ecac-cap-count').textContent=d.total;
+    document.getElementById('btn-ecac-analisar-cap').disabled=d.total===0;
+    document.getElementById('ecac-cap-list').innerHTML=
+      d.total>0
+        ? d.registros.slice(0,10).map(r=>`<div style="font-size:11px;font-family:var(--mono);color:var(--g3);padding:2px 0">${e(r.tipo)} | ${e(r.numero||'—')}</div>`).join('')+
+          (d.registros.length>10?`<div style="font-size:11px;color:var(--g4)">...e mais ${d.registros.length-10}</div>`:'')
+        : 'Nenhuma captura ainda. Execute o script no eCAC.';
+  }catch{}
+}
+async function ecacLimparCapturas(){
+  if(!confirm('Limpar todas as declarações capturadas?')) return;
+  await fetch(`${API}/ecac/limpar-capturas`,{method:'POST'});
+  ecacAtualizarCapturas();
+}
+async function ecacAnalisarCapturas(){
+  const btn=document.getElementById('btn-ecac-analisar-cap');
+  const errEl=document.getElementById('ecac-cap-err');
+  btn.disabled=true; btn.textContent='⏳ Analisando...'; errEl.style.display='none';
+  try{
+    const r=await fetch(`${API}/ecac/analisar-capturas`,{method:'POST'});
+    const d=await r.json(); if(!r.ok) throw new Error(d.error);
+    DADOS=d; renderTudo(); sp('p-dash');
+  }catch(err){errEl.style.display='block'; errEl.textContent='Erro: '+err.message;}
+  finally{btn.disabled=false; btn.textContent='🔍 Analisar declarações capturadas'; ecacAtualizarCapturas();}
 }
 
 // ─── ECAC AUTOMÁTICO ─────────────────────────────────────────────────────────
