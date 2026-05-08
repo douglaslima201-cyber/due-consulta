@@ -211,6 +211,80 @@ td.pos{color:var(--green);}td.neg{color:var(--red);}td.neu{color:var(--g3);}td.h
         <div class="hc" style="cursor:default" onclick="exportarCSV()"><div class="hc-ic">⬇</div><div class="hc-title">Exportar Excel</div><div class="hc-desc">Gere planilha com memória de cálculo e análise tributária detalhada.</div></div>
         <div class="hc" style="background:rgba(249,115,22,.04);border-color:rgba(249,115,22,.15);cursor:default"><div class="hc-ic">⚡</div><div class="hc-title">Base legal: LC 214/2025</div><div class="hc-desc">CBS substitui PIS/COFINS (2027). IBS substitui ICMS em transição 2029–2033.</div></div>
       </div>
+
+      <!-- METODOLOGIA -->
+      <div style="margin-top:40px">
+        <div class="sec-label">Como funciona</div>
+        <h2 class="sec-title" style="font-size:20px">Metodologia de Cálculo</h2>
+        <p class="sec-sub">Entenda como o simulador chega aos números — em linguagem simples.</p>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+
+          <div class="card" style="margin-bottom:0">
+            <div class="card-title" style="color:var(--g2)">📌 O que são os créditos tributários?</div>
+            <p style="font-size:13px;color:var(--g2);line-height:1.8">
+              Quando uma transportadora compra um caminhão, ela paga impostos embutidos no preço. A boa notícia: boa parte desse valor pode ser <strong style="color:var(--white)">recuperada depois</strong> — é o que chamamos de <strong style="color:var(--white)">crédito tributário</strong>.
+              <br><br>
+              No regime atual, esses créditos (PIS, COFINS e ICMS) costumam ser devolvidos ao longo de <strong style="color:var(--white)">48 meses</strong> — ou seja, a empresa espera 4 anos para recuperar o dinheiro.
+              <br><br>
+              Com a Reforma Tributária, a CBS e o IBS permitem recuperar esse crédito <strong style="color:var(--orange)">no mesmo mês da compra</strong>. Isso é uma diferença enorme no caixa da empresa.
+            </p>
+          </div>
+
+          <div class="card" style="margin-bottom:0">
+            <div class="card-title" style="color:var(--g2)">📌 O que é o "custo efetivo"?</div>
+            <p style="font-size:13px;color:var(--g2);line-height:1.8">
+              Imagina que você compra um caminhão por <strong style="color:var(--white)">R$ 600 mil</strong> e tem direito a R$ 60 mil de crédito tributário.<br><br>
+              • Se esse crédito voltar <strong style="color:var(--white)">imediatamente</strong>, o custo real é R$ 540 mil.<br>
+              • Se demorar <strong style="color:var(--white)">48 meses</strong> para voltar, esse dinheiro fica "preso" por 4 anos. Considerando que ele poderia render juros nesse período, o valor real desse crédito é <em>menor</em> do que R$ 60 mil hoje.<br><br>
+              O simulador calcula o <strong style="color:var(--orange)">Valor Presente (VPL)</strong> do crédito — ou seja, quanto esse dinheiro vale <em>de verdade</em>, considerando o tempo de espera.
+            </p>
+          </div>
+
+          <div class="card" style="margin-bottom:0">
+            <div class="card-title" style="color:var(--g2)">📌 Como funciona a transição?</div>
+            <p style="font-size:13px;color:var(--g2);line-height:1.8">
+              A reforma não muda tudo de uma vez. Ela acontece em etapas:<br><br>
+              <strong style="color:var(--yellow)">2026</strong> — CBS começa em fase de teste (alíquota baixa)<br>
+              <strong style="color:var(--yellow)">2027</strong> — CBS substitui o PIS e COFINS totalmente<br>
+              <strong style="color:var(--yellow)">2029–2032</strong> — IBS entra aos poucos (20% ao ano), substituindo o ICMS<br>
+              <strong style="color:var(--green)">2033</strong> — Sistema novo está completamente em vigor<br><br>
+              O simulador aplica automaticamente as alíquotas corretas de cada ano conforme esse cronograma.
+            </p>
+          </div>
+
+          <div class="card" style="margin-bottom:0">
+            <div class="card-title" style="color:var(--g2)">📌 O que o simulador calcula?</div>
+            <p style="font-size:13px;color:var(--g2);line-height:1.8">
+              Para cada ano de 2026 a 2033, o simulador mostra o que acontece se você comprar os veículos <em>naquele</em> ano:<br><br>
+              <strong style="color:var(--white)">1.</strong> Quanto de imposto está embutido no preço<br>
+              <strong style="color:var(--white)">2.</strong> Quanto você pode recuperar como crédito<br>
+              <strong style="color:var(--white)">3.</strong> Em quanto tempo esse crédito volta para o caixa<br>
+              <strong style="color:var(--white)">4.</strong> Qual o custo real da frota, considerando esse tempo<br>
+              <strong style="color:var(--white)">5.</strong> Se compensa comprar agora ou esperar um ano com regras melhores
+            </p>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- DISCLAIMER -->
+      <div style="margin-top:16px;padding:20px 24px;background:rgba(107,125,148,.07);border:1px solid rgba(107,125,148,.18);border-radius:var(--r2);display:flex;gap:16px;align-items:flex-start">
+        <span style="font-size:22px;flex-shrink:0;margin-top:2px">⚠️</span>
+        <div>
+          <div style="font-weight:700;font-size:14px;color:var(--g1);margin-bottom:8px">Aviso importante antes de usar</div>
+          <p style="font-size:12px;color:var(--g3);line-height:1.85">
+            Esta ferramenta é um <strong style="color:var(--g2)">simulador educacional e de apoio à decisão</strong>. Os resultados apresentados são estimativas baseadas nas alíquotas da Reforma Tributária (LC 214/2025) e nos parâmetros informados por você — e têm como objetivo ajudar na análise estratégica, não substituir uma consultoria tributária.<br><br>
+            <strong style="color:var(--g2)">O que isso significa na prática:</strong><br>
+            • As alíquotas finais de CBS e IBS ainda dependem de regulamentação do Comitê Gestor e podem mudar<br>
+            • Cada empresa tem uma situação tributária específica (regime, aproveitamento de créditos, contratos vigentes) que pode gerar resultados diferentes dos simulados<br>
+            • Os cálculos de VPL (Valor Presente) usam uma taxa de desconto genérica — sua empresa pode ter um custo de capital diferente<br>
+            • Esta ferramenta <strong style="color:var(--g2)">não constitui assessoria jurídica ou tributária</strong><br><br>
+            <strong style="color:var(--g2)">Recomendamos:</strong> use os resultados como ponto de partida para discussão com seu contador ou consultor tributário antes de tomar decisões de compra.
+          </p>
+        </div>
+      </div>
+
     </div>
 
     <!-- DADOS DA FROTA -->
