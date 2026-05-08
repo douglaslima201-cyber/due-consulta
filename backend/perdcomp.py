@@ -57,6 +57,12 @@ async def _ecac_download_async(job_id: str, periodo_ini: str, periodo_fim: str):
         _elog(job_id, "Chrome não encontrado. Verifique a instalação.")
         job["status"] = "erro"; return
 
+    # Encerrar Chrome em segundo plano (impede que a porta de debug seja ignorada)
+    _elog(job_id, "Encerrando instâncias do Chrome em segundo plano...")
+    subprocess.run(["taskkill", "/F", "/IM", "chrome.exe"],
+                   capture_output=True, text=True)
+    await asyncio.sleep(2)
+
     proc = None
     async with async_playwright() as p:
         try:
@@ -75,17 +81,20 @@ async def _ecac_download_async(job_id: str, periodo_ini: str, periodo_fim: str):
             _elog(job_id, f"Erro ao abrir Chrome: {exc}")
             job["status"] = "erro"; return
 
-        # Aguardar Chrome inicializar e CDP ficar disponível
-        await asyncio.sleep(4)
+        # Aguardar Chrome inicializar completamente
+        await asyncio.sleep(6)
 
-        # Conectar via CDP (Playwright só automação, Chrome roda limpo)
-        for tentativa in range(10):
+        # Conectar via CDP — tentar por até 40s
+        browser = None
+        for tentativa in range(20):
             try:
                 browser = await p.chromium.connect_over_cdp(f"http://localhost:{_CDP_PORT}")
+                _elog(job_id, "Conectado ao Chrome via CDP.")
                 break
             except Exception:
                 await asyncio.sleep(2)
-        else:
+
+        if not browser:
             _elog(job_id, "Não foi possível conectar ao Chrome via CDP.")
             job["status"] = "erro"
             if proc: proc.terminate()
