@@ -26,8 +26,8 @@ _RES  = _BASE / "results"
 _UPL.mkdir(exist_ok=True)
 _RES.mkdir(exist_ok=True)
 
-ANO_INICIO = 2007
 ANO_FIM    = date.today().year
+ANO_INICIO = ANO_FIM - 4   # últimos 5 anos
 
 # ── DB ────────────────────────────────────────────────────────────────────────
 

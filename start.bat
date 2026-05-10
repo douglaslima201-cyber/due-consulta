@@ -1,26 +1,28 @@
 @echo off
-title DUE Consulta - Siscomex
+title Ferramentas Enterprise — Rumo Brasil
 
 echo.
-echo ╔══════════════════════════════════════════════╗
-echo ║   DUE Consulta — Siscomex Automation Tool    ║
-echo ╚══════════════════════════════════════════════╝
+echo ╔══════════════════════════════════════════════════╗
+echo ║    Ferramentas Enterprise — Rumo Brasil          ║
+echo ╚══════════════════════════════════════════════════╝
 echo.
 
-echo 📦 Instalando dependências Python...
+echo [1/3] Instalando dependencias Python...
 cd backend
-pip install -r requirements.txt
+pip install -r requirements.txt -q
 
-echo.
-echo 🎭 Instalando navegador Playwright (Chromium)...
+echo [2/3] Instalando navegador Playwright (Chromium)...
 python -m playwright install chromium
 
+echo [3/3] Iniciando servidor na porta 5000...
 echo.
-echo ✅ Instalação concluída!
+echo  Acesse: http://localhost:5000/portal.html
+echo  (abrindo navegador automaticamente em 3 segundos)
 echo.
-echo 🚀 Iniciando backend na porta 5000...
-echo 🌐 Abra o arquivo: frontend\index.html no seu navegador
-echo.
+
+:: Abre o browser após 3 segundos em segundo plano
+start /B cmd /C "timeout /T 3 /NOBREAK >nul && start http://localhost:5000/portal.html"
+
 python main.py
 
 pause

@@ -270,9 +270,9 @@ tr:hover td{background:rgba(255,255,255,.02);}
   <div class="nav-right">
     <a href="portal.html" class="nav-back">← Portal</a>
     <span class="nav-tag">Inteligência Societária</span>
-    <div class="nav-dot-wrap">
-      <div class="nav-dot"></div>
-      <span>BrasilAPI</span>
+    <div class="nav-dot-wrap" id="backendStatus">
+      <div class="nav-dot" style="background:var(--g3);box-shadow:none;" id="statusDot"></div>
+      <span id="statusText">Verificando...</span>
     </div>
   </div>
 </nav>
@@ -494,7 +494,9 @@ tr:hover td{background:rgba(255,255,255,.02);}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 <script>
-const API = 'http://localhost:5000/api/societario';
+// URL automático: usa origin quando servido pelo Flask, fallback para localhost:5000
+const _origin = window.location.protocol === 'file:' ? 'http://localhost:5000' : window.location.origin;
+const API = _origin + '/api/societario';
 let currentData = null;
 let network = null;
 let charts = {};
@@ -617,8 +619,9 @@ async function iniciarMapeamento() {
     renderResultados(data);
     carregarHistorico();
   } catch(e) {
-    showToast('❌ Erro de conexão. Verifique se o backend está ativo na porta 5000.');
-    console.error(e);
+    const msg = e instanceof TypeError ? 'Backend inacessível. Acesse via http://localhost:5000' : (e.message || 'Erro desconhecido');
+    showToast('❌ ' + msg);
+    console.error('[Societario]', e);
   } finally {
     stopLoadingAnimation();
     document.getElementById('loadingOverlay').style.display = 'none';
@@ -1117,8 +1120,32 @@ function exportarPDF() {
   showToast('✅ PDF exportado com sucesso!');
 }
 
+// ─── STATUS DO BACKEND ────────────────────────────────────────
+async function testarConexao() {
+  const dot = document.getElementById('statusDot');
+  const txt = document.getElementById('statusText');
+  try {
+    const r = await fetch(_origin + '/api/health', {signal: AbortSignal.timeout(4000)});
+    if (r.ok) {
+      dot.style.cssText = 'background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse 2s infinite;';
+      txt.textContent = 'Backend online';
+      return true;
+    }
+  } catch(_) {}
+  dot.style.cssText = 'background:var(--red);box-shadow:0 0 8px var(--red);';
+  txt.innerHTML = '<a href="http://localhost:5000" target="_blank" style="color:var(--red);text-decoration:underline">Backend offline — clique para verificar</a>';
+  document.getElementById('searchBtn').disabled = true;
+  document.getElementById('searchBtn').title = 'Backend offline. Inicie o main.py primeiro.';
+  return false;
+}
+
 // ─── INIT ─────────────────────────────────────────────────────
-carregarHistorico();
+testarConexao().then(ok => {
+  if (ok) {
+    document.getElementById('searchBtn').disabled = false;
+    carregarHistorico();
+  }
+});
 </script>
 </body>
 </html>
