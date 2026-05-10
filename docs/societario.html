@@ -654,8 +654,8 @@ function renderResultados(data) {
   document.getElementById('badgeSocios').textContent = pfs.length;
   document.getElementById('badgeAlertas').textContent = data.alertas.length;
 
+  chartsRendered = false;
   renderGrafo(data);
-  renderDashboard(data);
   renderEmpresasTable(data);
   renderSociosTable(data);
   renderAlertas(data);
