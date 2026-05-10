@@ -82,7 +82,11 @@
       "Bash(python -c \"import urllib.request; print\\(urllib.request.urlopen\\('http://localhost:5000/api/health',timeout=3\\).read\\(\\).decode\\(\\)\\)\")",
       "Bash(python -c \"import urllib.request; r=urllib.request.urlopen\\('http://localhost:5000/api/health',timeout=3\\); print\\(r.read\\(\\).decode\\(\\)\\)\")",
       "Bash(curl -sI \"https://unpkg.com/vis-network@9.1.9/standalone/umd/vis-network.min.js\")",
-      "Bash(curl -s \"http://localhost:5000/api/societario/mapear/11455829000103?depth=3\")"
+      "Bash(curl -s \"http://localhost:5000/api/societario/mapear/11455829000103?depth=3\")",
+      "Bash(python -c \"import societario; print\\('OK — endpoints:', [r.rule for r in __import__\\('flask'\\).Flask\\(__name__\\).url_map.iter_rules\\(\\) if False] or 'importado'\\)\")",
+      "Bash(curl -s \"http://localhost:5000/api/societario/status-rf\")",
+      "Bash(curl -s \"http://localhost:5000/api/societario/expandir/11455829000103\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('node:', d.get\\('node',{}\\).get\\('razao_social'\\)\\); print\\('qsa nodes:', len\\(d.get\\('nodes',[]\\)\\), 'edges:', len\\(d.get\\('edges',[]\\)\\)\\)\")"
     ]
   },
   "hooks": {

@@ -232,6 +232,35 @@ tr:hover td{background:rgba(255,255,255,.02);}
 .btn-purple{background:linear-gradient(135deg,var(--purple),#6D28D9);color:var(--white);box-shadow:0 4px 16px rgba(124,58,237,.25);}
 .btn-purple:hover{transform:translateY(-1px);box-shadow:0 6px 24px rgba(124,58,237,.4);}
 
+/* RF BANNER */
+.rf-banner{display:flex;align-items:center;gap:14px;padding:14px 20px;border-radius:var(--r2);margin-top:16px;
+  background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);}
+.rf-banner.ok{background:rgba(34,197,94,.06);border-color:rgba(34,197,94,.2);}
+.rf-banner-ico{font-size:20px;flex-shrink:0;}
+.rf-banner-text{flex:1;}
+.rf-banner-title{font-size:13px;font-weight:600;margin-bottom:2px;}
+.rf-banner-sub{font-size:11px;color:var(--g3);font-family:var(--mono);}
+.btn-rf{padding:8px 16px;border-radius:var(--r);font-size:12px;font-weight:600;cursor:pointer;
+  background:linear-gradient(135deg,#D97706,#B45309);color:var(--white);border:none;
+  font-family:var(--sans);transition:all .2s;white-space:nowrap;}
+.btn-rf:hover{transform:translateY(-1px);}
+.btn-rf:disabled{opacity:.5;cursor:not-allowed;transform:none;}
+
+/* RF MODAL */
+#rfModal{position:fixed;inset:0;z-index:600;background:rgba(6,13,26,.85);backdrop-filter:blur(8px);
+  display:none;align-items:center;justify-content:center;}
+.rf-modal-box{background:var(--db2);border:1px solid rgba(245,158,11,.25);border-radius:var(--r3);
+  padding:32px;width:480px;max-width:90vw;}
+.rf-modal-title{font-size:16px;font-weight:700;margin-bottom:6px;}
+.rf-modal-sub{font-size:12px;color:var(--g3);margin-bottom:24px;line-height:1.6;}
+.rf-progress-bar{height:6px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden;margin-bottom:10px;}
+.rf-progress-fill{height:100%;background:linear-gradient(90deg,#D97706,#F59E0B);border-radius:3px;transition:width .5s;}
+.rf-progress-label{font-size:11px;font-family:var(--mono);color:var(--g3);margin-bottom:20px;}
+.rf-steps{display:flex;flex-direction:column;gap:8px;}
+.rf-step{display:flex;align-items:center;gap:10px;font-size:12px;font-family:var(--mono);color:var(--g3);}
+.rf-step.done{color:var(--green);}
+.rf-step.active{color:var(--yellow);}
+
 /* EMPTY STATES */
 .empty{text-align:center;padding:64px 24px;color:var(--g3);}
 .empty-icon{font-size:48px;margin-bottom:16px;}
@@ -299,6 +328,16 @@ tr:hover td{background:rgba(255,255,255,.02);}
         <button class="btn-search" id="searchBtn" onclick="iniciarMapeamento()">Mapear Grupo →</button>
       </div>
       <div class="search-hint">💡 Informe o CNPJ da empresa principal. O sistema mapeia sócios e empresas relacionadas automaticamente.</div>
+    </div>
+
+    <!-- RF DATA BANNER -->
+    <div id="rfBanner" class="rf-banner" style="display:none;">
+      <div class="rf-banner-ico">🗃️</div>
+      <div class="rf-banner-text">
+        <div class="rf-banner-title" id="rfBannerTitle">Dados da Receita Federal não importados</div>
+        <div class="rf-banner-sub" id="rfBannerSub">Importe o QSA completo da RF para encontrar todas as empresas dos sócios automaticamente.</div>
+      </div>
+      <button class="btn-rf" id="rfImportBtn" onclick="abrirModalRF()">⬇ Importar RF</button>
     </div>
 
     <div id="historySection" style="margin-top:28px;">
@@ -390,6 +429,8 @@ tr:hover td{background:rgba(255,255,255,.02);}
           <div class="leg-item"><div class="leg-dot" style="background:#3B82F6;"></div>Empresa PJ</div>
           <div class="leg-item"><div class="leg-dot" style="background:#A78BFA;"></div>Holding</div>
           <div class="leg-item"><div class="leg-dot" style="background:#22C55E;"></div>Sócio PF</div>
+          <div class="leg-item"><div class="leg-dot" style="background:#F59E0B;border:1px dashed #F59E0B;"></div>Via RF</div>
+          <div class="leg-item" style="font-size:10px;color:var(--teal);">💡 Clique 2× em PJ para expandir</div>
         </div>
       </div>
     </div>
@@ -481,6 +522,31 @@ tr:hover td{background:rgba(255,255,255,.02);}
 <div id="nodePanel">
   <button class="panel-close" onclick="closePanel()">✕</button>
   <div id="panelContent"></div>
+</div>
+
+<!-- RF IMPORT MODAL -->
+<div id="rfModal">
+  <div class="rf-modal-box">
+    <div class="rf-modal-title">🗃️ Importação — Dados Abertos Receita Federal</div>
+    <div class="rf-modal-sub">
+      O sistema irá baixar e indexar os arquivos de QSA (Quadro de Sócios) publicados mensalmente pela Receita Federal (~300 MB comprimidos). Após a importação, todas as empresas dos sócios PF e PJ serão mapeadas automaticamente.<br><br>
+      <strong style="color:var(--yellow)">⏱ Tempo estimado: 20–40 minutos</strong> dependendo da velocidade da conexão.
+    </div>
+    <div class="rf-progress-bar"><div class="rf-progress-fill" id="rfProgressFill" style="width:0%"></div></div>
+    <div class="rf-progress-label" id="rfProgressLabel">Aguardando início...</div>
+    <div class="rf-steps">
+      <div class="rf-step" id="rfStep0">○ Baixando arquivo 1/10...</div>
+      <div class="rf-step" id="rfStep1">○ Indexando registros no SQLite...</div>
+      <div class="rf-step" id="rfStep2">○ Criando índices de busca...</div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:24px;justify-content:flex-end;">
+      <button class="btn btn-ghost btn-sm" onclick="fecharModalRF()">Fechar</button>
+      <button class="btn btn-sm" id="rfStartBtn" onclick="iniciarImportRF()"
+        style="background:linear-gradient(135deg,#D97706,#B45309);color:#fff;">
+        ▶ Iniciar Importação
+      </button>
+    </div>
+  </div>
 </div>
 
 <!-- TOAST -->
@@ -676,35 +742,9 @@ function switchTab(tab) {
 // ─── VIS.JS GRAPH ─────────────────────────────────────────────
 function renderGrafo(data) {
   if (network) { network.destroy(); network = null; }
+  expandedCnpjs = new Set();
 
-  const visNodes = data.nodes.map(n => {
-    if (n.type === 'pf') {
-      return {
-        id: n.id, label: n.nome.split(' ').slice(0,2).join(' '),
-        title: `${n.nome}\nCPF: ${n.cpf||'—'}`,
-        color: { background:'#14532D', border:'#22C55E', highlight:{background:'#166534',border:'#4ADE80'} },
-        font: { color:'#86EFAC', size:11 },
-        shape: 'ellipse', size: 16,
-      };
-    }
-    const isRoot = n.cnpj === limpar(data.cnpj_raiz);
-    const isHolding = n.is_holding;
-    let bg, border, fc;
-    if (isRoot) { bg='#431407'; border='#F97316'; fc='#FB923C'; }
-    else if (isHolding) { bg='#2E1065'; border='#7C3AED'; fc='#A78BFA'; }
-    else { bg='#1E3A5F'; border='#3B82F6'; fc='#93C5FD'; }
-    const label = (n.razao_social||n.cnpj).substring(0,22) + ((n.razao_social||'').length>22?'…':'');
-    return {
-      id: n.id,
-      label: label,
-      title: `${n.razao_social||n.cnpj}\n${n.cnpj_fmt||''}\n${n.situacao||''}\n${n.cnae_desc||''}`,
-      color: { background:bg, border:border, highlight:{background:bg,border:border} },
-      font: { color:fc, size: isRoot?13:11, bold: isRoot },
-      shape: isRoot ? 'star' : (isHolding ? 'diamond' : 'dot'),
-      size: isRoot ? 28 : (isHolding ? 22 : 18),
-      borderWidth: isRoot ? 3 : 2,
-    };
-  });
+  const visNodes = data.nodes.map(n => _buildVisNode(n, data.cnpj_raiz));
 
   const visEdges = data.edges.map((e,i) => ({
     id: i, from: e.from, to: e.to,
@@ -733,6 +773,20 @@ function renderGrafo(data) {
   network.on('click', params => {
     if (params.nodes.length) showNodePanel(params.nodes[0]);
   });
+
+  // Duplo clique em nó PJ: expande os sócios daquela empresa
+  network.on('doubleClick', params => {
+    if (!params.nodes.length) return;
+    const nodeId = params.nodes[0];
+    const node = currentData.nodes.find(n => n.id === nodeId);
+    if (!node || node.type !== 'pj') return;
+    if (node.cnpj === limpar(currentData.cnpj_raiz)) {
+      showToast('ℹ️ Esta é a empresa raiz — já expandida automaticamente.');
+      return;
+    }
+    expandirNoPj(node.cnpj);
+  });
+
   network.on('stabilized', () => { if (physicsOn) network.setOptions({physics:{enabled:false}}); physicsOn = false; document.getElementById('btnPhysics').classList.remove('active'); });
 }
 
@@ -794,6 +848,7 @@ function showNodePanel(nodeId) {
       <div class="panel-row"><div class="panel-key">Sócios cadastrados</div><div class="panel-val">${node.qsa_count||0}</div></div>
       ${(node.cnaes_sec||[]).length?`<div class="panel-row"><div class="panel-key">CNAEs Secundários</div>
         <div class="panel-val" style="font-size:11px;color:var(--g2)">${node.cnaes_sec.slice(0,4).map(s=>s.desc).join(', ')}</div></div>`:''}
+      ${!isRoot ? `<button class="panel-open-btn" style="background:rgba(6,182,212,.1);border-color:rgba(6,182,212,.25);margin-bottom:8px;" onclick="expandirNoPj('${node.cnpj}')">🔎 Expandir sócios desta empresa</button>` : ''}
       <button class="panel-open-btn" onclick="window.open('https://www.google.com/search?q=${encodeURIComponent((node.razao_social||'')+'CNPJ'+node.cnpj)}','_blank')">🔍 Pesquisar empresa</button>
     `;
   }
@@ -1120,6 +1175,159 @@ function exportarPDF() {
   showToast('✅ PDF exportado com sucesso!');
 }
 
+// ─── RF OPEN DATA ────────────────────────────────────────────
+let rfPollTimer = null;
+
+async function verificarStatusRF() {
+  try {
+    const r = await fetch(`${API}/status-rf`);
+    const d = await r.json();
+    const banner = document.getElementById('rfBanner');
+    banner.style.display = 'flex';
+    if (d.disponivel) {
+      banner.className = 'rf-banner ok';
+      const dt = d.importado_em ? new Date(d.importado_em).toLocaleDateString('pt-BR') : '';
+      document.getElementById('rfBannerTitle').textContent = `✅ Dados RF disponíveis — ${Number(d.total_registros).toLocaleString('pt-BR')} vínculos indexados`;
+      document.getElementById('rfBannerSub').textContent = `Importado em: ${dt} · Empresas dos sócios serão buscadas automaticamente.`;
+      document.getElementById('rfImportBtn').textContent = '🔄 Reimportar RF';
+    }
+    // Atualizar modal se estiver aberto
+    const st = d.import_status || {};
+    if (st.estado === 'importando') {
+      const pct = Math.round((st.arquivo / st.total) * 100);
+      document.getElementById('rfProgressFill').style.width = pct + '%';
+      document.getElementById('rfProgressLabel').textContent =
+        `Arquivo ${st.arquivo}/${st.total} — ${Number(st.registros).toLocaleString('pt-BR')} registros processados`;
+      document.getElementById('rfStep0').textContent = `⏳ Baixando arquivo ${st.arquivo}/${st.total}...`;
+      document.getElementById('rfStep0').className = 'rf-step active';
+      document.getElementById('rfStep1').className = 'rf-step active';
+    } else if (st.estado === 'concluido') {
+      document.getElementById('rfProgressFill').style.width = '100%';
+      document.getElementById('rfProgressLabel').textContent = `✅ Concluído — ${Number(st.registros).toLocaleString('pt-BR')} registros importados`;
+      document.getElementById('rfStep0').textContent = '✅ Download concluído';
+      document.getElementById('rfStep0').className = 'rf-step done';
+      document.getElementById('rfStep1').textContent = '✅ Indexação concluída';
+      document.getElementById('rfStep1').className = 'rf-step done';
+      if (rfPollTimer) { clearInterval(rfPollTimer); rfPollTimer = null; }
+      showToast('✅ Dados RF importados! Próximas consultas incluirão todas as empresas dos sócios.');
+    } else if (st.estado === 'erro') {
+      document.getElementById('rfProgressLabel').textContent = '❌ Erro: ' + st.erro;
+      if (rfPollTimer) { clearInterval(rfPollTimer); rfPollTimer = null; }
+    }
+  } catch(_) {}
+}
+
+function abrirModalRF() {
+  document.getElementById('rfModal').style.display = 'flex';
+}
+function fecharModalRF() {
+  document.getElementById('rfModal').style.display = 'none';
+}
+async function iniciarImportRF() {
+  const btn = document.getElementById('rfStartBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Iniciando...';
+  try {
+    const r = await fetch(`${API}/importar-rf`, {method:'POST'});
+    const d = await r.json();
+    if (d.error) { showToast('❌ ' + d.error); btn.disabled = false; btn.textContent = '▶ Iniciar Importação'; return; }
+    showToast('🚀 Importação iniciada! Pode fechar este modal — o processo continua em segundo plano.');
+    btn.textContent = '⏳ Importando...';
+    rfPollTimer = setInterval(verificarStatusRF, 3000);
+  } catch(e) {
+    showToast('❌ Erro ao iniciar importação');
+    btn.disabled = false;
+    btn.textContent = '▶ Iniciar Importação';
+  }
+}
+
+// ─── EXPANSÃO POR CLIQUE EM NÓ PJ ────────────────────────────
+let expandedCnpjs = new Set();
+
+async function expandirNoPj(cnpj) {
+  if (expandedCnpjs.has(cnpj)) { showToast('ℹ️ Empresa já expandida no mapa.'); return; }
+  expandedCnpjs.add(cnpj);
+  showToast('🔍 Expandindo ' + fmt(cnpj) + '...');
+  try {
+    const r = await fetch(`${API}/expandir/${cnpj}`);
+    const d = await r.json();
+    if (d.error) { showToast('❌ ' + d.error); expandedCnpjs.delete(cnpj); return; }
+
+    if (!network || !currentData) return;
+
+    // Atualizar o nó existente com dados completos
+    const nodeDataset = network.body.data.nodes;
+    const edgeDataset = network.body.data.edges;
+
+    // Atualizar nó principal com dados completos
+    const updatedMain = _buildVisNode(d.node, currentData.cnpj_raiz);
+    nodeDataset.update(updatedMain);
+    // Atualiza currentData também
+    const idx = currentData.nodes.findIndex(n => n.id === cnpj);
+    if (idx >= 0) currentData.nodes[idx] = d.node;
+    else currentData.nodes.push(d.node);
+
+    // Adicionar nós e arestas novos
+    const novosNodes = [];
+    const novasEdges = [];
+    d.nodes.forEach(n => {
+      if (!currentData.nodes.find(x => x.id === n.id)) {
+        currentData.nodes.push(n);
+        novosNodes.push(_buildVisNode(n, currentData.cnpj_raiz));
+      }
+    });
+    d.edges.forEach((e, i) => {
+      const eid = `exp_${cnpj}_${i}`;
+      if (!currentData.edges.find(x => x.from === e.from && x.to === e.to)) {
+        currentData.edges.push(e);
+        novasEdges.push({id: eid, from: e.from, to: e.to, label: e.label || '',
+          arrows:{to:{enabled:true,scaleFactor:0.7}},
+          color:{color:'rgba(168,184,204,.4)',highlight:'rgba(6,182,212,.8)'},
+          font:{color:'#6B7D94',size:10,strokeWidth:2,strokeColor:'rgba(6,13,26,.8)'},
+          smooth:{type:'continuous',roundness:0.1}});
+      }
+    });
+    if (novosNodes.length) nodeDataset.add(novosNodes);
+    if (novasEdges.length) edgeDataset.add(novasEdges);
+
+    showToast(`✅ ${d.nodes.length} sócio(s) adicionado(s) ao mapa.`);
+  } catch(e) {
+    showToast('❌ Erro ao expandir empresa');
+    expandedCnpjs.delete(cnpj);
+  }
+}
+
+function _buildVisNode(n, cnpjRaiz) {
+  if (n.type === 'pf') {
+    return {
+      id: n.id, label: n.nome.split(' ').slice(0,2).join(' '),
+      title: `${n.nome}\nCPF: ${n.cpf||'—'}`,
+      color:{background:'#14532D',border:'#22C55E',highlight:{background:'#166534',border:'#4ADE80'}},
+      font:{color:'#86EFAC',size:11}, shape:'ellipse', size:16,
+    };
+  }
+  const isRoot    = n.cnpj === limpar(cnpjRaiz);
+  const isHolding = n.is_holding;
+  const isRF      = n.via_rf;
+  let bg, border, fc;
+  if (isRoot)         { bg='#431407'; border='#F97316'; fc='#FB923C'; }
+  else if (isHolding) { bg='#2E1065'; border='#7C3AED'; fc='#A78BFA'; }
+  else if (isRF)      { bg='#422006'; border='#F59E0B'; fc='#FCD34D'; }
+  else                { bg='#1E3A5F'; border='#3B82F6'; fc='#93C5FD'; }
+  const label = (n.razao_social||n.cnpj).substring(0,22) + ((n.razao_social||'').length>22?'…':'');
+  const expandivel = n.expandivel && !expandedCnpjs.has(n.cnpj);
+  return {
+    id: n.id, label: label + (expandivel ? '\n(duplo clique para expandir)' : ''),
+    title: `${n.razao_social||n.cnpj}\n${n.cnpj_fmt||''}\n${n.situacao||''}\n${n.cnae_desc||''}${isRF?'\n[via Receita Federal]':''}${expandivel?'\n💡 Duplo clique para expandir':''}`,
+    color:{background:bg,border:border,highlight:{background:bg,border:border}},
+    font:{color:fc,size:isRoot?13:11,bold:isRoot},
+    shape: isRoot?'star':(isHolding?'diamond':'dot'),
+    size: isRoot?28:(isHolding?22:18),
+    borderWidth: isRoot?3:(isRF?2:2),
+    borderDashes: isRF ? [4,2] : false,
+  };
+}
+
 // ─── STATUS DO BACKEND ────────────────────────────────────────
 async function testarConexao() {
   const dot = document.getElementById('statusDot');
@@ -1144,6 +1352,7 @@ testarConexao().then(ok => {
   if (ok) {
     document.getElementById('searchBtn').disabled = false;
     carregarHistorico();
+    verificarStatusRF();
   }
 });
 </script>
