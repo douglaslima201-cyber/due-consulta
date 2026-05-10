@@ -413,6 +413,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
       <button class="tab-btn" data-tab="empresas" onclick="switchTab('empresas')">🏢 Empresas <span class="tab-badge" id="badgeEmpresas">—</span></button>
       <button class="tab-btn" data-tab="socios" onclick="switchTab('socios')">👤 Sócios PF <span class="tab-badge" id="badgeSocios">—</span></button>
       <button class="tab-btn" data-tab="alertas" onclick="switchTab('alertas')">🚨 Alertas <span class="tab-badge" id="badgeAlertas">—</span></button>
+      <button class="tab-btn" data-tab="filiais" onclick="switchTab('filiais')">🏪 Filiais <span class="tab-badge" id="badgeFiliais">—</span></button>
     </div>
 
     <!-- TAB: GRAFO -->
@@ -512,6 +513,55 @@ tr:hover td{background:rgba(255,255,255,.02);}
     <!-- TAB: ALERTAS -->
     <div class="tab-content" id="tab-alertas">
       <div class="alertas-list" id="alertasList"></div>
+    </div>
+
+    <!-- TAB: FILIAIS -->
+    <div class="tab-content" id="tab-filiais">
+      <div id="filiaisLoading" style="display:none;text-align:center;padding:48px;">
+        <div class="loading-spinner" style="margin:0 auto 16px;width:40px;height:40px;border-width:3px;"></div>
+        <div style="font-size:14px;font-weight:600;margin-bottom:6px;">Buscando filiais...</div>
+        <div style="font-size:12px;color:var(--g3);font-family:var(--mono)" id="filiaisLoadingMsg">Enumerando estabelecimentos pelo CNPJ...</div>
+      </div>
+      <div id="filiaisEmpty" style="display:none;text-align:center;padding:48px 24px;">
+        <div style="font-size:36px;margin-bottom:12px;">🏢</div>
+        <div style="font-size:15px;font-weight:700;color:var(--g2);margin-bottom:6px;">Nenhuma filial encontrada</div>
+        <div style="font-size:13px;color:var(--g3)">Esta empresa não possui filiais cadastradas na Receita Federal.</div>
+      </div>
+      <div id="filiaisContent" style="display:none;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+          <div>
+            <span id="filiaisResumo" style="font-size:13px;color:var(--g2);"></span>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <select class="table-filter" id="filiaisFilterSit" onchange="filtrarFiliais()">
+              <option value="">Todas situações</option>
+              <option value="ATIVA">Ativas</option>
+              <option value="BAIXADA">Baixadas</option>
+              <option value="INAPTA">Inaptas</option>
+            </select>
+            <select class="table-filter" id="filiaisFilterUF" onchange="filtrarFiliais()">
+              <option value="">Todos os estados</option>
+            </select>
+            <input type="text" class="table-search" id="filiaisSearch" placeholder="Buscar por cidade ou CNPJ..." style="max-width:220px;" oninput="filtrarFiliais()"/>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>CNPJ Filial</th>
+                <th>Nome Fantasia</th>
+                <th>Situação</th>
+                <th>CNAE</th>
+                <th>Endereço</th>
+                <th>Município / UF</th>
+                <th>Abertura</th>
+              </tr>
+            </thead>
+            <tbody id="filiaisBody"></tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
   </div><!-- /resultsSection -->

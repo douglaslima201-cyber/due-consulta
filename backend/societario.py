@@ -682,6 +682,53 @@ def expandir(cnpj_alvo):
     return jsonify({"node": node, "nodes": qsa_nodes, "edges": qsa_edges})
 
 
+@bp.route("/filiais/<cnpj>")
+def filiais(cnpj):
+    """
+    Busca todas as filiais de um CNPJ enumerando cnpj_ordem 0002, 0003...
+    Para após 5 erros consecutivos (sem mais filiais).
+    """
+    cnpj_limpo = _limpar(cnpj)
+    if len(cnpj_limpo) != 14:
+        return jsonify({"error": "CNPJ inválido"}), 400
+
+    max_filiais = min(int(request.args.get("max", 300)), 500)
+    cnpj_basico = cnpj_limpo[:8]
+
+    # Dados da matriz primeiro
+    dados_matriz = _fetch(cnpj_limpo)
+    matriz = _node_pj(cnpj_limpo, dados_matriz, 0) if dados_matriz else None
+
+    filiais_encontradas = []
+    erros_consecutivos = 0
+
+    for ordem in range(2, max_filiais + 2):
+        cnpj_ordem = str(ordem).zfill(4)
+        base12 = cnpj_basico + cnpj_ordem
+        cnpj_filial = base12 + _cnpj_dv(base12)
+
+        dados = _fetch(cnpj_filial)
+        if dados:
+            node = _node_pj(cnpj_filial, dados, 1)
+            node["cnpj_ordem"] = cnpj_ordem
+            filiais_encontradas.append(node)
+            erros_consecutivos = 0
+        else:
+            erros_consecutivos += 1
+            if erros_consecutivos >= 5:
+                break
+        time.sleep(0.15)
+
+    return jsonify({
+        "cnpj_raiz": cnpj_limpo,
+        "razao_social": dados_matriz.get("razao_social", "") if dados_matriz else "",
+        "matriz": matriz,
+        "filiais": filiais_encontradas,
+        "total_filiais": len(filiais_encontradas),
+        "total_estabelecimentos": len(filiais_encontradas) + (1 if matriz else 0),
+    })
+
+
 @bp.route("/historico")
 def historico():
     conn = sqlite3.connect(_DB)
