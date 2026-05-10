@@ -1318,6 +1318,9 @@ app.register_blueprint(piscofins_bp)
 from perdcomp import bp as perdcomp_bp
 app.register_blueprint(perdcomp_bp)
 
+from simples import bp as simples_bp
+app.register_blueprint(simples_bp)
+
 # Serve static docs so browsers don't hit file:// CORS restrictions
 _DOCS_DIR = str(_BASE_DIR.parent / "docs")
 
@@ -1339,5 +1342,6 @@ if __name__ == "__main__":
     print("  DUE Consulta Backend — Rodando em http://localhost:5000")
     print("  Portal                — http://localhost:5000/portal.html")
     print("  PIS/COFINS            — http://localhost:5000/piscofins.html")
+    print("  Simples Nacional      — http://localhost:5000/simples-nacional.html")
     print("=" * 60)
     app.run(host="0.0.0.0", port=5000, debug=False)

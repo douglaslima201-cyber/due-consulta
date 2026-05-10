@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Simples Nacional — Histórico em Lote · Rumo Brasil</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --db1:#060D1A;--db2:#0C1625;--db3:#122035;--db4:#1A2E48;--db5:#243D5E;
+  --teal:#0D9488;--teal-l:#14B8A6;--teal-d:#0F766E;
+  --white:#FFFFFF;--g1:#E8EDF5;--g2:#A8B8CC;--g3:#6B7D94;--g4:#3D5068;
+  --green:#22C55E;--green-d:#16A34A;
+  --yellow:#F59E0B;--red:#EF4444;--orange:#F97316;
+  --blue:#1D4ED8;--blue-l:#3B82F6;
+  --mono:'JetBrains Mono',monospace;--sans:'Inter',sans-serif;
+  --r:10px;--r2:16px;--r3:20px;
+}
+html{scroll-behavior:smooth;}
+body{font-family:var(--sans);background:var(--db1);color:var(--white);overflow-x:hidden;line-height:1.6;min-height:100vh;}
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:rgba(13,148,136,.35);border-radius:3px;}
+
+/* ── NAV ── */
+nav{position:fixed;top:0;left:0;right:0;z-index:200;height:64px;display:flex;align-items:center;padding:0 48px;background:rgba(6,13,26,.92);backdrop-filter:blur(24px);border-bottom:1px solid rgba(13,148,136,.18);}
+.nav-brand{display:flex;align-items:center;gap:12px;}
+.nav-icon{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--teal),var(--teal-d));display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 4px 16px rgba(13,148,136,.35);}
+.nav-name{font-size:15px;font-weight:700;letter-spacing:-.02em;}
+.nav-name span{color:var(--teal-l);}
+.nav-right{margin-left:auto;display:flex;align-items:center;gap:16px;}
+.nav-back{font-size:13px;color:var(--g3);text-decoration:none;display:flex;align-items:center;gap:6px;transition:color .2s;}
+.nav-back:hover{color:var(--white);}
+.nav-tag{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--g3);background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);padding:4px 12px;border-radius:100px;}
+
+/* ── BG ── */
+.hero-bg{position:fixed;inset:0;pointer-events:none;z-index:0;background:radial-gradient(ellipse 70% 50% at 25% 20%,rgba(13,148,136,.08) 0%,transparent 60%),radial-gradient(ellipse 60% 50% at 80% 80%,rgba(34,197,94,.04) 0%,transparent 60%);}
+.hero-grid{position:fixed;inset:0;pointer-events:none;z-index:0;background-image:linear-gradient(rgba(13,148,136,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(13,148,136,.04) 1px,transparent 1px);background-size:56px 56px;mask-image:radial-gradient(ellipse 100% 100% at 50% 0%,black 30%,transparent 100%);}
+
+/* ── LAYOUT ── */
+.page{position:relative;z-index:1;max-width:1400px;margin:0 auto;padding:88px 48px 80px;}
+
+/* ── PAGE HEADER ── */
+.pg-header{padding-top:32px;margin-bottom:40px;}
+.pg-eyebrow{display:inline-flex;align-items:center;gap:8px;background:rgba(13,148,136,.1);border:1px solid rgba(13,148,136,.25);border-radius:100px;padding:5px 14px;margin-bottom:20px;font-size:11px;font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--teal-l);}
+.pg-eyebrow::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--teal-l);animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+h1.pg-title{font-size:clamp(26px,4vw,46px);font-weight:800;letter-spacing:-.04em;line-height:1.08;margin-bottom:12px;}
+h1.pg-title .hl{background:linear-gradient(135deg,var(--teal),var(--teal-l));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.pg-sub{font-size:15px;color:var(--g2);max-width:620px;line-height:1.7;}
+
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:10px 22px;border-radius:var(--r);font-size:13px;font-weight:600;font-family:var(--sans);cursor:pointer;border:none;text-decoration:none;transition:all .2s;}
+.btn:disabled{opacity:.5;cursor:not-allowed;}
+.btn-teal{background:linear-gradient(135deg,var(--teal),var(--teal-d));color:var(--white);box-shadow:0 4px 16px rgba(13,148,136,.3);}
+.btn-teal:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 24px rgba(13,148,136,.45);}
+.btn-green{background:linear-gradient(135deg,var(--green),var(--green-d));color:var(--white);box-shadow:0 4px 16px rgba(34,197,94,.25);}
+.btn-green:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 24px rgba(34,197,94,.4);}
+.btn-ghost{background:rgba(255,255,255,.05);color:var(--g2);border:1px solid rgba(255,255,255,.09);}
+.btn-ghost:hover{background:rgba(255,255,255,.09);color:var(--white);}
+.btn-sm{padding:7px 14px;font-size:12px;}
+
+/* ── UPLOAD ── */
+.upload-zone{background:var(--db2);border:2px dashed rgba(13,148,136,.3);border-radius:var(--r3);padding:60px 40px;text-align:center;cursor:pointer;transition:all .25s;position:relative;}
+.upload-zone:hover,.upload-zone.drag{border-color:rgba(13,148,136,.7);background:rgba(13,148,136,.05);}
+.upload-icon{font-size:52px;margin-bottom:16px;display:block;}
+.upload-title{font-size:20px;font-weight:700;margin-bottom:8px;}
+.upload-sub{font-size:14px;color:var(--g3);margin-bottom:24px;}
+.upload-hint{font-size:12px;color:var(--g4);font-family:var(--mono);margin-top:12px;}
+#file-input{display:none;}
+
+/* ── INFO STRIP ── */
+.strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1px;background:rgba(255,255,255,.05);border-radius:var(--r2);overflow:hidden;border:1px solid rgba(255,255,255,.06);margin-top:20px;}
+.strip-item{background:var(--db2);padding:20px;display:flex;align-items:flex-start;gap:12px;}
+.si-ic{font-size:18px;flex-shrink:0;margin-top:2px;}
+.si-t{font-size:13px;font-weight:600;margin-bottom:4px;}
+.si-d{font-size:12px;color:var(--g3);line-height:1.5;}
+
+/* ── VALIDATION SUMMARY ── */
+#val-section{display:none;}
+.val-card{background:var(--db2);border:1px solid rgba(13,148,136,.25);border-radius:var(--r2);padding:28px 32px;}
+.val-row{display:flex;gap:20px;align-items:center;flex-wrap:wrap;margin-bottom:20px;}
+.val-stat{text-align:center;min-width:100px;}
+.val-n{font-size:28px;font-weight:800;letter-spacing:-.03em;}
+.val-l{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--g3);font-family:var(--mono);margin-top:2px;}
+.divh{width:1px;background:rgba(255,255,255,.07);height:48px;}
+.inv-list{background:var(--db3);border-radius:var(--r);padding:12px 16px;font-size:12px;color:var(--g3);font-family:var(--mono);max-height:120px;overflow-y:auto;margin-top:8px;display:none;}
+
+/* ── PROGRESS ── */
+#prog-section{display:none;}
+.prog-card{background:var(--db2);border:1px solid rgba(13,148,136,.2);border-radius:var(--r2);padding:28px 32px;}
+.prog-bar-wrap{background:rgba(255,255,255,.05);border-radius:100px;height:8px;overflow:hidden;margin:16px 0;}
+.prog-bar-inner{height:100%;background:linear-gradient(90deg,var(--teal),var(--teal-l));border-radius:100px;transition:width .5s ease;width:0%;}
+.prog-nums{display:flex;justify-content:space-between;font-size:12px;color:var(--g3);font-family:var(--mono);}
+.log-box{background:var(--db3);border-radius:var(--r);padding:12px 16px;height:160px;overflow-y:auto;font-size:11px;font-family:var(--mono);color:var(--g3);display:flex;flex-direction:column-reverse;margin-top:16px;border:1px solid rgba(255,255,255,.05);}
+.log-entry{padding:2px 0;border-bottom:1px solid rgba(255,255,255,.03);}
+.log-ts{color:var(--g4);margin-right:8px;}
+
+/* ── RESULTS ── */
+#results-section{display:none;}
+.dvd{height:1px;background:linear-gradient(90deg,transparent,rgba(13,148,136,.2),transparent);margin:40px 0;}
+.sec-lbl{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--teal-l);margin-bottom:6px;}
+h2.sec-ttl{font-size:20px;font-weight:700;letter-spacing:-.02em;margin-bottom:20px;}
+
+/* ── KPI GRID ── */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:36px;}
+.kpi{background:var(--db2);border:1px solid rgba(255,255,255,.07);border-radius:var(--r2);padding:22px;position:relative;overflow:hidden;}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;border-radius:var(--r2) var(--r2) 0 0;}
+.kpi-teal::before{background:linear-gradient(90deg,var(--teal),var(--teal-l));}
+.kpi-green::before{background:linear-gradient(90deg,var(--green),var(--green-d));}
+.kpi-yellow::before{background:linear-gradient(90deg,var(--yellow),#D97706);}
+.kpi-red::before{background:linear-gradient(90deg,var(--red),#DC2626);}
+.kpi-gray::before{background:linear-gradient(90deg,var(--g3),var(--g4));}
+.kpi-label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--g3);font-family:var(--mono);margin-bottom:8px;}
+.kpi-value{font-size:30px;font-weight:800;letter-spacing:-.03em;line-height:1;}
+.kpi-sub{font-size:11px;color:var(--g3);margin-top:6px;}
+.kpi-icon{position:absolute;right:18px;top:18px;font-size:22px;opacity:.25;}
+
+/* ── ALERTAS ── */
+.alertas{display:flex;flex-direction:column;gap:8px;margin-bottom:32px;}
+.alerta{display:flex;align-items:flex-start;gap:12px;background:var(--db2);border-radius:var(--r);padding:14px 18px;border-left:3px solid;}
+.alerta.danger{border-color:var(--red);}
+.alerta.warn{border-color:var(--yellow);}
+.alerta.info{border-color:var(--teal);}
+.al-ic{font-size:18px;flex-shrink:0;}
+.al-title{font-size:13px;font-weight:600;margin-bottom:2px;}
+.al-body{font-size:12px;color:var(--g3);}
+
+/* ── TABLE ── */
+.tbl-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
+.tbl-toolbar input,.tbl-toolbar select{background:var(--db3);border:1px solid rgba(255,255,255,.09);border-radius:var(--r);padding:8px 12px;font-size:12px;color:var(--white);font-family:var(--sans);outline:none;transition:border-color .2s;}
+.tbl-toolbar input{flex:1;min-width:200px;}
+.tbl-toolbar input:focus,.tbl-toolbar select:focus{border-color:rgba(13,148,136,.4);}
+.tbl-toolbar input::placeholder{color:var(--g4);}
+.tbl-wrap{overflow-x:auto;border-radius:var(--r2);border:1px solid rgba(255,255,255,.07);}
+table{width:100%;border-collapse:collapse;font-size:12px;}
+thead{background:var(--db3);position:sticky;top:0;z-index:2;}
+th{padding:10px 12px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--g3);font-family:var(--mono);font-weight:500;border-bottom:1px solid rgba(255,255,255,.06);white-space:nowrap;}
+th.yr{text-align:center;min-width:46px;font-size:9px;padding:10px 4px;}
+td{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:middle;}
+td.yr{text-align:center;padding:10px 4px;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:rgba(13,148,136,.04);}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:100px;font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;font-family:var(--mono);white-space:nowrap;}
+.b-opt{background:rgba(34,197,94,.12);color:var(--green);border:1px solid rgba(34,197,94,.25);}
+.b-excl{background:rgba(239,68,68,.1);color:var(--red);border:1px solid rgba(239,68,68,.2);}
+.b-nunca{background:rgba(245,158,11,.1);color:var(--yellow);border:1px solid rgba(245,158,11,.2);}
+.b-err{background:rgba(107,125,148,.1);color:var(--g3);border:1px solid rgba(107,125,148,.2);}
+
+/* Year cell pills */
+.yr-sim{background:rgba(34,197,94,.15);color:#4ADE80;border-radius:4px;padding:1px 4px;font-size:9px;font-weight:700;font-family:var(--mono);}
+.yr-nao{color:var(--g4);font-size:9px;font-family:var(--mono);}
+.yr-ent{background:rgba(20,184,166,.2);color:var(--teal-l);border-radius:4px;padding:1px 4px;font-size:9px;font-weight:700;font-family:var(--mono);}
+.yr-sai{background:rgba(239,68,68,.15);color:#F87171;border-radius:4px;padding:1px 4px;font-size:9px;font-weight:700;font-family:var(--mono);}
+.yr-err{color:var(--g4);font-size:9px;}
+
+/* Disclaimer */
+.disc{background:rgba(245,158,11,.05);border:1px solid rgba(245,158,11,.18);border-radius:var(--r2);padding:20px 24px;margin-top:32px;display:flex;gap:14px;}
+.disc-icon{font-size:20px;flex-shrink:0;}
+.disc-title{font-size:13px;font-weight:600;color:var(--yellow);margin-bottom:4px;}
+.disc-text{font-size:12px;color:var(--g3);line-height:1.6;}
+
+/* export bar */
+.export-bar{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px;}
+
+/* tbl count */
+#tbl-count{font-size:11px;color:var(--g4);font-family:var(--mono);margin-top:6px;text-align:right;}
+
+/* toggle years */
+#toggle-anos-btn{font-size:11px;}
+
+@media(max-width:900px){
+  nav{padding:0 20px;}
+  .page{padding:80px 20px 40px;}
+  .val-row{flex-wrap:wrap;}
+}
+</style>
+</head>
+<body>
+<div class="hero-bg"></div>
+<div class="hero-grid"></div>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-brand">
+    <div class="nav-icon">🏛</div>
+    <div class="nav-name">Simples Nacional <span>Histórico em Lote</span></div>
+  </div>
+  <div class="nav-right">
+    <a class="nav-back" href="portal.html">← Portal</a>
+    <span class="nav-tag">Receita Federal</span>
+  </div>
+</nav>
+
+<div class="page">
+
+  <!-- HEADER -->
+  <div class="pg-header">
+    <div class="pg-eyebrow">Inteligência Tributária</div>
+    <h1 class="pg-title">Simples Nacional —<br><span class="hl">Histórico em Lote</span></h1>
+    <p class="pg-sub">Faça upload de uma planilha com CNPJs e receba o histórico completo de enquadramento no Simples Nacional: situação atual, datas de entrada/saída e mapa ano a ano desde 2007.</p>
+  </div>
+
+  <!-- UPLOAD -->
+  <div id="upload-section">
+    <div class="upload-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+      <span class="upload-icon">📋</span>
+      <div class="upload-title">Arraste a planilha aqui</div>
+      <div class="upload-sub">ou clique para selecionar o arquivo</div>
+      <button class="btn btn-teal" onclick="event.stopPropagation();document.getElementById('file-input').click()">Selecionar arquivo</button>
+      <p class="upload-hint">Formatos aceitos: .xlsx · .csv &nbsp;·&nbsp; Coluna obrigatória: CNPJ</p>
+      <input type="file" id="file-input" accept=".xlsx,.csv" onchange="handleFile(event)"/>
+    </div>
+
+    <div class="strip">
+      <div class="strip-item"><span class="si-ic">📊</span><div><div class="si-t">Formatos aceitos</div><div class="si-d">.xlsx ou .csv com coluna nomeada "CNPJ"</div></div></div>
+      <div class="strip-item"><span class="si-ic">🔍</span><div><div class="si-t">O que é consultado</div><div class="si-d">Situação atual + datas de entrada e exclusão via API pública da Receita Federal</div></div></div>
+      <div class="strip-item"><span class="si-ic">📅</span><div><div class="si-t">Histórico anual</div><div class="si-d">Mapeamento Sim/Não de 2007 até o ano atual</div></div></div>
+      <div class="strip-item"><span class="si-ic">📤</span><div><div class="si-t">Exportação Excel</div><div class="si-d">Relatório formatado com cores, resumo executivo e histórico completo</div></div></div>
+    </div>
+  </div>
+
+  <!-- VALIDATION -->
+  <div id="val-section">
+    <div class="val-card">
+      <div style="font-size:16px;font-weight:700;margin-bottom:20px;" id="val-filename">—</div>
+      <div class="val-row">
+        <div class="val-stat">
+          <div class="val-n" id="val-total" style="color:var(--teal-l)">—</div>
+          <div class="val-l">CNPJs válidos</div>
+        </div>
+        <div class="divh"></div>
+        <div class="val-stat">
+          <div class="val-n" id="val-inv" style="color:var(--yellow)">—</div>
+          <div class="val-l">Inválidos / Dup.</div>
+        </div>
+        <div class="divh"></div>
+        <div class="val-stat">
+          <div class="val-n" id="val-tempo" style="color:var(--g2)">—</div>
+          <div class="val-l">Tempo estimado</div>
+        </div>
+      </div>
+      <div id="inv-list-wrap" style="display:none;">
+        <div style="font-size:12px;color:var(--g3);margin-bottom:4px;">CNPJs com problema (primeiros 20):</div>
+        <div class="inv-list" id="inv-list" style="display:block;"></div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap;">
+        <button class="btn btn-teal" id="btn-iniciar" onclick="iniciarProcessamento()">▶ Iniciar consulta</button>
+        <button class="btn btn-ghost" onclick="voltarUpload()">← Trocar arquivo</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PROGRESS -->
+  <div id="prog-section">
+    <div class="prog-card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+        <div style="font-size:14px;font-weight:600;" id="prog-titulo">Consultando Simples Nacional...</div>
+        <div style="font-size:12px;color:var(--g3);font-family:var(--mono);" id="prog-pct">0%</div>
+      </div>
+      <div class="prog-bar-wrap"><div class="prog-bar-inner" id="prog-bar"></div></div>
+      <div class="prog-nums">
+        <span id="prog-det">0 de 0 CNPJs processados</span>
+        <span id="prog-status">Aguardando...</span>
+      </div>
+      <div class="log-box" id="log-box"></div>
+      <div style="display:flex;gap:10px;margin-top:16px;">
+        <button class="btn btn-green btn-sm" id="btn-download-prog" style="display:none;" onclick="baixarExcel()">⬇ Baixar Excel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div id="results-section">
+    <div class="dvd"></div>
+
+    <!-- Job bar -->
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:28px;background:var(--db2);border:1px solid rgba(13,148,136,.2);border-radius:var(--r);padding:12px 18px;">
+      <span style="font-size:18px;">🏛</span>
+      <div>
+        <div style="font-size:13px;font-weight:600;" id="res-titulo">—</div>
+        <div style="font-size:11px;color:var(--g3);font-family:var(--mono);" id="res-sub">—</div>
+      </div>
+      <div style="margin-left:auto;display:flex;gap:8px;">
+        <button class="btn btn-ghost btn-sm" onclick="novaConsulta()">Nova consulta</button>
+        <button class="btn btn-green btn-sm" id="btn-download-res" onclick="baixarExcel()">⬇ Baixar Excel</button>
+      </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="sec-lbl">Visão Geral</div>
+    <h2 class="sec-ttl" style="margin-bottom:14px;">Resumo executivo</h2>
+    <div class="kpi-grid">
+      <div class="kpi kpi-teal">
+        <div class="kpi-icon">📋</div>
+        <div class="kpi-label">Total Consultado</div>
+        <div class="kpi-value" id="k-total">—</div>
+        <div class="kpi-sub">CNPJs processados</div>
+      </div>
+      <div class="kpi kpi-green">
+        <div class="kpi-icon">✅</div>
+        <div class="kpi-label">Optantes Atuais</div>
+        <div class="kpi-value" id="k-opt">—</div>
+        <div class="kpi-sub" id="k-opt-pct">—% do total</div>
+      </div>
+      <div class="kpi kpi-red">
+        <div class="kpi-icon">🚫</div>
+        <div class="kpi-label">Excluídas do Simples</div>
+        <div class="kpi-value" id="k-excl">—</div>
+        <div class="kpi-sub">Já foram optantes</div>
+      </div>
+      <div class="kpi kpi-yellow">
+        <div class="kpi-icon">⭕</div>
+        <div class="kpi-label">Nunca Optantes</div>
+        <div class="kpi-value" id="k-nunca">—</div>
+        <div class="kpi-sub">Nunca enquadradas</div>
+      </div>
+      <div class="kpi kpi-gray">
+        <div class="kpi-icon">⚠️</div>
+        <div class="kpi-label">Erros na Consulta</div>
+        <div class="kpi-value" id="k-err">—</div>
+        <div class="kpi-sub">API indisponível</div>
+      </div>
+    </div>
+
+    <!-- ALERTAS -->
+    <div id="alertas-wrap"></div>
+
+    <!-- TABLE -->
+    <div class="dvd"></div>
+    <div class="sec-lbl">Detalhamento</div>
+    <h2 class="sec-ttl" style="margin-bottom:14px;">Resultado por CNPJ</h2>
+
+    <div class="tbl-toolbar">
+      <input type="text" placeholder="🔍  Buscar por CNPJ ou Razão Social..." id="tbl-search" oninput="filtrarTabela()"/>
+      <select id="flt-sit" onchange="filtrarTabela()">
+        <option value="">Todas as situações</option>
+        <option value="Optante">✅ Optante</option>
+        <option value="Excluída">🚫 Excluída</option>
+        <option value="Nunca Optante">⭕ Nunca Optante</option>
+        <option value="Erro na consulta">⚠️ Erro</option>
+      </select>
+      <button class="btn btn-ghost btn-sm" id="toggle-anos-btn" onclick="toggleAnos()">Ocultar anos anteriores</button>
+    </div>
+
+    <div class="tbl-wrap" id="tbl-wrap">
+      <table id="main-table">
+        <thead id="tbl-head"></thead>
+        <tbody id="tbl-body"></tbody>
+      </table>
+    </div>
+    <div id="tbl-count"></div>
+
+    <div class="export-bar">
+      <button class="btn btn-green" onclick="baixarExcel()">⬇ Baixar Excel completo</button>
+      <button class="btn btn-ghost" onclick="window.print()">🖨 Imprimir / PDF</button>
+    </div>
+
+    <div class="disc">
+      <span class="disc-icon">⚠️</span>
+      <div>
+        <div class="disc-title">Fonte dos dados — Validação recomendada</div>
+        <div class="disc-text">Os dados são obtidos via API pública da Receita Federal (BrasilAPI / ReceitaWS) e refletem a última atualização disponível nos servidores públicos. Para empresas com múltiplos ciclos de entrada e saída do Simples, o histórico anual é calculado a partir das datas registradas na base mais recente — recomenda-se confirmação direta no Portal do Simples Nacional (www8.receita.fazenda.gov.br) para casos críticos.</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const API = 'http://localhost:5000/api/simples';
+let currentJobId = null;
+let pollTimer   = null;
+let allRows     = [];
+let mostrarTodosAnos = true;
+const ANO_INICIO = 2007;
+const ANO_FIM    = new Date().getFullYear();
+const ANOS_RECENTES = 8;
+
+// ── Drag & drop ───────────────────────────────────────────────────────────────
+const dz = document.getElementById('drop-zone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag'));
+dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('drag'); if(e.dataTransfer.files[0]) processFile(e.dataTransfer.files[0]); });
+
+function handleFile(e) { if(e.target.files[0]) processFile(e.target.files[0]); }
+
+// ── Upload ────────────────────────────────────────────────────────────────────
+async function processFile(file) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (!['xlsx','csv'].includes(ext)) { alert('Use .xlsx ou .csv'); return; }
+
+  const fd = new FormData(); fd.append('file', file);
+  try {
+    const r   = await fetch(`${API}/upload`, { method:'POST', body:fd });
+    const d   = await r.json();
+    if (!r.ok || d.error) throw new Error(d.error || 'Erro no upload');
+    mostrarValidacao(file.name, d);
+  } catch(e) { alert('Erro: ' + e.message); }
+}
+
+function mostrarValidacao(nome, d) {
+  document.getElementById('upload-section').style.display = 'none';
+  document.getElementById('val-section').style.display    = 'block';
+  currentJobId = d.job_id;
+
+  document.getElementById('val-filename').textContent = `📄 ${nome}`;
+  document.getElementById('val-total').textContent    = d.total;
+  document.getElementById('val-inv').textContent      = d.invalidos;
+  document.getElementById('val-tempo').textContent    = d.tempo_estimado;
+
+  if (d.invalidos > 0 && d.log_invalidos.length) {
+    document.getElementById('inv-list-wrap').style.display = 'block';
+    document.getElementById('inv-list').innerHTML = d.log_invalidos
+      .map(x => `<div style="padding:2px 0;border-bottom:1px solid rgba(255,255,255,.04)"><span style="color:var(--g4)">${esc(x.valor)}</span> → <span style="color:var(--yellow)">${x.motivo}</span></div>`)
+      .join('');
+  }
+}
+
+function voltarUpload() {
+  currentJobId = null;
+  document.getElementById('file-input').value = '';
+  document.getElementById('val-section').style.display    = 'none';
+  document.getElementById('inv-list-wrap').style.display  = 'none';
+  document.getElementById('upload-section').style.display = 'block';
+}
+
+// ── Processing ────────────────────────────────────────────────────────────────
+async function iniciarProcessamento() {
+  if (!currentJobId) return;
+  document.getElementById('btn-iniciar').disabled = true;
+  document.getElementById('val-section').style.display  = 'none';
+  document.getElementById('prog-section').style.display = 'block';
+
+  try {
+    const r = await fetch(`${API}/processar/${currentJobId}`, { method:'POST' });
+    if (!r.ok) throw new Error('Falha ao iniciar');
+    pollStatus();
+  } catch(e) {
+    alert('Erro: ' + e.message);
+    document.getElementById('prog-section').style.display  = 'none';
+    document.getElementById('val-section').style.display   = 'block';
+    document.getElementById('btn-iniciar').disabled = false;
+  }
+}
+
+function pollStatus() {
+  if (pollTimer) clearInterval(pollTimer);
+  pollTimer = setInterval(async () => {
+    try {
+      const r = await fetch(`${API}/status/${currentJobId}`);
+      const d = await r.json();
+      if (r.ok) atualizarProgresso(d);
+    } catch(e) { /* silencioso */ }
+  }, 1800);
+}
+
+function atualizarProgresso(d) {
+  const pct = d.pct || 0;
+  document.getElementById('prog-bar').style.width  = pct + '%';
+  document.getElementById('prog-pct').textContent  = pct + '%';
+  document.getElementById('prog-det').textContent  = `${d.processados} de ${d.total} CNPJs processados`;
+  document.getElementById('prog-status').textContent = statusLabel(d.status);
+
+  // Logs
+  const box = document.getElementById('log-box');
+  box.innerHTML = (d.logs || []).map(l =>
+    `<div class="log-entry"><span class="log-ts">${l.ts.slice(11,19)}</span>${esc(l.msg)}</div>`
+  ).join('');
+
+  if (d.status === 'concluido') {
+    clearInterval(pollTimer);
+    document.getElementById('prog-titulo').textContent = '✅ Consulta concluída!';
+    document.getElementById('btn-download-prog').style.display = 'inline-flex';
+    carregarResultados();
+  } else if (d.status === 'erro') {
+    clearInterval(pollTimer);
+    document.getElementById('prog-titulo').textContent = '❌ Erro no processamento';
+  }
+}
+
+function statusLabel(s) {
+  return { aguardando:'Aguardando', processando:'Processando...', concluido:'Concluído', erro:'Erro' }[s] || s;
+}
+
+// ── Results ───────────────────────────────────────────────────────────────────
+async function carregarResultados() {
+  const db = await fetch(`${API}/status/${currentJobId}`);
+  const dj = await db.json();
+
+  // Build table from logs + DB data (fetch resultados via download+parse or from status)
+  // Since we store per-row in DB, we'll read from a jobs endpoint augmented with rows
+  // For simplicity: keep polling until done and show summary from status, then load rows
+  mostrarResultados(dj);
+}
+
+async function mostrarResultados(jobData) {
+  // Load rows from the stored resultados by re-hitting status (won't have rows).
+  // We'll use a GET /api/simples/resultados/<id> endpoint approach by fetching each stored row.
+  // Actually — we have all data stored in DB. We need a new endpoint or we load from Excel.
+  // Simpler: add /api/simples/rows/<id> in backend. But since we didn't add it,
+  // let's reconstruct from status + logs for now, and rely on Excel for full data.
+  // We'll show summary KPIs from a status that we enrich.
+
+  // Request the rows endpoint we'll define:
+  let rows = [];
+  try {
+    const rr = await fetch(`${API}/rows/${currentJobId}`);
+    if (rr.ok) rows = await rr.json();
+  } catch(e) { /* rows might be empty */ }
+
+  allRows = rows;
+
+  document.getElementById('prog-section').style.display    = 'none';
+  document.getElementById('results-section').style.display = 'block';
+
+  const total   = jobData.total;
+  const optante = rows.filter(r => r.situacao_atual === 'Optante').length;
+  const excl    = rows.filter(r => r.situacao_atual === 'Excluída').length;
+  const nunca   = rows.filter(r => r.situacao_atual === 'Nunca Optante').length;
+  const erros   = rows.filter(r => r.situacao_atual === 'Erro na consulta').length;
+
+  document.getElementById('res-titulo').textContent = `Simples Nacional — ${total} CNPJs consultados`;
+  document.getElementById('res-sub').textContent    = `Gerado em ${new Date().toLocaleString('pt-BR')} · Fonte: BrasilAPI / ReceitaWS`;
+
+  document.getElementById('k-total').textContent    = total;
+  document.getElementById('k-opt').textContent      = optante;
+  document.getElementById('k-opt-pct').textContent  = pct(optante, total) + '% do total';
+  document.getElementById('k-excl').textContent     = excl;
+  document.getElementById('k-nunca').textContent    = nunca;
+  document.getElementById('k-err').textContent      = erros;
+
+  renderAlertas(rows);
+  renderTabela(rows);
+  window.scrollTo({ top: document.getElementById('results-section').offsetTop - 80, behavior: 'smooth' });
+}
+
+function pct(n, t) { return t ? (n / t * 100).toFixed(1) : '0'; }
+
+function renderAlertas(rows) {
+  const al = [];
+  const excl_rec = rows.filter(r => r.observacoes && r.observacoes.includes('Exclusão recente'));
+  if (excl_rec.length) al.push({ tipo:'danger', ic:'🔴', titulo:`${excl_rec.length} empresa${excl_rec.length>1?'s':''} com exclusão recente do Simples (< 1 ano)`, corpo:`CNPJs: ${excl_rec.slice(0,3).map(r=>r.cnpj).join(', ')}${excl_rec.length>3?' e outros...':''}` });
+  const nunca = rows.filter(r => r.ja_foi_optante === 'Não');
+  if (nunca.length) al.push({ tipo:'warn', ic:'⭕', titulo:`${nunca.length} empresa${nunca.length>1?'s':''} nunca enquadrada${nunca.length>1?'s':''} no Simples Nacional`, corpo:'Essas empresas podem ter optado por outros regimes tributários' });
+  const erros = rows.filter(r => r.situacao_atual === 'Erro na consulta');
+  if (erros.length) al.push({ tipo:'info', ic:'ℹ️', titulo:`${erros.length} consulta${erros.length>1?'s':''} sem resposta da API`, corpo:'Verifique manualmente no Portal do Simples Nacional ou tente novamente mais tarde' });
+
+  const w = document.getElementById('alertas-wrap');
+  w.innerHTML = al.length ? `<div class="sec-lbl" style="margin-bottom:8px;">Alertas</div><div class="alertas">${al.map(a=>`<div class="alerta ${a.tipo}"><span class="al-ic">${a.ic}</span><div><div class="al-title">${a.titulo}</div><div class="al-body">${a.corpo}</div></div></div>`).join('')}</div>` : '';
+}
+
+// ── Table ─────────────────────────────────────────────────────────────────────
+const ANOS_ALL  = Array.from({length: ANO_FIM - ANO_INICIO + 1}, (_, i) => ANO_INICIO + i);
+
+function anosVisiveis() {
+  return mostrarTodosAnos ? ANOS_ALL : ANOS_ALL.slice(-ANOS_RECENTES);
+}
+
+function toggleAnos() {
+  mostrarTodosAnos = !mostrarTodosAnos;
+  document.getElementById('toggle-anos-btn').textContent = mostrarTodosAnos ? 'Ocultar anos anteriores' : 'Mostrar todos os anos';
+  renderTabela(allRows);
+}
+
+function renderTabela(rows) {
+  const anos = anosVisiveis();
+  const head = document.getElementById('tbl-head');
+  const body = document.getElementById('tbl-body');
+
+  head.innerHTML = `<tr>
+    <th>CNPJ</th>
+    <th>Razão Social</th>
+    <th>Situação</th>
+    <th>Entrada</th>
+    <th>Exclusão</th>
+    <th>MEI</th>
+    ${anos.map(a => `<th class="yr">${a}</th>`).join('')}
+    <th>Obs.</th>
+  </tr>`;
+
+  body.innerHTML = rows.map((r, i) => {
+    const hist = r.historico || {};
+    return `<tr class="data-row" data-sit="${r.situacao_atual}" data-q="${(r.cnpj + r.razao_social).toLowerCase()}">
+      <td style="font-family:var(--mono);font-size:11px;white-space:nowrap;">${esc(r.cnpj)}</td>
+      <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(r.razao_social)}">${esc(r.razao_social) || '<span style="color:var(--g4)">—</span>'}</td>
+      <td>${sitBadge(r.situacao_atual)}</td>
+      <td style="font-family:var(--mono);font-size:11px;white-space:nowrap;color:var(--green)">${r.data_entrada || '<span style="color:var(--g4)">—</span>'}</td>
+      <td style="font-family:var(--mono);font-size:11px;white-space:nowrap;color:var(--red)">${r.data_exclusao || '<span style="color:var(--g4)">—</span>'}</td>
+      <td style="text-align:center;font-size:11px;">${r.mei === 'Sim' ? '<span style="color:var(--teal-l)">Sim</span>' : '<span style="color:var(--g4)">—</span>'}</td>
+      ${anos.map(a => `<td class="yr">${yrCell(hist[String(a)])}</td>`).join('')}
+      <td style="font-size:11px;color:var(--g3);max-width:160px;">${esc(r.observacoes) || ''}</td>
+    </tr>`;
+  }).join('');
+
+  atualizarContador(rows.length, rows.length);
+}
+
+function sitBadge(s) {
+  const m = { 'Optante':'b-opt', 'Excluída':'b-excl', 'Nunca Optante':'b-nunca', 'Erro na consulta':'b-err' };
+  const ic = { 'Optante':'✅', 'Excluída':'🚫', 'Nunca Optante':'⭕', 'Erro na consulta':'⚠️' };
+  return `<span class="badge ${m[s]||'b-err'}">${ic[s]||''} ${s}</span>`;
+}
+
+function yrCell(v) {
+  if (!v || v === 'Não') return `<span class="yr-nao">·</span>`;
+  if (v === 'Sim')       return `<span class="yr-sim">S</span>`;
+  if (v === 'Entrou')    return `<span class="yr-ent">▲</span>`;
+  if (v === 'Saiu')      return `<span class="yr-sai">▼</span>`;
+  return `<span class="yr-err">?</span>`;
+}
+
+function filtrarTabela() {
+  const q  = document.getElementById('tbl-search').value.toLowerCase();
+  const fs = document.getElementById('flt-sit').value;
+  let vis  = 0;
+  document.querySelectorAll('.data-row').forEach(row => {
+    const ok = (!q || row.dataset.q.includes(q)) && (!fs || row.dataset.sit === fs);
+    row.style.display = ok ? '' : 'none';
+    if (ok) vis++;
+  });
+  atualizarContador(vis, allRows.length);
+}
+
+function atualizarContador(vis, tot) {
+  const leg = `<span style="color:var(--teal-l)">S</span> Optante &nbsp; <span style="color:#F87171">▼</span> Saiu &nbsp; <span style="color:var(--teal-l)">▲</span> Entrou &nbsp; <span style="color:var(--g4)">·</span> Não optante`;
+  document.getElementById('tbl-count').innerHTML = `Exibindo ${vis} de ${tot} CNPJs &nbsp;·&nbsp; ${leg}`;
+}
+
+// ── Download ──────────────────────────────────────────────────────────────────
+async function baixarExcel() {
+  if (!currentJobId) return;
+  const r = await fetch(`${API}/download/${currentJobId}`);
+  if (!r.ok) { alert('Arquivo ainda não disponível'); return; }
+  const blob = await r.blob();
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = `simples_nacional_${new Date().toISOString().slice(0,10)}.xlsx`;
+  a.click(); URL.revokeObjectURL(url);
+}
+
+// ── Reset ─────────────────────────────────────────────────────────────────────
+function novaConsulta() {
+  if (pollTimer) clearInterval(pollTimer);
+  currentJobId = null; allRows = [];
+  document.getElementById('file-input').value = '';
+  document.getElementById('results-section').style.display = 'none';
+  document.getElementById('prog-section').style.display    = 'none';
+  document.getElementById('val-section').style.display     = 'none';
+  document.getElementById('upload-section').style.display  = 'block';
+  document.getElementById('inv-list-wrap').style.display   = 'none';
+  document.getElementById('btn-download-prog').style.display = 'none';
+  document.getElementById('btn-iniciar').disabled = false;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function esc(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>
