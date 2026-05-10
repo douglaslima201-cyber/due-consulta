@@ -27,10 +27,19 @@ _BRASILAPI = "https://brasilapi.com.br/api/cnpj/v1/{cnpj}"
 
 _HOLDING_CNAES = {"6461", "6462"}
 
-_RF_SOCIOS_URLS = [
-    f"https://dadosabertos.rfb.gov.br/CNPJ/Socios{i}.zip"
-    for i in range(10)
-]
+def _rf_socios_urls() -> list[str]:
+    """Gera lista de URLs tentando múltiplos espelhos da RF."""
+    bases = [
+        "https://dadosabertos.rfb.gov.br/CNPJ",
+        "https://dados.rfb.gov.br/CNPJ/dados_abertos_cnpj/2025-05",
+        "https://dados.rfb.gov.br/CNPJ/dados_abertos_cnpj/2025-04",
+        "https://dados.rfb.gov.br/CNPJ/dados_abertos_cnpj/2025-03",
+    ]
+    urls = []
+    for base in bases:
+        for i in range(10):
+            urls.append(f"{base}/Socios{i}.zip")
+    return urls
 
 # Estado global do import RF (thread-safe via GIL para leituras simples)
 _rf_import_status: dict = {"estado": "idle", "arquivo": 0, "total": 10, "registros": 0, "erro": ""}
@@ -124,6 +133,7 @@ def _fetch(cnpj: str) -> dict | None:
             )
             conn.commit()
             conn.close()
+            _indexar_socios_organico(cnpj, dados)
             return dados
     except urllib.error.HTTPError as e:
         conn = sqlite3.connect(_DB)
@@ -137,6 +147,37 @@ def _fetch(cnpj: str) -> dict | None:
     except Exception as ex:
         print(f"[Societario] Erro CNPJ {cnpj}: {ex}")
         return None
+
+
+def _indexar_socios_organico(cnpj: str, dados: dict):
+    """Salva o QSA de cada empresa consultada no índice local — cresce com o uso."""
+    cnpj = _limpar(cnpj)
+    cnpj_basico = cnpj[:8]
+    qsa = dados.get("qsa", [])
+    if not qsa:
+        return
+    try:
+        conn = sqlite3.connect(_DB)
+        for socio in qsa:
+            tipo_id  = socio.get("identificador_de_socio", 1)
+            nome     = (socio.get("nome_socio", "") or "").strip().upper()
+            cpf_cnpj = _limpar(socio.get("cpf_cnpj_socio", "") or "")
+            qualif   = (socio.get("qualificacao_socio", "") or "")[:10]
+            tipo     = str(tipo_id)
+            if not nome:
+                continue
+            conn.execute(
+                "INSERT OR IGNORE INTO socios_rf VALUES (?,?,?,?,?)",
+                (cnpj_basico, tipo, nome, cpf_cnpj, qualif),
+            )
+        conn.execute(
+            "INSERT OR REPLACE INTO rf_meta VALUES ('organico_em', ?)",
+            (datetime.now().isoformat(),)
+        )
+        conn.commit()
+        conn.close()
+    except Exception as ex:
+        print(f"[Organico] Erro ao indexar {cnpj}: {ex}")
 
 
 # ─── DADOS RF — IMPORTAÇÃO ────────────────────────────────────────────────────
@@ -170,65 +211,121 @@ def _rf_total_registros() -> int:
         return 0
 
 
-def _importar_rf_thread():
+def _processar_zip_socios(zipdata: bytes, conn, status_ref: dict) -> int:
+    """Processa um arquivo ZIP de Socios da RF e insere no banco. Retorna registros inseridos."""
+    total = 0
+    with zipfile.ZipFile(io.BytesIO(zipdata)) as z:
+        for fname in z.namelist():
+            with z.open(fname) as f:
+                reader = csv.reader(
+                    io.TextIOWrapper(f, encoding="latin-1", errors="replace"),
+                    delimiter=";",
+                )
+                batch = []
+                for row in reader:
+                    if len(row) < 4:
+                        continue
+                    cnpj_bas = (row[0] or "").strip().zfill(8)
+                    tipo     = (row[1] or "1").strip()
+                    nome     = (row[2] or "").strip().upper()
+                    cpf_cnpj = (row[3] or "").strip()
+                    qual     = (row[4] or "").strip() if len(row) > 4 else ""
+                    if not cnpj_bas or not nome:
+                        continue
+                    batch.append((cnpj_bas, tipo, nome, cpf_cnpj, qual))
+                    if len(batch) >= 10000:
+                        conn.executemany("INSERT OR IGNORE INTO socios_rf VALUES (?,?,?,?,?)", batch)
+                        conn.commit()
+                        total += len(batch)
+                        status_ref["registros"] = status_ref.get("registros", 0) + len(batch)
+                        batch = []
+                if batch:
+                    conn.executemany("INSERT OR IGNORE INTO socios_rf VALUES (?,?,?,?,?)", batch)
+                    conn.commit()
+                    total += len(batch)
+                    status_ref["registros"] = status_ref.get("registros", 0) + len(batch)
+    return total
+
+
+def _importar_rf_thread(arquivos_locais: list[str] | None = None):
+    """
+    Importa dados de Socios da RF.
+    Se arquivos_locais fornecidos: importa ZIPs do disco.
+    Caso contrário: tenta baixar dos servidores RF.
+    """
     global _rf_import_status
-    _rf_import_status = {"estado": "importando", "arquivo": 0, "total": len(_RF_SOCIOS_URLS), "registros": 0, "erro": ""}
+
+    urls = _rf_socios_urls()
+    total_urls = 10  # apenas contamos os primeiros 10 (um por índice)
+    _rf_import_status = {
+        "estado": "importando", "arquivo": 0, "total": total_urls,
+        "registros": 0, "erro": "", "fonte": "local" if arquivos_locais else "web",
+    }
 
     conn = sqlite3.connect(_DB, timeout=120, check_same_thread=False)
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA synchronous=NORMAL")
-    conn.execute("DELETE FROM socios_rf")
-    conn.execute("DELETE FROM rf_meta WHERE chave='importado_em'")
     conn.commit()
 
     total = 0
+    arquivos_ok = 0
+
     try:
-        for i, url in enumerate(_RF_SOCIOS_URLS):
-            _rf_import_status["arquivo"] = i + 1
-            try:
-                req = urllib.request.Request(url, headers={"User-Agent": "RumoBrasil/1.0"})
-                with urllib.request.urlopen(req, timeout=600) as resp:
-                    zipdata = resp.read()
+        if arquivos_locais:
+            # ── Importar de arquivos locais ──
+            _rf_import_status["total"] = len(arquivos_locais)
+            for i, path in enumerate(arquivos_locais):
+                _rf_import_status["arquivo"] = i + 1
+                try:
+                    with open(path, "rb") as f:
+                        zipdata = f.read()
+                    n = _processar_zip_socios(zipdata, conn, _rf_import_status)
+                    total += n
+                    arquivos_ok += 1
+                    print(f"[RF Import] Arquivo local {i+1}: {n:,} registros")
+                except Exception as ex:
+                    print(f"[RF Import] Falha no arquivo local {path}: {ex}")
+                    continue
+        else:
+            # ── Baixar da web ──
+            baixados: set[int] = set()  # índices 0-9 já baixados com sucesso
+            for url in urls:
+                if len(baixados) >= 10:
+                    break
+                # Extrair índice do arquivo
+                import re as _re
+                m = _re.search(r'Socios(\d)\.zip', url)
+                if not m:
+                    continue
+                idx = int(m.group(1))
+                if idx in baixados:
+                    continue
+                _rf_import_status["arquivo"] = idx + 1
+                try:
+                    req = urllib.request.Request(url, headers={"User-Agent": "RumoBrasil/1.0"})
+                    with urllib.request.urlopen(req, timeout=600) as resp:
+                        zipdata = resp.read()
+                    n = _processar_zip_socios(zipdata, conn, _rf_import_status)
+                    total += n
+                    baixados.add(idx)
+                    arquivos_ok += 1
+                    print(f"[RF Import] Arquivo {idx}: {n:,} registros de {url}")
+                except Exception as ex:
+                    print(f"[RF Import] Falha {url[:60]}: {ex}")
+                    continue  # tenta próxima URL do mesmo índice
 
-                with zipfile.ZipFile(io.BytesIO(zipdata)) as z:
-                    for fname in z.namelist():
-                        with z.open(fname) as f:
-                            reader = csv.reader(
-                                io.TextIOWrapper(f, encoding="latin-1", errors="replace"),
-                                delimiter=";",
-                            )
-                            batch = []
-                            for row in reader:
-                                if len(row) < 4:
-                                    continue
-                                cnpj_bas = (row[0] or "").strip().zfill(8)
-                                tipo     = (row[1] or "1").strip()
-                                nome     = (row[2] or "").strip().upper()
-                                cpf_cnpj = (row[3] or "").strip()
-                                qual     = (row[4] or "").strip() if len(row) > 4 else ""
-                                if not cnpj_bas or not nome:
-                                    continue
-                                batch.append((cnpj_bas, tipo, nome, cpf_cnpj, qual))
-                                if len(batch) >= 10000:
-                                    conn.executemany("INSERT INTO socios_rf VALUES (?,?,?,?,?)", batch)
-                                    conn.commit()
-                                    total += len(batch)
-                                    _rf_import_status["registros"] = total
-                                    batch = []
-                            if batch:
-                                conn.executemany("INSERT INTO socios_rf VALUES (?,?,?,?,?)", batch)
-                                conn.commit()
-                                total += len(batch)
-                                _rf_import_status["registros"] = total
-
-            except Exception as ex:
-                print(f"[RF Import] Arquivo {i} falhou: {ex}")
-                continue
+        if arquivos_ok == 0:
+            _rf_import_status["estado"] = "erro"
+            _rf_import_status["erro"] = (
+                "Nenhum arquivo processado. Servidores da RF inacessíveis na sua rede. "
+                "Baixe os arquivos manualmente e faça upload."
+            )
+            return
 
         conn.execute("INSERT OR REPLACE INTO rf_meta VALUES ('importado_em',?)", (datetime.now().isoformat(),))
         conn.commit()
         _rf_import_status["estado"] = "concluido"
-        print(f"[RF Import] Concluído — {total:,} registros")
+        print(f"[RF Import] Concluído — {total:,} registros de {arquivos_ok} arquivo(s)")
 
     except Exception as ex:
         _rf_import_status["estado"] = "erro"
@@ -599,11 +696,22 @@ def historico():
 
 @bp.route("/status-rf")
 def status_rf():
+    total = _rf_total_registros()
+    organico = False
+    try:
+        conn = sqlite3.connect(_DB)
+        row = conn.execute("SELECT valor FROM rf_meta WHERE chave='organico_em'").fetchone()
+        conn.close()
+        organico = bool(row)
+    except Exception:
+        pass
     return jsonify({
-        "disponivel": _rf_disponivel(),
+        "disponivel": total > 0,
         "importado_em": _rf_importado_em(),
-        "total_registros": _rf_total_registros(),
+        "total_registros": total,
+        "organico": organico,
         "import_status": _rf_import_status,
+        "urls_disponiveis": [u for u in _rf_socios_urls()[:10]],
     })
 
 
@@ -612,6 +720,25 @@ def importar_rf():
     global _rf_import_status
     if _rf_import_status.get("estado") == "importando":
         return jsonify({"error": "Importação já em andamento"}), 400
-    t = threading.Thread(target=_importar_rf_thread, daemon=True)
+
+    arquivos_locais = None
+
+    # Suporte a upload de arquivos ZIP diretamente
+    if request.files:
+        import tempfile
+        tmp_paths = []
+        for key in request.files:
+            f = request.files[key]
+            if not f.filename.lower().endswith(".zip"):
+                continue
+            tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".zip", dir=str(_BASE_DIR))
+            f.save(tmp.name)
+            tmp.close()
+            tmp_paths.append(tmp.name)
+        if tmp_paths:
+            arquivos_locais = tmp_paths
+
+    t = threading.Thread(target=_importar_rf_thread, args=(arquivos_locais,), daemon=True)
     t.start()
-    return jsonify({"message": "Importação iniciada em segundo plano"})
+    fonte = "arquivos enviados" if arquivos_locais else "servidores RF"
+    return jsonify({"message": f"Importação iniciada — fonte: {fonte}"})

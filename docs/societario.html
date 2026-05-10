@@ -526,25 +526,80 @@ tr:hover td{background:rgba(255,255,255,.02);}
 
 <!-- RF IMPORT MODAL -->
 <div id="rfModal">
-  <div class="rf-modal-box">
-    <div class="rf-modal-title">🗃️ Importação — Dados Abertos Receita Federal</div>
-    <div class="rf-modal-sub">
-      O sistema irá baixar e indexar os arquivos de QSA (Quadro de Sócios) publicados mensalmente pela Receita Federal (~300 MB comprimidos). Após a importação, todas as empresas dos sócios PF e PJ serão mapeadas automaticamente.<br><br>
-      <strong style="color:var(--yellow)">⏱ Tempo estimado: 20–40 minutos</strong> dependendo da velocidade da conexão.
+  <div class="rf-modal-box" style="max-width:560px;">
+    <div class="rf-modal-title">🗃️ Importar QSA — Receita Federal</div>
+    <div class="rf-modal-sub" id="rfModalSub">
+      Os servidores da RF podem estar inacessíveis em redes corporativas. Você tem duas opções:
     </div>
-    <div class="rf-progress-bar"><div class="rf-progress-fill" id="rfProgressFill" style="width:0%"></div></div>
-    <div class="rf-progress-label" id="rfProgressLabel">Aguardando início...</div>
-    <div class="rf-steps">
-      <div class="rf-step" id="rfStep0">○ Baixando arquivo 1/10...</div>
-      <div class="rf-step" id="rfStep1">○ Indexando registros no SQLite...</div>
-      <div class="rf-step" id="rfStep2">○ Criando índices de busca...</div>
-    </div>
-    <div style="display:flex;gap:10px;margin-top:24px;justify-content:flex-end;">
-      <button class="btn btn-ghost btn-sm" onclick="fecharModalRF()">Fechar</button>
-      <button class="btn btn-sm" id="rfStartBtn" onclick="iniciarImportRF()"
-        style="background:linear-gradient(135deg,#D97706,#B45309);color:#fff;">
-        ▶ Iniciar Importação
+
+    <!-- Tabs do modal -->
+    <div style="display:flex;gap:4px;margin-bottom:16px;">
+      <button id="rfTab1" onclick="rfSwitchTab(1)"
+        style="flex:1;padding:8px;border-radius:var(--r);border:1px solid rgba(245,158,11,.4);
+               background:rgba(245,158,11,.15);color:#FCD34D;font-size:12px;cursor:pointer;font-family:var(--sans);">
+        ☁️ Download Automático
       </button>
+      <button id="rfTab2" onclick="rfSwitchTab(2)"
+        style="flex:1;padding:8px;border-radius:var(--r);border:1px solid rgba(255,255,255,.1);
+               background:transparent;color:var(--g3);font-size:12px;cursor:pointer;font-family:var(--sans);">
+        📁 Upload Manual
+      </button>
+    </div>
+
+    <!-- Tab 1: Download automático -->
+    <div id="rfPanel1">
+      <div style="font-size:12px;color:var(--g2);margin-bottom:16px;line-height:1.6;">
+        O sistema tentará baixar os 10 arquivos Socios*.zip diretamente dos servidores da Receita Federal.<br>
+        <span style="color:var(--yellow)">⚠️ Pode falhar em redes corporativas com firewall.</span>
+      </div>
+      <div class="rf-progress-bar"><div class="rf-progress-fill" id="rfProgressFill" style="width:0%"></div></div>
+      <div class="rf-progress-label" id="rfProgressLabel">Aguardando início...</div>
+      <div class="rf-steps" style="margin-bottom:16px;">
+        <div class="rf-step" id="rfStep0">○ Aguardando...</div>
+        <div class="rf-step" id="rfStep1">○ Indexando no SQLite...</div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;">
+        <button class="btn btn-ghost btn-sm" onclick="fecharModalRF()">Fechar</button>
+        <button class="btn btn-sm" id="rfStartBtn" onclick="iniciarImportRF('web')"
+          style="background:linear-gradient(135deg,#D97706,#B45309);color:#fff;">
+          ▶ Tentar Download Automático
+        </button>
+      </div>
+    </div>
+
+    <!-- Tab 2: Upload manual -->
+    <div id="rfPanel2" style="display:none;">
+      <div style="font-size:12px;color:var(--g2);margin-bottom:12px;line-height:1.7;">
+        <strong style="color:var(--white)">1.</strong> Abra no seu navegador:<br>
+        <a id="rfDownloadLink" href="https://dadosabertos.rfb.gov.br/CNPJ/" target="_blank"
+          style="color:var(--teal);font-family:var(--mono);font-size:11px;word-break:break-all;">
+          https://dadosabertos.rfb.gov.br/CNPJ/
+        </a><br><br>
+        <strong style="color:var(--white)">2.</strong> Baixe os arquivos <span style="font-family:var(--mono);color:var(--yellow)">Socios0.zip</span> até <span style="font-family:var(--mono);color:var(--yellow)">Socios9.zip</span><br><br>
+        <strong style="color:var(--white)">3.</strong> Selecione os arquivos baixados abaixo:
+      </div>
+      <input type="file" id="rfFileInput" multiple accept=".zip"
+        style="display:none;" onchange="rfArquivosSelecionados()"/>
+      <button onclick="document.getElementById('rfFileInput').click()"
+        style="width:100%;padding:12px;border:2px dashed rgba(245,158,11,.4);border-radius:var(--r2);
+               background:rgba(245,158,11,.05);color:var(--yellow);font-size:13px;cursor:pointer;
+               font-family:var(--sans);margin-bottom:10px;">
+        📂 Selecionar arquivos ZIP
+      </button>
+      <div id="rfFileList" style="font-size:11px;font-family:var(--mono);color:var(--g3);margin-bottom:14px;min-height:20px;"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;">
+        <button class="btn btn-ghost btn-sm" onclick="fecharModalRF()">Fechar</button>
+        <button class="btn btn-sm" id="rfUploadBtn" onclick="iniciarImportRF('upload')" disabled
+          style="background:linear-gradient(135deg,#D97706,#B45309);color:#fff;opacity:.5;">
+          ⬆ Importar Arquivos
+        </button>
+      </div>
+    </div>
+
+    <!-- Status de progresso (mostrado durante import) -->
+    <div id="rfProgressPanel" style="display:none;margin-top:16px;padding-top:16px;border-top:1px solid rgba(255,255,255,.06);">
+      <div class="rf-progress-bar"><div class="rf-progress-fill" id="rfProgressFill2" style="width:0%"></div></div>
+      <div class="rf-progress-label" id="rfProgressLabel2">Processando...</div>
     </div>
   </div>
 </div>
@@ -1194,50 +1249,75 @@ async function verificarStatusRF() {
     // Atualizar modal se estiver aberto
     const st = d.import_status || {};
     if (st.estado === 'importando') {
-      const pct = Math.round((st.arquivo / st.total) * 100);
-      document.getElementById('rfProgressFill').style.width = pct + '%';
-      document.getElementById('rfProgressLabel').textContent =
-        `Arquivo ${st.arquivo}/${st.total} — ${Number(st.registros).toLocaleString('pt-BR')} registros processados`;
-      document.getElementById('rfStep0').textContent = `⏳ Baixando arquivo ${st.arquivo}/${st.total}...`;
-      document.getElementById('rfStep0').className = 'rf-step active';
-      document.getElementById('rfStep1').className = 'rf-step active';
+      const pct = Math.round(((st.arquivo||0) / (st.total||10)) * 100);
+      const lbl = `Arquivo ${st.arquivo}/${st.total} — ${Number(st.registros||0).toLocaleString('pt-BR')} registros`;
+      ['rfProgressFill','rfProgressFill2'].forEach(id => { const el = document.getElementById(id); if(el) el.style.width = pct+'%'; });
+      ['rfProgressLabel','rfProgressLabel2'].forEach(id => { const el = document.getElementById(id); if(el) el.textContent = lbl; });
+      const s0 = document.getElementById('rfStep0'); if(s0) { s0.textContent = `⏳ Processando arquivo ${st.arquivo}/${st.total}...`; s0.className='rf-step active'; }
     } else if (st.estado === 'concluido') {
-      document.getElementById('rfProgressFill').style.width = '100%';
-      document.getElementById('rfProgressLabel').textContent = `✅ Concluído — ${Number(st.registros).toLocaleString('pt-BR')} registros importados`;
-      document.getElementById('rfStep0').textContent = '✅ Download concluído';
-      document.getElementById('rfStep0').className = 'rf-step done';
-      document.getElementById('rfStep1').textContent = '✅ Indexação concluída';
-      document.getElementById('rfStep1').className = 'rf-step done';
+      const lbl = `✅ Concluído — ${Number(st.registros||0).toLocaleString('pt-BR')} registros importados`;
+      ['rfProgressFill','rfProgressFill2'].forEach(id => { const el = document.getElementById(id); if(el) el.style.width='100%'; });
+      ['rfProgressLabel','rfProgressLabel2'].forEach(id => { const el = document.getElementById(id); if(el) el.textContent = lbl; });
       if (rfPollTimer) { clearInterval(rfPollTimer); rfPollTimer = null; }
       showToast('✅ Dados RF importados! Próximas consultas incluirão todas as empresas dos sócios.');
+      verificarStatusRF();
     } else if (st.estado === 'erro') {
-      document.getElementById('rfProgressLabel').textContent = '❌ Erro: ' + st.erro;
+      const lbl = '❌ ' + (st.erro || 'Erro na importação');
+      ['rfProgressLabel','rfProgressLabel2'].forEach(id => { const el = document.getElementById(id); if(el) el.textContent = lbl; });
       if (rfPollTimer) { clearInterval(rfPollTimer); rfPollTimer = null; }
+      showToast('❌ ' + (st.erro||'Erro na importação'));
     }
   } catch(_) {}
 }
 
-function abrirModalRF() {
-  document.getElementById('rfModal').style.display = 'flex';
+function abrirModalRF() { document.getElementById('rfModal').style.display = 'flex'; rfSwitchTab(1); }
+function fecharModalRF() { document.getElementById('rfModal').style.display = 'none'; }
+function rfSwitchTab(n) {
+  document.getElementById('rfPanel1').style.display = n===1 ? 'block' : 'none';
+  document.getElementById('rfPanel2').style.display = n===2 ? 'block' : 'none';
+  [1,2].forEach(i => {
+    const t = document.getElementById('rfTab'+i);
+    t.style.background   = i===n ? 'rgba(245,158,11,.15)' : 'transparent';
+    t.style.color        = i===n ? '#FCD34D' : 'var(--g3)';
+    t.style.borderColor  = i===n ? 'rgba(245,158,11,.4)' : 'rgba(255,255,255,.1)';
+  });
 }
-function fecharModalRF() {
-  document.getElementById('rfModal').style.display = 'none';
+function rfArquivosSelecionados() {
+  const files = document.getElementById('rfFileInput').files;
+  const btn   = document.getElementById('rfUploadBtn');
+  if (files.length) {
+    document.getElementById('rfFileList').textContent = `${files.length} arquivo(s): ` + Array.from(files).map(f=>f.name).join(', ');
+    btn.disabled = false; btn.style.opacity = '1';
+  } else {
+    document.getElementById('rfFileList').textContent = '';
+    btn.disabled = true; btn.style.opacity = '.5';
+  }
 }
-async function iniciarImportRF() {
-  const btn = document.getElementById('rfStartBtn');
-  btn.disabled = true;
-  btn.textContent = '⏳ Iniciando...';
+async function iniciarImportRF(modo) {
+  const btnId = modo === 'upload' ? 'rfUploadBtn' : 'rfStartBtn';
+  const btn = document.getElementById(btnId);
+  btn.disabled = true; btn.textContent = '⏳ Enviando...';
+  document.getElementById('rfProgressPanel').style.display = 'block';
+
   try {
-    const r = await fetch(`${API}/importar-rf`, {method:'POST'});
+    let fetchOpts = {method: 'POST'};
+    if (modo === 'upload') {
+      const files = document.getElementById('rfFileInput').files;
+      if (!files.length) { showToast('⚠️ Selecione os arquivos ZIP primeiro.'); return; }
+      const form = new FormData();
+      Array.from(files).forEach((f,i) => form.append(`file${i}`, f));
+      fetchOpts.body = form;
+    }
+    const r = await fetch(`${API}/importar-rf`, fetchOpts);
     const d = await r.json();
-    if (d.error) { showToast('❌ ' + d.error); btn.disabled = false; btn.textContent = '▶ Iniciar Importação'; return; }
-    showToast('🚀 Importação iniciada! Pode fechar este modal — o processo continua em segundo plano.');
+    if (d.error) { showToast('❌ ' + d.error); btn.disabled = false; return; }
+    showToast('🚀 Importação iniciada! Acompanhe o progresso abaixo.');
     btn.textContent = '⏳ Importando...';
     rfPollTimer = setInterval(verificarStatusRF, 3000);
   } catch(e) {
-    showToast('❌ Erro ao iniciar importação');
+    showToast('❌ Erro: ' + e.message);
     btn.disabled = false;
-    btn.textContent = '▶ Iniciar Importação';
+    btn.textContent = modo === 'upload' ? '⬆ Importar Arquivos' : '▶ Tentar Download Automático';
   }
 }
 

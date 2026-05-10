@@ -86,7 +86,9 @@
       "Bash(python -c \"import societario; print\\('OK — endpoints:', [r.rule for r in __import__\\('flask'\\).Flask\\(__name__\\).url_map.iter_rules\\(\\) if False] or 'importado'\\)\")",
       "Bash(curl -s \"http://localhost:5000/api/societario/status-rf\")",
       "Bash(curl -s \"http://localhost:5000/api/societario/expandir/11455829000103\")",
-      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('node:', d.get\\('node',{}\\).get\\('razao_social'\\)\\); print\\('qsa nodes:', len\\(d.get\\('nodes',[]\\)\\), 'edges:', len\\(d.get\\('edges',[]\\)\\)\\)\")"
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('node:', d.get\\('node',{}\\).get\\('razao_social'\\)\\); print\\('qsa nodes:', len\\(d.get\\('nodes',[]\\)\\), 'edges:', len\\(d.get\\('edges',[]\\)\\)\\)\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('status-rf OK, organico:', d.get\\('organico'\\), 'registros:', d.get\\('total_registros'\\)\\)\")",
+      "Bash(curl -s http://localhost:5000/api/societario/status-rf)"
     ]
   },
   "hooks": {
