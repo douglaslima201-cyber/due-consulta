@@ -203,6 +203,20 @@ tr:hover td{background:rgba(13,148,136,.04);}
     <p class="pg-sub">Faça upload de uma planilha com CNPJs e receba o histórico completo de enquadramento no Simples Nacional: situação atual, datas de entrada/saída e mapa ano a ano desde 2007.</p>
   </div>
 
+  <!-- BACKEND OFFLINE BANNER -->
+  <div id="backend-status" style="display:none;align-items:flex-start;gap:14px;background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.25);border-radius:var(--r2);padding:20px 24px;margin-bottom:24px;">
+    <span style="font-size:22px;flex-shrink:0;">🔌</span>
+    <div>
+      <div style="font-size:14px;font-weight:700;color:var(--red);margin-bottom:6px;">Backend não encontrado na porta 5000</div>
+      <div style="font-size:13px;color:var(--g2);line-height:1.7;">
+        Execute o <strong>start.bat</strong> para iniciar o servidor, depois acesse:<br>
+        <a href="http://localhost:5000/simples-nacional.html" style="color:var(--teal-l);font-family:var(--mono);font-size:12px;">http://localhost:5000/simples-nacional.html</a>
+        <br><span style="font-size:12px;color:var(--g3);">⚠️ Não abra os arquivos HTML diretamente pelo Windows Explorer ou VS Code — sempre use o endereço acima.</span>
+      </div>
+      <button class="btn btn-ghost btn-sm" style="margin-top:12px;" onclick="verificarBackend()">↺ Tentar novamente</button>
+    </div>
+  </div>
+
   <!-- UPLOAD -->
   <div id="upload-section">
     <div class="upload-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
@@ -342,7 +356,7 @@ tr:hover td{background:rgba(13,148,136,.04);}
         <option value="Nunca Optante">⭕ Nunca Optante</option>
         <option value="Erro na consulta">⚠️ Erro</option>
       </select>
-      <button class="btn btn-ghost btn-sm" id="toggle-anos-btn" onclick="toggleAnos()">Ocultar anos anteriores</button>
+      <span style="font-size:11px;color:var(--g3);font-family:var(--mono);">Histórico: últimos 5 anos</span>
     </div>
 
     <div class="tbl-wrap" id="tbl-wrap">
@@ -374,10 +388,22 @@ const API = 'http://localhost:5000/api/simples';
 let currentJobId = null;
 let pollTimer   = null;
 let allRows     = [];
-let mostrarTodosAnos = true;
-const ANO_INICIO = 2007;
 const ANO_FIM    = new Date().getFullYear();
-const ANOS_RECENTES = 8;
+const ANO_INICIO = ANO_FIM - 4;   // últimos 5 anos
+
+// ── Verificação de backend ao carregar ────────────────────────────────────────
+async function verificarBackend() {
+  try {
+    const r = await fetch('http://localhost:5000/api/health', { cache: 'no-store' });
+    if (r.ok) {
+      document.getElementById('backend-status').style.display = 'none';
+      return true;
+    }
+  } catch (_) {}
+  document.getElementById('backend-status').style.display = 'flex';
+  return false;
+}
+verificarBackend();
 
 // ── Drag & drop ───────────────────────────────────────────────────────────────
 const dz = document.getElementById('drop-zone');
@@ -389,6 +415,9 @@ function handleFile(e) { if(e.target.files[0]) processFile(e.target.files[0]); }
 
 // ── Upload ────────────────────────────────────────────────────────────────────
 async function processFile(file) {
+  const ok = await verificarBackend();
+  if (!ok) return;
+
   const ext = file.name.split('.').pop().toLowerCase();
   if (!['xlsx','csv'].includes(ext)) { alert('Use .xlsx ou .csv'); return; }
 
@@ -398,7 +427,13 @@ async function processFile(file) {
     const d   = await r.json();
     if (!r.ok || d.error) throw new Error(d.error || 'Erro no upload');
     mostrarValidacao(file.name, d);
-  } catch(e) { alert('Erro: ' + e.message); }
+  } catch(e) {
+    if (e.message === 'Failed to fetch') {
+      document.getElementById('backend-status').style.display = 'flex';
+    } else {
+      alert('Erro: ' + e.message);
+    }
+  }
 }
 
 function mostrarValidacao(nome, d) {
@@ -553,20 +588,10 @@ function renderAlertas(rows) {
 }
 
 // ── Table ─────────────────────────────────────────────────────────────────────
-const ANOS_ALL  = Array.from({length: ANO_FIM - ANO_INICIO + 1}, (_, i) => ANO_INICIO + i);
-
-function anosVisiveis() {
-  return mostrarTodosAnos ? ANOS_ALL : ANOS_ALL.slice(-ANOS_RECENTES);
-}
-
-function toggleAnos() {
-  mostrarTodosAnos = !mostrarTodosAnos;
-  document.getElementById('toggle-anos-btn').textContent = mostrarTodosAnos ? 'Ocultar anos anteriores' : 'Mostrar todos os anos';
-  renderTabela(allRows);
-}
+const ANOS_ALL = Array.from({length: ANO_FIM - ANO_INICIO + 1}, (_, i) => ANO_INICIO + i);
 
 function renderTabela(rows) {
-  const anos = anosVisiveis();
+  const anos = ANOS_ALL;
   const head = document.getElementById('tbl-head');
   const body = document.getElementById('tbl-body');
 

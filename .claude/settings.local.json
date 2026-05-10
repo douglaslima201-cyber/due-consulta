@@ -78,7 +78,8 @@
       "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('nodes:',len\\(d.get\\('nodes',[]\\)\\), 'edges:',len\\(d.get\\('edges',[]\\)\\), 'erro:', d.get\\('error','nenhum'\\)\\)\")",
       "Bash(curl -s -I http://localhost:5000/societario.html)",
       "Bash(curl -sv http://localhost:5000/api/societario/historico)",
-      "Bash(curl -s http://localhost:5000/societario.html)"
+      "Bash(curl -s http://localhost:5000/societario.html)",
+      "Bash(python -c \"import urllib.request; print\\(urllib.request.urlopen\\('http://localhost:5000/api/health',timeout=3\\).read\\(\\).decode\\(\\)\\)\")"
     ]
   },
   "hooks": {
