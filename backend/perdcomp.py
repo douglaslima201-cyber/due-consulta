@@ -961,7 +961,9 @@ def ecac_script_js():
     return null;
   };
 
-  await fetch(API+'/ecac/limpar-capturas',{method:'POST'});
+  // Chrome bloqueia fetch de HTTPS para localhost (PNA policy)
+  // Solução: acumular em memória e gerar arquivo JSON para importar
+  const capturas=[];
   let total=0,pag=1;
   const origOpen=window.open;
 
@@ -982,12 +984,10 @@ def ecac_script_js():
       window.open=origOpen;
       if(!jan.length){console.warn('[Analyzer] Sem janela no doc '+(i+1));continue;}
       const jn=jan[0];
-      for(let t=0;t<25;t++){await new Promise(r=>setTimeout(r,200));if(jn.document&&jn.document.readyState==='complete')break;}
+      for(let t=0;t<25;t++){await new Promise(r=>setTimeout(r,200));if(jn.document?.readyState==='complete')break;}
       try{
-        const html=jn.document.documentElement.outerHTML;
-        const r=await fetch(API+'/ecac/capturar-html',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({html,indice:total})});
-        if(r.ok){total++;console.log('[Analyzer] ✓ Doc capturado (total:'+total+')');}
-        else console.error('[Analyzer] Erro HTTP');
+        capturas.push({html:jn.document.documentElement.outerHTML,indice:total});
+        total++;console.log('[Analyzer] ✓ Doc '+total+' capturado');
       }catch(ex){console.error('[Analyzer] Erro:',ex);}
       try{jn.close();}catch(e){}
       await new Promise(r=>setTimeout(r,500));
@@ -995,7 +995,6 @@ def ecac_script_js():
 
     const prox=getProxPag();
     if(!prox){console.log('[Analyzer] Última página.');break;}
-
     const fp=getBotoes().length+'|'+document.body.innerText.slice(0,300);
     prox.click();
     let mudou=false;
@@ -1003,12 +1002,18 @@ def ecac_script_js():
       await new Promise(r=>setTimeout(r,200));
       if((getBotoes().length+'|'+document.body.innerText.slice(0,300))!==fp){mudou=true;break;}
     }
-    if(!mudou){console.log('[Analyzer] Sem mudança de conteúdo — última página.');break;}
-    pag++;
-    await new Promise(r=>setTimeout(r,1000));
+    if(!mudou){console.log('[Analyzer] Última página (sem mudança).');break;}
+    pag++;await new Promise(r=>setTimeout(r,1000));
   }
 
-  alert('[PER/DCOMP Analyzer]\n✓ '+total+' declaração(ões) capturada(s) em '+pag+' página(s).\n\nAcesse o painel e clique em "Analisar declarações capturadas".');
+  // Gerar arquivo JSON para download (sem fetch — evita bloqueio CORS/PNA)
+  const blob=new Blob([JSON.stringify(capturas)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download='perdcomp_capturas_'+new Date().toISOString().slice(0,10)+'.json';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+
+  alert('[PER/DCOMP Analyzer]\n✓ '+total+' declaração(ões) em '+pag+' página(s).\n\nArquivo JSON baixado automaticamente!\nImporte-o na ferramenta PER/DCOMP Analyzer para análise.');
 })();
 """
     return script, 200, {
@@ -1016,6 +1021,30 @@ def ecac_script_js():
         'Cache-Control': 'no-cache',
         'Access-Control-Allow-Origin': '*',
     }
+
+@bp.route('/api/perdcomp/ecac/importar-json', methods=['POST'])
+def ecac_importar_json():
+    """Importa arquivo JSON gerado pelo script do console."""
+    import html as html_mod, re as _re, json as _json
+    f = request.files.get('file')
+    if not f:
+        return jsonify({"error": "Nenhum arquivo enviado"}), 400
+    try:
+        data = _json.loads(f.read().decode('utf-8'))
+    except Exception as e:
+        return jsonify({"error": f"JSON inválido: {e}"}), 400
+
+    _ecac_capturas.clear()
+    for item in data:
+        html_raw = item.get('html', '')
+        indice   = item.get('indice', len(_ecac_capturas))
+        texto = _re.sub(r'<[^>]+>', ' ', html_raw)
+        texto = html_mod.unescape(texto)
+        texto = _re.sub(r'\s+', ' ', texto).strip()
+        nome  = f"ecac_captura_{indice+1:03d}.html"
+        _ecac_capturas.append(extrair_registro(texto, nome))
+
+    return jsonify({"ok": True, "total": len(_ecac_capturas)})
 
 @bp.route('/api/perdcomp/ecac/abrir-pasta')
 def ecac_abrir_pasta():

@@ -390,9 +390,20 @@ td.name{font-family:var(--body);font-size:12px;color:var(--g2);max-width:180px;o
         </div>
       </div>
 
+      <!-- Importar JSON -->
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-title">📥 Passo 2 — Importar o arquivo JSON</div>
+        <div style="font-size:13px;color:var(--g2);margin-bottom:12px">O script gera um arquivo <code style="font-family:var(--mono);color:var(--orange)">perdcomp_capturas_AAAA-MM-DD.json</code> automaticamente. Faça o upload aqui:</div>
+        <input type="file" id="ecac-json-input" accept=".json" style="display:none" onchange="ecacImportarJson(this.files[0])"/>
+        <div style="display:flex;align-items:center;gap:10px">
+          <button class="btn btn-p" onclick="document.getElementById('ecac-json-input').click()">📥 Selecionar arquivo JSON</button>
+          <span id="ecac-json-status" style="font-size:12px;color:var(--g3)"></span>
+        </div>
+      </div>
+
       <!-- Status capturas -->
       <div class="card" style="margin-bottom:16px">
-        <div class="card-title">📊 Passo 2 — Aguardar capturas</div>
+        <div class="card-title">📊 Passo 3 — Status das capturas</div>
         <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
           <div>
             <div style="font-family:var(--display);font-size:28px;font-weight:800;color:var(--orange)" id="ecac-cap-count">0</div>
@@ -408,7 +419,7 @@ td.name{font-family:var(--body);font-size:12px;color:var(--g2);max-width:180px;o
 
       <!-- Analisar -->
       <div class="card">
-        <div class="card-title">🔍 Passo 3 — Analisar</div>
+        <div class="card-title">🔍 Passo 4 — Analisar</div>
         <div style="font-size:13px;color:var(--g2);margin-bottom:14px">Quando todas as declarações forem capturadas, clique para rodar o compliance.</div>
         <div class="btn-row" style="margin-top:0">
           <button class="btn btn-p" id="btn-ecac-analisar-cap" onclick="ecacAnalisarCapturas()">🔍 Analisar declarações capturadas</button>
@@ -1030,6 +1041,19 @@ async function ecacAtualizarCapturas(){
           (d.registros.length>10?`<div style="font-size:11px;color:var(--g4)">...e mais ${d.registros.length-10}</div>`:'')
         : 'Nenhuma captura ainda. Execute o script no eCAC.';
   }catch{}
+}
+async function ecacImportarJson(file){
+  if(!file) return;
+  const st=document.getElementById('ecac-json-status');
+  st.textContent='⏳ Importando...'; st.style.color='var(--g3)';
+  const fd=new FormData(); fd.append('file',file);
+  try{
+    const r=await fetch(`${API}/ecac/importar-json`,{method:'POST',body:fd});
+    const d=await r.json(); if(!r.ok) throw new Error(d.error);
+    st.textContent=`✅ ${d.total} declaração(ões) importadas`;
+    st.style.color='var(--green)';
+    ecacAtualizarCapturas();
+  }catch(err){st.textContent='❌ '+err.message; st.style.color='var(--red)';}
 }
 async function ecacLimparCapturas(){
   if(!confirm('Limpar todas as declarações capturadas?')) return;
