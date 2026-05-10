@@ -1321,6 +1321,9 @@ app.register_blueprint(perdcomp_bp)
 from simples import bp as simples_bp
 app.register_blueprint(simples_bp)
 
+from societario import bp as societario_bp
+app.register_blueprint(societario_bp)
+
 # Serve static docs so browsers don't hit file:// CORS restrictions
 _DOCS_DIR = str(_BASE_DIR.parent / "docs")
 

@@ -1,0 +1,1124 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Mapeamento Societário — Rumo Brasil</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --db1:#060D1A;--db2:#0C1625;--db3:#122035;--db4:#1A2E48;--db5:#243D5E;
+  --blue:#1D4ED8;--blue-l:#3B82F6;
+  --orange:#F97316;--orange-l:#FB923C;--orange-d:#EA580C;
+  --teal:#06B6D4;--teal-l:#22D3EE;--teal-d:#0891B2;
+  --purple:#7C3AED;--purple-l:#A78BFA;
+  --white:#FFFFFF;--g1:#E8EDF5;--g2:#A8B8CC;--g3:#6B7D94;--g4:#3D5068;
+  --green:#22C55E;--yellow:#F59E0B;--red:#EF4444;
+  --mono:'JetBrains Mono',monospace;--sans:'Inter',sans-serif;
+  --r:10px;--r2:16px;--r3:20px;
+}
+html{scroll-behavior:smooth;}
+body{font-family:var(--sans);background:var(--db1);color:var(--white);overflow-x:hidden;line-height:1.6;min-height:100vh;}
+::-webkit-scrollbar{width:5px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:rgba(6,182,212,.3);border-radius:3px;}
+input:focus,select:focus,button:focus{outline:none;}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:300;height:64px;display:flex;align-items:center;padding:0 48px;
+  background:rgba(6,13,26,.92);backdrop-filter:blur(24px);border-bottom:1px solid rgba(6,182,212,.15);}
+.nav-brand{display:flex;align-items:center;gap:12px;cursor:pointer;text-decoration:none;}
+.nav-icon{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--teal),var(--teal-d));
+  display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 4px 16px rgba(6,182,212,.3);}
+.nav-name{font-size:15px;font-weight:700;letter-spacing:-.02em;color:var(--white);}
+.nav-name span{color:var(--teal);}
+.nav-right{margin-left:auto;display:flex;align-items:center;gap:20px;}
+.nav-tag{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--g3);
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);padding:4px 12px;border-radius:100px;}
+.nav-back{font-size:13px;color:var(--g3);text-decoration:none;display:flex;align-items:center;gap:6px;transition:color .2s;}
+.nav-back:hover{color:var(--white);}
+.nav-dot-wrap{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--g3);}
+.nav-dot{width:7px;height:7px;border-radius:50%;background:var(--teal);box-shadow:0 0 8px var(--teal);animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{box-shadow:0 0 6px var(--teal);}50%{box-shadow:0 0 18px var(--teal);}}
+
+/* BG */
+.hero-bg{position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(ellipse 80% 60% at 15% 25%,rgba(6,182,212,.06) 0%,transparent 60%),
+             radial-gradient(ellipse 60% 50% at 85% 75%,rgba(124,58,237,.04) 0%,transparent 60%);}
+.hero-grid{position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:linear-gradient(rgba(6,182,212,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(6,182,212,.025) 1px,transparent 1px);
+  background-size:56px 56px;mask-image:radial-gradient(ellipse 100% 100% at 50% 0%,black 30%,transparent 100%);}
+
+/* MAIN WRAPPER */
+.app{position:relative;z-index:1;padding-top:64px;min-height:100vh;}
+
+/* ─── SEARCH SECTION ─── */
+#searchSection{max-width:860px;margin:0 auto;padding:60px 24px 40px;}
+.search-eyebrow{display:inline-flex;align-items:center;gap:8px;background:rgba(6,182,212,.08);border:1px solid rgba(6,182,212,.25);
+  border-radius:100px;padding:5px 14px;margin-bottom:28px;font-size:11px;font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--teal);}
+.search-eyebrow::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--teal);animation:pulse2 2s infinite;}
+@keyframes pulse2{0%,100%{opacity:1;}50%{opacity:.4;}}
+h1.search-title{font-size:clamp(28px,4vw,48px);font-weight:800;letter-spacing:-.04em;line-height:1.1;margin-bottom:12px;}
+h1.search-title .hl{background:linear-gradient(135deg,var(--teal),var(--teal-l));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.search-sub{font-size:15px;color:var(--g2);margin-bottom:36px;max-width:560px;line-height:1.7;}
+.search-box{background:var(--db2);border:1px solid rgba(6,182,212,.2);border-radius:var(--r2);padding:24px;display:flex;flex-direction:column;gap:16px;}
+.search-row{display:flex;gap:12px;}
+.search-input-wrap{position:relative;flex:1;}
+.search-input-wrap input{
+  width:100%;background:var(--db3);border:1px solid rgba(255,255,255,.08);border-radius:var(--r);
+  padding:14px 48px 14px 20px;font-size:15px;font-family:var(--mono);color:var(--white);
+  letter-spacing:.06em;transition:border-color .2s;}
+.search-input-wrap input::placeholder{color:var(--g4);letter-spacing:.04em;}
+.search-input-wrap input:focus{border-color:var(--teal);}
+.search-input-wrap .search-ico{position:absolute;right:16px;top:50%;transform:translateY(-50%);font-size:16px;color:var(--g3);}
+.search-depth{background:var(--db3);border:1px solid rgba(255,255,255,.08);border-radius:var(--r);padding:14px 16px;
+  font-size:13px;font-family:var(--mono);color:var(--g2);min-width:160px;cursor:pointer;}
+.search-depth option{background:var(--db2);}
+.btn-search{background:linear-gradient(135deg,var(--teal),var(--teal-d));color:var(--white);border:none;
+  padding:14px 28px;border-radius:var(--r);font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap;
+  box-shadow:0 4px 16px rgba(6,182,212,.3);transition:all .2s;font-family:var(--sans);}
+.btn-search:hover{transform:translateY(-1px);box-shadow:0 6px 24px rgba(6,182,212,.45);}
+.btn-search:disabled{opacity:.5;cursor:not-allowed;transform:none;}
+.search-hint{font-size:11px;color:var(--g3);font-family:var(--mono);}
+
+/* HISTORY */
+#historySection{margin-top:24px;}
+.hist-label{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--g3);margin-bottom:10px;}
+.hist-list{display:flex;flex-direction:column;gap:1px;background:rgba(255,255,255,.04);border-radius:var(--r2);overflow:hidden;border:1px solid rgba(255,255,255,.06);}
+.hist-item{background:var(--db2);padding:11px 18px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:background .15s;}
+.hist-item:hover{background:var(--db3);}
+.hist-ic{width:30px;height:30px;border-radius:8px;background:rgba(6,182,212,.1);border:1px solid rgba(6,182,212,.2);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;}
+.hist-name{font-size:13px;font-weight:500;}
+.hist-cnpj{font-size:11px;color:var(--g3);font-family:var(--mono);margin-top:1px;}
+.hist-right{margin-left:auto;display:flex;align-items:center;gap:10px;}
+.hist-badge{font-size:10px;color:var(--teal);font-family:var(--mono);background:rgba(6,182,212,.08);padding:2px 8px;border-radius:6px;}
+.hist-time{font-size:11px;color:var(--g4);font-family:var(--mono);}
+
+/* ─── LOADING ─── */
+#loadingOverlay{position:fixed;inset:0;z-index:500;background:rgba(6,13,26,.92);backdrop-filter:blur(8px);
+  display:none;flex-direction:column;align-items:center;justify-content:center;gap:24px;}
+.loading-spinner{width:56px;height:56px;border-radius:50%;border:3px solid rgba(6,182,212,.2);border-top-color:var(--teal);animation:spin 1s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.loading-title{font-size:18px;font-weight:700;letter-spacing:-.02em;}
+.loading-sub{font-size:13px;color:var(--g3);font-family:var(--mono);}
+.loading-steps{display:flex;flex-direction:column;gap:6px;width:320px;}
+.loading-step{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--g3);font-family:var(--mono);}
+.loading-step.active{color:var(--teal);}
+.loading-step .ls-dot{width:6px;height:6px;border-radius:50%;background:var(--g4);flex-shrink:0;}
+.loading-step.active .ls-dot{background:var(--teal);box-shadow:0 0 8px var(--teal);animation:pulse 1.5s infinite;}
+
+/* ─── RESULTS ─── */
+#resultsSection{display:none;max-width:1280px;margin:0 auto;padding:0 24px 80px;}
+
+/* RESULTS HEADER */
+.results-header{display:flex;align-items:center;justify-content:space-between;padding:20px 0 24px;flex-wrap:wrap;gap:12px;}
+.results-title{font-size:16px;font-weight:700;letter-spacing:-.02em;}
+.results-cnpj{font-size:12px;color:var(--g3);font-family:var(--mono);margin-top:2px;}
+.results-actions{display:flex;gap:10px;flex-wrap:wrap;}
+
+/* SUMMARY CARDS */
+.summary-bar{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:24px;}
+.sum-card{background:var(--db2);border:1px solid rgba(255,255,255,.07);border-radius:var(--r2);padding:18px 20px;}
+.sum-card-label{font-size:10px;font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--g3);margin-bottom:6px;}
+.sum-card-value{font-size:28px;font-weight:800;letter-spacing:-.04em;line-height:1;}
+.sum-card-sub{font-size:11px;color:var(--g3);margin-top:4px;}
+.sum-teal{color:var(--teal);}
+.sum-purple{color:var(--purple-l);}
+.sum-green{color:var(--green);}
+.sum-yellow{color:var(--yellow);}
+.sum-red{color:var(--red);}
+
+/* TABS */
+.tabs-bar{display:flex;gap:4px;background:var(--db2);border:1px solid rgba(255,255,255,.07);border-radius:var(--r2);padding:6px;margin-bottom:16px;overflow-x:auto;}
+.tab-btn{padding:9px 18px;border-radius:var(--r);border:none;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--sans);
+  color:var(--g3);background:transparent;transition:all .2s;white-space:nowrap;display:flex;align-items:center;gap:7px;}
+.tab-btn:hover{color:var(--white);background:rgba(255,255,255,.05);}
+.tab-btn.active{background:rgba(6,182,212,.15);color:var(--teal);border:1px solid rgba(6,182,212,.25);}
+.tab-badge{font-size:10px;font-family:var(--mono);background:rgba(255,255,255,.08);padding:1px 7px;border-radius:100px;color:var(--g3);}
+.tab-btn.active .tab-badge{background:rgba(6,182,212,.15);color:var(--teal);}
+.tab-content{display:none;}
+.tab-content.active{display:block;}
+
+/* GRAPH */
+#graphContainer{background:var(--db2);border:1px solid rgba(255,255,255,.07);border-radius:var(--r2);overflow:hidden;position:relative;}
+#network{width:100%;height:620px;}
+.graph-controls{position:absolute;top:14px;right:14px;display:flex;gap:8px;z-index:10;}
+.graph-ctrl-btn{background:rgba(6,13,26,.8);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.1);border-radius:var(--r);
+  padding:7px 12px;font-size:12px;color:var(--g2);cursor:pointer;transition:all .2s;font-family:var(--sans);}
+.graph-ctrl-btn:hover{color:var(--white);border-color:var(--teal);}
+.graph-ctrl-btn.active{color:var(--teal);border-color:rgba(6,182,212,.4);}
+.graph-legend{position:absolute;bottom:14px;left:14px;display:flex;gap:14px;flex-wrap:wrap;background:rgba(6,13,26,.8);
+  backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.08);border-radius:var(--r);padding:10px 14px;}
+.leg-item{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--g2);}
+.leg-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+
+/* NODE DETAIL PANEL */
+#nodePanel{position:fixed;right:0;top:64px;bottom:0;width:360px;background:var(--db2);border-left:1px solid rgba(255,255,255,.08);
+  transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);z-index:200;overflow-y:auto;padding:24px;}
+#nodePanel.open{transform:translateX(0);}
+.panel-close{position:absolute;top:16px;right:16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);
+  border-radius:var(--r);padding:6px 10px;cursor:pointer;font-size:13px;color:var(--g2);transition:all .2s;}
+.panel-close:hover{color:var(--white);}
+.panel-type{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--teal);margin-bottom:8px;}
+.panel-name{font-size:16px;font-weight:700;letter-spacing:-.02em;margin-bottom:4px;line-height:1.3;}
+.panel-cnpj{font-family:var(--mono);font-size:12px;color:var(--g3);}
+.panel-divider{height:1px;background:rgba(255,255,255,.06);margin:16px 0;}
+.panel-row{display:flex;flex-direction:column;gap:3px;margin-bottom:14px;}
+.panel-key{font-size:10px;font-family:var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--g4);}
+.panel-val{font-size:13px;color:var(--g1);}
+.panel-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:100px;font-size:11px;font-weight:600;font-family:var(--mono);}
+.pb-ativa{background:rgba(34,197,94,.1);color:var(--green);border:1px solid rgba(34,197,94,.2);}
+.pb-inativa{background:rgba(239,68,68,.1);color:var(--red);border:1px solid rgba(239,68,68,.2);}
+.pb-holding{background:rgba(124,58,237,.1);color:var(--purple-l);border:1px solid rgba(124,58,237,.2);}
+.panel-open-btn{width:100%;background:rgba(6,182,212,.1);border:1px solid rgba(6,182,212,.2);border-radius:var(--r);
+  padding:10px;font-size:13px;font-weight:600;color:var(--teal);cursor:pointer;font-family:var(--sans);transition:all .2s;margin-top:16px;}
+.panel-open-btn:hover{background:rgba(6,182,212,.18);}
+
+/* DASHBOARD */
+.dash-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px;margin-bottom:16px;}
+.dash-card{background:var(--db2);border:1px solid rgba(255,255,255,.07);border-radius:var(--r2);padding:22px;}
+.dash-card-title{font-size:13px;font-weight:600;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+.dash-card-title span{font-size:16px;}
+
+/* EMPRESAS TABLE */
+.table-toolbar{display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap;}
+.table-search{background:var(--db2);border:1px solid rgba(255,255,255,.08);border-radius:var(--r);padding:9px 14px;
+  font-size:13px;font-family:var(--sans);color:var(--white);flex:1;min-width:200px;}
+.table-search::placeholder{color:var(--g4);}
+.table-filter{background:var(--db2);border:1px solid rgba(255,255,255,.08);border-radius:var(--r);padding:9px 12px;
+  font-size:12px;font-family:var(--mono);color:var(--g2);cursor:pointer;}
+.table-filter option{background:var(--db2);}
+.table-wrap{background:var(--db2);border:1px solid rgba(255,255,255,.07);border-radius:var(--r2);overflow:hidden;}
+table{width:100%;border-collapse:collapse;}
+th{background:rgba(255,255,255,.03);padding:11px 16px;font-size:11px;font-weight:600;font-family:var(--mono);
+  letter-spacing:.08em;text-transform:uppercase;color:var(--g3);text-align:left;border-bottom:1px solid rgba(255,255,255,.06);cursor:pointer;white-space:nowrap;}
+th:hover{color:var(--g1);}
+td{padding:11px 16px;font-size:12px;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:rgba(255,255,255,.02);}
+.td-name{font-weight:600;font-size:13px;}
+.td-cnpj{font-family:var(--mono);font-size:11px;color:var(--g3);}
+.status-pill{display:inline-block;padding:2px 9px;border-radius:100px;font-size:10px;font-family:var(--mono);font-weight:600;}
+.sp-ativa{background:rgba(34,197,94,.1);color:var(--green);}
+.sp-inativa{background:rgba(239,68,68,.1);color:var(--red);}
+.sp-outro{background:rgba(107,125,148,.1);color:var(--g3);}
+.holding-tag{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:6px;font-size:10px;font-family:var(--mono);
+  background:rgba(124,58,237,.1);color:var(--purple-l);border:1px solid rgba(124,58,237,.2);}
+.row-btn{background:transparent;border:none;color:var(--teal);cursor:pointer;font-size:12px;font-family:var(--sans);text-decoration:underline;}
+.row-btn:hover{color:var(--teal-l);}
+
+/* ALERTAS */
+.alertas-list{display:flex;flex-direction:column;gap:10px;}
+.alerta{display:flex;gap:14px;background:var(--db2);border:1px solid rgba(255,255,255,.06);border-radius:var(--r2);padding:16px 20px;}
+.alerta-danger{border-left:3px solid var(--red);}
+.alerta-warning{border-left:3px solid var(--yellow);}
+.alerta-info{border-left:3px solid var(--teal);}
+.alerta-ico{font-size:20px;flex-shrink:0;margin-top:2px;}
+.alerta-title{font-size:13px;font-weight:700;margin-bottom:4px;}
+.alerta-msg{font-size:12px;color:var(--g2);line-height:1.6;}
+.no-alertas{text-align:center;padding:48px 24px;color:var(--g3);font-size:14px;}
+.no-alertas .big{font-size:36px;margin-bottom:12px;}
+
+/* ACTION BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border-radius:var(--r);font-size:13px;
+  font-weight:600;cursor:pointer;border:none;text-decoration:none;transition:all .2s;font-family:var(--sans);}
+.btn-teal{background:linear-gradient(135deg,var(--teal),var(--teal-d));color:var(--white);box-shadow:0 4px 16px rgba(6,182,212,.25);}
+.btn-teal:hover{transform:translateY(-1px);box-shadow:0 6px 24px rgba(6,182,212,.4);}
+.btn-ghost{background:rgba(255,255,255,.05);color:var(--g2);border:1px solid rgba(255,255,255,.09);}
+.btn-ghost:hover{background:rgba(255,255,255,.09);color:var(--white);}
+.btn-sm{padding:7px 14px;font-size:12px;}
+.btn-purple{background:linear-gradient(135deg,var(--purple),#6D28D9);color:var(--white);box-shadow:0 4px 16px rgba(124,58,237,.25);}
+.btn-purple:hover{transform:translateY(-1px);box-shadow:0 6px 24px rgba(124,58,237,.4);}
+
+/* EMPTY STATES */
+.empty{text-align:center;padding:64px 24px;color:var(--g3);}
+.empty-icon{font-size:48px;margin-bottom:16px;}
+.empty-title{font-size:16px;font-weight:600;margin-bottom:6px;color:var(--g2);}
+.empty-sub{font-size:13px;}
+
+/* TOAST */
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);z-index:1000;
+  background:var(--db3);border:1px solid rgba(6,182,212,.3);border-radius:var(--r);padding:12px 24px;
+  font-size:13px;color:var(--white);transition:transform .3s;pointer-events:none;box-shadow:0 8px 32px rgba(0,0,0,.4);}
+#toast.show{transform:translateX(-50%) translateY(0);}
+
+@media(max-width:768px){
+  nav{padding:0 20px;}
+  #searchSection{padding:48px 16px 32px;}
+  #resultsSection{padding:0 16px 60px;}
+  .search-row{flex-direction:column;}
+  .graph-legend{display:none;}
+  #nodePanel{width:100%;}
+  .tabs-bar{padding:4px;}
+  .tab-btn{padding:8px 12px;font-size:12px;}
+}
+</style>
+</head>
+<body>
+
+<div class="hero-bg"></div>
+<div class="hero-grid"></div>
+
+<!-- NAV -->
+<nav>
+  <a class="nav-brand" href="portal.html">
+    <div class="nav-icon">🏢</div>
+    <div class="nav-name">Mapeamento <span>Societário</span></div>
+  </a>
+  <div class="nav-right">
+    <a href="portal.html" class="nav-back">← Portal</a>
+    <span class="nav-tag">Inteligência Societária</span>
+    <div class="nav-dot-wrap">
+      <div class="nav-dot"></div>
+      <span>BrasilAPI</span>
+    </div>
+  </div>
+</nav>
+
+<div class="app">
+
+  <!-- SEARCH -->
+  <div id="searchSection">
+    <div class="search-eyebrow">Análise de Grupos Econômicos</div>
+    <h1 class="search-title">Mapeamento<br><span class="hl">Societário</span></h1>
+    <p class="search-sub">Consulte um CNPJ e mapeie automaticamente vínculos societários, holdings, grupos econômicos e organograma empresarial completo.</p>
+
+    <div class="search-box">
+      <div class="search-row">
+        <div class="search-input-wrap">
+          <input type="text" id="cnpjInput" placeholder="00.000.000/0000-00" maxlength="18" autocomplete="off" spellcheck="false"/>
+          <span class="search-ico">🔍</span>
+        </div>
+        <select class="search-depth" id="depthSelect" title="Profundidade do mapeamento">
+          <option value="2">Profundidade 2 (rápido)</option>
+          <option value="3" selected>Profundidade 3 (padrão)</option>
+          <option value="4">Profundidade 4 (completo)</option>
+        </select>
+        <button class="btn-search" id="searchBtn" onclick="iniciarMapeamento()">Mapear Grupo →</button>
+      </div>
+      <div class="search-hint">💡 Informe o CNPJ da empresa principal. O sistema mapeia sócios e empresas relacionadas automaticamente.</div>
+    </div>
+
+    <div id="historySection" style="margin-top:28px;">
+      <div class="hist-label">Consultas recentes</div>
+      <div class="hist-list" id="histList">
+        <div class="hist-item" style="opacity:.5;cursor:default;justify-content:center;padding:20px;">
+          <span style="font-size:12px;color:var(--g3);font-family:var(--mono);">Carregando histórico...</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOADING -->
+  <div id="loadingOverlay">
+    <div class="loading-spinner"></div>
+    <div class="loading-title">Mapeando estrutura societária</div>
+    <div class="loading-sub" id="loadingMsg">Consultando BrasilAPI...</div>
+    <div class="loading-steps">
+      <div class="loading-step active" id="step1"><div class="ls-dot"></div><span>Consultando CNPJ raiz</span></div>
+      <div class="loading-step" id="step2"><div class="ls-dot"></div><span>Identificando sócios e vínculos</span></div>
+      <div class="loading-step" id="step3"><div class="ls-dot"></div><span>Mapeando empresas relacionadas</span></div>
+      <div class="loading-step" id="step4"><div class="ls-dot"></div><span>Gerando organograma</span></div>
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div id="resultsSection">
+    <div class="results-header">
+      <div>
+        <div class="results-title" id="resultsTitle">Grupo Empresarial</div>
+        <div class="results-cnpj" id="resultsCnpj"></div>
+      </div>
+      <div class="results-actions">
+        <button class="btn btn-ghost btn-sm" onclick="novaConsulta()">← Nova Consulta</button>
+        <button class="btn btn-ghost btn-sm" onclick="exportarExcel()">⬇ Excel</button>
+        <button class="btn btn-purple btn-sm" onclick="exportarPDF()">⬇ PDF</button>
+      </div>
+    </div>
+
+    <!-- SUMMARY -->
+    <div class="summary-bar">
+      <div class="sum-card">
+        <div class="sum-card-label">Empresas mapeadas</div>
+        <div class="sum-card-value sum-teal" id="sumEmpresas">—</div>
+        <div class="sum-card-sub">pessoas jurídicas</div>
+      </div>
+      <div class="sum-card">
+        <div class="sum-card-label">Sócios PF</div>
+        <div class="sum-card-value sum-purple" id="sumPF">—</div>
+        <div class="sum-card-sub">pessoas físicas</div>
+      </div>
+      <div class="sum-card">
+        <div class="sum-card-label">Holdings</div>
+        <div class="sum-card-value sum-yellow" id="sumHoldings">—</div>
+        <div class="sum-card-sub">identificadas</div>
+      </div>
+      <div class="sum-card">
+        <div class="sum-card-label">Estados (UF)</div>
+        <div class="sum-card-value sum-green" id="sumUF">—</div>
+        <div class="sum-card-sub">presença geográfica</div>
+      </div>
+      <div class="sum-card">
+        <div class="sum-card-label">Alertas</div>
+        <div class="sum-card-value sum-red" id="sumAlertas">—</div>
+        <div class="sum-card-sub">pontos de atenção</div>
+      </div>
+    </div>
+
+    <!-- TABS -->
+    <div class="tabs-bar">
+      <button class="tab-btn active" data-tab="grafo" onclick="switchTab('grafo')">🌳 Organograma <span class="tab-badge" id="badgeGrafo">—</span></button>
+      <button class="tab-btn" data-tab="dashboard" onclick="switchTab('dashboard')">📊 Dashboard</button>
+      <button class="tab-btn" data-tab="empresas" onclick="switchTab('empresas')">🏢 Empresas <span class="tab-badge" id="badgeEmpresas">—</span></button>
+      <button class="tab-btn" data-tab="socios" onclick="switchTab('socios')">👤 Sócios PF <span class="tab-badge" id="badgeSocios">—</span></button>
+      <button class="tab-btn" data-tab="alertas" onclick="switchTab('alertas')">🚨 Alertas <span class="tab-badge" id="badgeAlertas">—</span></button>
+    </div>
+
+    <!-- TAB: GRAFO -->
+    <div class="tab-content active" id="tab-grafo">
+      <div id="graphContainer">
+        <div id="network"></div>
+        <div class="graph-controls">
+          <button class="graph-ctrl-btn active" id="btnPhysics" onclick="togglePhysics()">⚡ Física</button>
+          <button class="graph-ctrl-btn" id="btnHier" onclick="toggleHierarchical()">📐 Hierárquico</button>
+          <button class="graph-ctrl-btn" onclick="fitNetwork()">⊙ Centralizar</button>
+        </div>
+        <div class="graph-legend">
+          <div class="leg-item"><div class="leg-dot" style="background:#F97316;box-shadow:0 0 6px #F97316;"></div>Empresa raiz</div>
+          <div class="leg-item"><div class="leg-dot" style="background:#3B82F6;"></div>Empresa PJ</div>
+          <div class="leg-item"><div class="leg-dot" style="background:#A78BFA;"></div>Holding</div>
+          <div class="leg-item"><div class="leg-dot" style="background:#22C55E;"></div>Sócio PF</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: DASHBOARD -->
+    <div class="tab-content" id="tab-dashboard">
+      <div class="dash-grid">
+        <div class="dash-card">
+          <div class="dash-card-title"><span>🗺️</span> Empresas por Estado (UF)</div>
+          <canvas id="chartUF" height="220"></canvas>
+        </div>
+        <div class="dash-card">
+          <div class="dash-card-title"><span>📋</span> Situação Cadastral</div>
+          <canvas id="chartSituacao" height="220"></canvas>
+        </div>
+        <div class="dash-card">
+          <div class="dash-card-title"><span>🏭</span> Top Segmentos (CNAE)</div>
+          <canvas id="chartCnae" height="220"></canvas>
+        </div>
+        <div class="dash-card">
+          <div class="dash-card-title"><span>💰</span> Capital Social (Top 8)</div>
+          <canvas id="chartCapital" height="220"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: EMPRESAS -->
+    <div class="tab-content" id="tab-empresas">
+      <div class="table-toolbar">
+        <input type="text" class="table-search" id="tableSearch" placeholder="Buscar por nome ou CNPJ..." oninput="filtrarTabela()"/>
+        <select class="table-filter" id="filterUF" onchange="filtrarTabela()"><option value="">Todos os estados</option></select>
+        <select class="table-filter" id="filterSit" onchange="filtrarTabela()">
+          <option value="">Todas situações</option>
+          <option value="ATIVA">Ativa</option>
+          <option value="BAIXADA">Baixada</option>
+          <option value="INAPTA">Inapta</option>
+        </select>
+        <select class="table-filter" id="filterTipo" onchange="filtrarTabela()">
+          <option value="">Todos os tipos</option>
+          <option value="holding">Holdings</option>
+          <option value="operacional">Operacionais</option>
+        </select>
+      </div>
+      <div class="table-wrap">
+        <table id="empresasTable">
+          <thead>
+            <tr>
+              <th onclick="sortTable('razao_social')">Empresa ↕</th>
+              <th onclick="sortTable('cnpj_fmt')">CNPJ ↕</th>
+              <th onclick="sortTable('situacao')">Situação ↕</th>
+              <th onclick="sortTable('cnae_desc')">CNAE</th>
+              <th onclick="sortTable('uf')">UF ↕</th>
+              <th onclick="sortTable('capital')">Capital ↕</th>
+              <th>Ação</th>
+            </tr>
+          </thead>
+          <tbody id="empresasBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TAB: SOCIOS -->
+    <div class="tab-content" id="tab-socios">
+      <div class="table-wrap">
+        <table id="sociosTable">
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>CPF (Mascarado)</th>
+              <th>Empresas no grupo</th>
+              <th>Qualificações</th>
+            </tr>
+          </thead>
+          <tbody id="sociosBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TAB: ALERTAS -->
+    <div class="tab-content" id="tab-alertas">
+      <div class="alertas-list" id="alertasList"></div>
+    </div>
+
+  </div><!-- /resultsSection -->
+
+</div><!-- /app -->
+
+<!-- NODE DETAIL PANEL -->
+<div id="nodePanel">
+  <button class="panel-close" onclick="closePanel()">✕</button>
+  <div id="panelContent"></div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- CDN Scripts -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.9/vis-network.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<script>
+const API = 'http://localhost:5000/api/societario';
+let currentData = null;
+let network = null;
+let charts = {};
+let physicsOn = true;
+let hierOn = false;
+let sortCol = 'razao_social';
+let sortDir = 1;
+let loadingTimer = null;
+
+// ─── CNPJ MASK ───────────────────────────────────────────────
+document.getElementById('cnpjInput').addEventListener('input', function(e) {
+  let v = e.target.value.replace(/\D/g, '').slice(0, 14);
+  if (v.length > 12) v = v.slice(0,2)+'.'+v.slice(2,5)+'.'+v.slice(5,8)+'/'+v.slice(8,12)+'-'+v.slice(12);
+  else if (v.length > 8) v = v.slice(0,2)+'.'+v.slice(2,5)+'.'+v.slice(5,8)+'/'+v.slice(8);
+  else if (v.length > 5) v = v.slice(0,2)+'.'+v.slice(2,5)+'.'+v.slice(5);
+  else if (v.length > 2) v = v.slice(0,2)+'.'+v.slice(2);
+  e.target.value = v;
+});
+document.getElementById('cnpjInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') iniciarMapeamento();
+});
+
+// ─── UTILITIES ───────────────────────────────────────────────
+function limpar(s) { return (s||'').replace(/\D/g,''); }
+function fmt(cnpj) {
+  const c = limpar(cnpj);
+  if (c.length === 14) return `${c.slice(0,2)}.${c.slice(2,5)}.${c.slice(5,8)}/${c.slice(8,12)}-${c.slice(12)}`;
+  return cnpj;
+}
+function fmtCapital(v) {
+  if (!v) return '—';
+  return 'R$ '+Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2});
+}
+function fmtDate(d) {
+  if (!d) return '—';
+  try {
+    if (d.includes('T')) return new Date(d).toLocaleString('pt-BR');
+    if (d.match(/^\d{4}-\d{2}-\d{2}$/)) { const[y,m,dd]=d.split('-'); return `${dd}/${m}/${y}`; }
+  } catch(_) {}
+  return d;
+}
+function sitClass(sit) {
+  const s = (sit||'').toUpperCase();
+  if (s.includes('ATIVA')) return 'ativa';
+  if (s.includes('BAIXADA')||s.includes('INAPTA')||s.includes('CANCEL')||s.includes('NULA')||s.includes('SUSPENSA')) return 'inativa';
+  return 'outro';
+}
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// ─── HISTORY ─────────────────────────────────────────────────
+async function carregarHistorico() {
+  try {
+    const resp = await fetch(`${API}/historico`);
+    const data = await resp.json();
+    const el = document.getElementById('histList');
+    if (!data.length) {
+      el.innerHTML = `<div class="hist-item" style="opacity:.5;cursor:default;justify-content:center;padding:20px;">
+        <span style="font-size:12px;color:var(--g3);font-family:var(--mono);">Nenhuma consulta realizada ainda</span></div>`;
+      return;
+    }
+    el.innerHTML = data.map(h => `
+      <div class="hist-item" onclick="recarregar('${h.cnpj}')">
+        <div class="hist-ic">🏢</div>
+        <div>
+          <div class="hist-name">${h.razao_social||'—'}</div>
+          <div class="hist-cnpj">${fmt(h.cnpj)}</div>
+        </div>
+        <div class="hist-right">
+          <span class="hist-badge">${h.total_empresas} emp</span>
+          <span class="hist-time">${fmtDate(h.ts)}</span>
+        </div>
+      </div>`).join('');
+  } catch(_) {
+    document.getElementById('histList').innerHTML = `<div class="hist-item" style="opacity:.5;cursor:default;justify-content:center;padding:16px;">
+      <span style="font-size:12px;color:var(--g4);font-family:var(--mono);">Backend offline</span></div>`;
+  }
+}
+
+function recarregar(cnpj) {
+  document.getElementById('cnpjInput').value = fmt(cnpj);
+  iniciarMapeamento();
+}
+
+// ─── LOADING ANIMATION ───────────────────────────────────────
+function startLoadingAnimation() {
+  const steps = ['step1','step2','step3','step4'];
+  let i = 0;
+  loadingTimer = setInterval(() => {
+    steps.forEach(s => document.getElementById(s).classList.remove('active'));
+    document.getElementById(steps[i]).classList.add('active');
+    i = (i+1) % steps.length;
+  }, 1800);
+}
+function stopLoadingAnimation() {
+  if (loadingTimer) { clearInterval(loadingTimer); loadingTimer = null; }
+}
+
+// ─── MAIN SEARCH ─────────────────────────────────────────────
+async function iniciarMapeamento() {
+  const raw = document.getElementById('cnpjInput').value;
+  const cnpj = limpar(raw);
+  if (cnpj.length !== 14) { showToast('⚠️ CNPJ inválido. Informe os 14 dígitos.'); return; }
+
+  const depth = document.getElementById('depthSelect').value;
+  document.getElementById('searchBtn').disabled = true;
+  document.getElementById('loadingOverlay').style.display = 'flex';
+  document.getElementById('resultsSection').style.display = 'none';
+  startLoadingAnimation();
+
+  try {
+    const resp = await fetch(`${API}/mapear/${cnpj}?depth=${depth}`);
+    const data = await resp.json();
+    if (data.error) { showToast('❌ '+data.error); return; }
+    currentData = data;
+    renderResultados(data);
+    carregarHistorico();
+  } catch(e) {
+    showToast('❌ Erro de conexão. Verifique se o backend está ativo na porta 5000.');
+    console.error(e);
+  } finally {
+    stopLoadingAnimation();
+    document.getElementById('loadingOverlay').style.display = 'none';
+    document.getElementById('searchBtn').disabled = false;
+  }
+}
+
+function novaConsulta() {
+  document.getElementById('resultsSection').style.display = 'none';
+  document.getElementById('searchSection').scrollIntoView({behavior:'smooth'});
+}
+
+// ─── RENDER RESULTS ───────────────────────────────────────────
+function renderResultados(data) {
+  const pjs = data.nodes.filter(n => n.type === 'pj');
+  const pfs = data.nodes.filter(n => n.type === 'pf');
+  const holdings = pjs.filter(n => n.is_holding);
+  const ufs = new Set(pjs.map(n => n.uf).filter(Boolean));
+
+  document.getElementById('resultsTitle').textContent = data.razao_social_raiz || 'Grupo Empresarial';
+  document.getElementById('resultsCnpj').textContent = fmt(data.cnpj_raiz);
+  document.getElementById('sumEmpresas').textContent = data.total_empresas;
+  document.getElementById('sumPF').textContent = data.total_pf;
+  document.getElementById('sumHoldings').textContent = holdings.length;
+  document.getElementById('sumUF').textContent = ufs.size;
+  document.getElementById('sumAlertas').textContent = data.alertas.length;
+
+  document.getElementById('badgeGrafo').textContent = data.nodes.length;
+  document.getElementById('badgeEmpresas').textContent = pjs.length;
+  document.getElementById('badgeSocios').textContent = pfs.length;
+  document.getElementById('badgeAlertas').textContent = data.alertas.length;
+
+  renderGrafo(data);
+  renderDashboard(data);
+  renderEmpresasTable(data);
+  renderSociosTable(data);
+  renderAlertas(data);
+  preencherFiltroUF(data);
+
+  document.getElementById('resultsSection').style.display = 'block';
+  document.getElementById('resultsSection').scrollIntoView({behavior:'smooth'});
+  switchTab('grafo');
+}
+
+// ─── TAB SWITCHING ────────────────────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id === 'tab-'+tab));
+  if (tab === 'dashboard') renderCharts();
+}
+
+// ─── VIS.JS GRAPH ─────────────────────────────────────────────
+function renderGrafo(data) {
+  if (network) { network.destroy(); network = null; }
+
+  const visNodes = data.nodes.map(n => {
+    if (n.type === 'pf') {
+      return {
+        id: n.id, label: n.nome.split(' ').slice(0,2).join(' '),
+        title: `${n.nome}\nCPF: ${n.cpf||'—'}`,
+        color: { background:'#14532D', border:'#22C55E', highlight:{background:'#166534',border:'#4ADE80'} },
+        font: { color:'#86EFAC', size:11 },
+        shape: 'ellipse', size: 16,
+      };
+    }
+    const isRoot = n.cnpj === limpar(data.cnpj_raiz);
+    const isHolding = n.is_holding;
+    let bg, border, fc;
+    if (isRoot) { bg='#431407'; border='#F97316'; fc='#FB923C'; }
+    else if (isHolding) { bg='#2E1065'; border='#7C3AED'; fc='#A78BFA'; }
+    else { bg='#1E3A5F'; border='#3B82F6'; fc='#93C5FD'; }
+    const label = (n.razao_social||n.cnpj).substring(0,22) + ((n.razao_social||'').length>22?'…':'');
+    return {
+      id: n.id,
+      label: label,
+      title: `${n.razao_social||n.cnpj}\n${n.cnpj_fmt||''}\n${n.situacao||''}\n${n.cnae_desc||''}`,
+      color: { background:bg, border:border, highlight:{background:bg,border:border} },
+      font: { color:fc, size: isRoot?13:11, bold: isRoot },
+      shape: isRoot ? 'star' : (isHolding ? 'diamond' : 'dot'),
+      size: isRoot ? 28 : (isHolding ? 22 : 18),
+      borderWidth: isRoot ? 3 : 2,
+    };
+  });
+
+  const visEdges = data.edges.map((e,i) => ({
+    id: i, from: e.from, to: e.to,
+    label: e.label || '',
+    arrows: { to: { enabled:true, scaleFactor:0.7 } },
+    color: { color:'rgba(168,184,204,.4)', highlight:'rgba(6,182,212,.8)' },
+    font: { color:'#6B7D94', size:10, strokeWidth:2, strokeColor:'rgba(6,13,26,.8)' },
+    smooth: { type:'continuous', roundness:0.1 },
+  }));
+
+  const container = document.getElementById('network');
+  network = new vis.Network(container,
+    { nodes: new vis.DataSet(visNodes), edges: new vis.DataSet(visEdges) },
+    {
+      nodes: { borderWidth:2, shadow:{enabled:true,color:'rgba(0,0,0,.5)',size:6} },
+      edges: { width:1.5 },
+      physics: {
+        enabled: true,
+        barnesHut: { gravitationalConstant:-5000, centralGravity:0.35, springLength:220, springConstant:0.04, damping:0.09 },
+        stabilization: { iterations:200 },
+      },
+      interaction: { hover:true, tooltipDelay:150, zoomView:true, dragView:true },
+    }
+  );
+
+  network.on('click', params => {
+    if (params.nodes.length) showNodePanel(params.nodes[0]);
+  });
+  network.on('stabilized', () => { if (physicsOn) network.setOptions({physics:{enabled:false}}); physicsOn = false; document.getElementById('btnPhysics').classList.remove('active'); });
+}
+
+function togglePhysics() {
+  physicsOn = !physicsOn;
+  network.setOptions({physics:{enabled:physicsOn}});
+  document.getElementById('btnPhysics').classList.toggle('active', physicsOn);
+}
+function toggleHierarchical() {
+  hierOn = !hierOn;
+  document.getElementById('btnHier').classList.toggle('active', hierOn);
+  if (hierOn) {
+    network.setOptions({layout:{hierarchical:{enabled:true,direction:'UD',sortMethod:'directed',levelSeparation:180,nodeSpacing:160}},physics:{enabled:false}});
+  } else {
+    network.setOptions({layout:{hierarchical:{enabled:false}},physics:{enabled:true}});
+    setTimeout(()=>{network.setOptions({physics:{enabled:false}});physicsOn=false;},3000);
+  }
+}
+function fitNetwork() { if(network) network.fit({animation:{duration:600,easingFunction:'easeInOutQuad'}}); }
+
+// ─── NODE DETAIL PANEL ────────────────────────────────────────
+function showNodePanel(nodeId) {
+  if (!currentData) return;
+  const node = currentData.nodes.find(n => n.id === nodeId);
+  if (!node) return;
+  const panel = document.getElementById('nodePanel');
+  const content = document.getElementById('panelContent');
+
+  if (node.type === 'pf') {
+    const empresas = currentData.edges.filter(e => e.from === nodeId)
+      .map(e => { const n = currentData.nodes.find(x=>x.id===e.to); return n ? (n.razao_social||n.cnpj) : e.to; });
+    content.innerHTML = `
+      <div class="panel-type">Pessoa Física</div>
+      <div class="panel-name">${node.nome}</div>
+      <div class="panel-cnpj">CPF: ${node.cpf||'—'}</div>
+      <div class="panel-divider"></div>
+      <div class="panel-row"><div class="panel-key">Empresas no grupo</div><div class="panel-val">${empresas.length}</div></div>
+      ${empresas.map(e=>`<div class="panel-row"><div class="panel-val" style="font-size:12px;color:var(--g2)">• ${e}</div></div>`).join('')}
+    `;
+  } else {
+    const sc = sitClass(node.situacao);
+    const pbClass = sc==='ativa'?'pb-ativa':sc==='inativa'?'pb-inativa':'';
+    const isRoot = node.cnpj === limpar(currentData.cnpj_raiz);
+    content.innerHTML = `
+      <div class="panel-type">${isRoot?'Empresa Raiz':'Empresa PJ'}${node.is_holding?' · Holding':''}</div>
+      <div class="panel-name">${node.razao_social||'—'}</div>
+      <div class="panel-cnpj">${node.cnpj_fmt||'—'}</div>
+      <div class="panel-divider"></div>
+      <div class="panel-row"><div class="panel-key">Situação Cadastral</div>
+        <div><span class="panel-badge ${pbClass}">${node.situacao||'—'}</span></div></div>
+      ${node.is_holding?'<div class="panel-row"><div><span class="panel-badge pb-holding">🏦 Holding</span></div></div>':''}
+      <div class="panel-row"><div class="panel-key">CNAE Principal</div><div class="panel-val">${node.cnae_desc||'—'}</div></div>
+      <div class="panel-row"><div class="panel-key">Código CNAE</div><div class="panel-val" style="font-family:var(--mono);font-size:12px">${node.cnae_cod||'—'}</div></div>
+      <div class="panel-row"><div class="panel-key">Natureza Jurídica</div><div class="panel-val">${node.natureza||'—'}</div></div>
+      <div class="panel-row"><div class="panel-key">Capital Social</div><div class="panel-val">${fmtCapital(node.capital)}</div></div>
+      <div class="panel-row"><div class="panel-key">Data de Abertura</div><div class="panel-val">${fmtDate(node.abertura)}</div></div>
+      <div class="panel-row"><div class="panel-key">Localização</div><div class="panel-val">${node.municipio||'—'}${node.uf?' / '+node.uf:''}</div></div>
+      <div class="panel-row"><div class="panel-key">Endereço</div><div class="panel-val">${node.logradouro||'—'}</div></div>
+      <div class="panel-row"><div class="panel-key">Sócios cadastrados</div><div class="panel-val">${node.qsa_count||0}</div></div>
+      ${(node.cnaes_sec||[]).length?`<div class="panel-row"><div class="panel-key">CNAEs Secundários</div>
+        <div class="panel-val" style="font-size:11px;color:var(--g2)">${node.cnaes_sec.slice(0,4).map(s=>s.desc).join(', ')}</div></div>`:''}
+      <button class="panel-open-btn" onclick="window.open('https://www.google.com/search?q=${encodeURIComponent((node.razao_social||'')+'CNPJ'+node.cnpj)}','_blank')">🔍 Pesquisar empresa</button>
+    `;
+  }
+  panel.classList.add('open');
+}
+function closePanel() { document.getElementById('nodePanel').classList.remove('open'); }
+
+// ─── DASHBOARD CHARTS ─────────────────────────────────────────
+let chartsRendered = false;
+function renderCharts() {
+  if (!currentData || chartsRendered) return;
+  chartsRendered = true;
+  const pjs = currentData.nodes.filter(n => n.type === 'pj');
+  const chartDefaults = {
+    color: '#ffffff',
+    plugins: { legend:{ labels:{ color:'#A8B8CC', font:{family:'Inter',size:11} } } },
+    scales: {
+      x:{ ticks:{color:'#6B7D94',font:{family:"JetBrains Mono",size:10}}, grid:{color:'rgba(255,255,255,.04)'} },
+      y:{ ticks:{color:'#6B7D94',font:{family:"JetBrains Mono",size:10}}, grid:{color:'rgba(255,255,255,.06)'} },
+    },
+  };
+
+  // Chart UF
+  const ufCount = {};
+  pjs.forEach(n => { if(n.uf) ufCount[n.uf] = (ufCount[n.uf]||0)+1; });
+  const ufSorted = Object.entries(ufCount).sort((a,b)=>b[1]-a[1]).slice(0,12);
+  if (charts.uf) charts.uf.destroy();
+  charts.uf = new Chart(document.getElementById('chartUF'), {
+    type:'bar',
+    data:{ labels:ufSorted.map(x=>x[0]), datasets:[{
+      label:'Empresas', data:ufSorted.map(x=>x[1]),
+      backgroundColor:'rgba(6,182,212,.6)', borderColor:'#06B6D4', borderWidth:1, borderRadius:4,
+    }]},
+    options:{...chartDefaults, plugins:{legend:{display:false}}, responsive:true},
+  });
+
+  // Chart Situação
+  const sitCount = {};
+  pjs.forEach(n => { const k = (n.situacao||'Desconhecida').toUpperCase().split(' ')[0]; sitCount[k]=(sitCount[k]||0)+1; });
+  const sitColors = {'ATIVA':'#22C55E','BAIXADA':'#EF4444','INAPTA':'#F97316','SUSPENSA':'#F59E0B','DESCONHECIDA':'#6B7D94'};
+  if (charts.sit) charts.sit.destroy();
+  charts.sit = new Chart(document.getElementById('chartSituacao'), {
+    type:'doughnut',
+    data:{ labels:Object.keys(sitCount), datasets:[{
+      data:Object.values(sitCount),
+      backgroundColor:Object.keys(sitCount).map(k=>sitColors[k]||'#3D5068'),
+      borderColor:'#0C1625', borderWidth:2,
+    }]},
+    options:{responsive:true,plugins:{legend:{position:'right',labels:{color:'#A8B8CC',font:{family:'Inter',size:11},padding:14}}}},
+  });
+
+  // Chart CNAE
+  const cnaeCount = {};
+  pjs.forEach(n => { if(n.cnae_desc) { const k = n.cnae_desc.substring(0,30); cnaeCount[k]=(cnaeCount[k]||0)+1; } });
+  const cnaeSorted = Object.entries(cnaeCount).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  if (charts.cnae) charts.cnae.destroy();
+  charts.cnae = new Chart(document.getElementById('chartCnae'), {
+    type:'bar',
+    data:{ labels:cnaeSorted.map(x=>x[0].length>28?x[0].substring(0,28)+'…':x[0]), datasets:[{
+      label:'Empresas', data:cnaeSorted.map(x=>x[1]),
+      backgroundColor:'rgba(124,58,237,.6)', borderColor:'#7C3AED', borderWidth:1, borderRadius:4,
+    }]},
+    options:{...chartDefaults,indexAxis:'y',plugins:{legend:{display:false}},responsive:true},
+  });
+
+  // Chart Capital
+  const capitalSorted = pjs.filter(n=>n.capital>0).sort((a,b)=>b.capital-a.capital).slice(0,8);
+  if (charts.cap) charts.cap.destroy();
+  charts.cap = new Chart(document.getElementById('chartCapital'), {
+    type:'bar',
+    data:{ labels:capitalSorted.map(n=>(n.razao_social||n.cnpj).substring(0,20)), datasets:[{
+      label:'Capital (R$)', data:capitalSorted.map(n=>n.capital),
+      backgroundColor:'rgba(249,115,22,.6)', borderColor:'#F97316', borderWidth:1, borderRadius:4,
+    }]},
+    options:{...chartDefaults,indexAxis:'y',plugins:{legend:{display:false}},responsive:true,
+      scales:{...chartDefaults.scales,x:{...chartDefaults.scales.x,ticks:{...chartDefaults.scales.x.ticks,callback:v=>v>=1e6?`${(v/1e6).toFixed(1)}M`:v>=1e3?`${(v/1e3).toFixed(0)}k`:v}}}},
+  });
+}
+
+// ─── EMPRESAS TABLE ────────────────────────────────────────────
+let filteredPJs = [];
+function preencherFiltroUF(data) {
+  const ufs = [...new Set(data.nodes.filter(n=>n.type==='pj').map(n=>n.uf).filter(Boolean))].sort();
+  const sel = document.getElementById('filterUF');
+  sel.innerHTML = '<option value="">Todos os estados</option>' + ufs.map(u=>`<option value="${u}">${u}</option>`).join('');
+}
+function renderEmpresasTable(data) {
+  filteredPJs = data.nodes.filter(n => n.type === 'pj');
+  atualizarTabelaEmpresas();
+}
+function filtrarTabela() {
+  if (!currentData) return;
+  const q = document.getElementById('tableSearch').value.toLowerCase();
+  const uf = document.getElementById('filterUF').value;
+  const sit = document.getElementById('filterSit').value.toUpperCase();
+  const tipo = document.getElementById('filterTipo').value;
+  filteredPJs = currentData.nodes.filter(n => {
+    if (n.type !== 'pj') return false;
+    if (q && !(n.razao_social||'').toLowerCase().includes(q) && !(n.cnpj||'').includes(q)) return false;
+    if (uf && n.uf !== uf) return false;
+    if (sit && !(n.situacao||'').toUpperCase().includes(sit)) return false;
+    if (tipo === 'holding' && !n.is_holding) return false;
+    if (tipo === 'operacional' && n.is_holding) return false;
+    return true;
+  });
+  atualizarTabelaEmpresas();
+}
+function sortTable(col) {
+  if (sortCol === col) sortDir *= -1; else { sortCol = col; sortDir = 1; }
+  atualizarTabelaEmpresas();
+}
+function atualizarTabelaEmpresas() {
+  const sorted = [...filteredPJs].sort((a,b) => {
+    const va = a[sortCol]||''; const vb = b[sortCol]||'';
+    if (typeof va === 'number') return sortDir*(va-vb);
+    return sortDir*String(va).localeCompare(String(vb),'pt-BR');
+  });
+  const isRoot = n => n.cnpj === limpar(currentData.cnpj_raiz);
+  document.getElementById('empresasBody').innerHTML = sorted.map(n => {
+    const sc = sitClass(n.situacao);
+    return `<tr>
+      <td>
+        <div class="td-name">${n.razao_social||'—'}${isRoot(n)?' ⭐':''}</div>
+        ${n.nome_fantasia?`<div style="font-size:11px;color:var(--g3)">${n.nome_fantasia}</div>`:''}
+        ${n.is_holding?'<span class="holding-tag">🏦 Holding</span>':''}
+      </td>
+      <td><span class="td-cnpj">${n.cnpj_fmt||'—'}</span></td>
+      <td><span class="status-pill sp-${sc}">${n.situacao||'—'}</span></td>
+      <td><div style="font-size:11px;max-width:200px;line-height:1.4">${n.cnae_desc||'—'}</div><div style="font-size:10px;color:var(--g4);font-family:var(--mono)">${n.cnae_cod||''}</div></td>
+      <td style="font-family:var(--mono);font-size:12px">${n.uf||'—'}</td>
+      <td style="font-family:var(--mono);font-size:11px">${fmtCapital(n.capital)}</td>
+      <td><button class="row-btn" onclick="focarNode('${n.id}')">Ver grafo</button></td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--g3)">Nenhuma empresa encontrada</td></tr>';
+}
+
+function focarNode(id) {
+  switchTab('grafo');
+  setTimeout(() => {
+    if (network) {
+      network.focus(id, {scale:1.5, animation:{duration:600,easingFunction:'easeInOutQuad'}});
+      network.selectNodes([id]);
+      showNodePanel(id);
+    }
+  }, 100);
+}
+
+// ─── SÓCIOS TABLE ──────────────────────────────────────────────
+function renderSociosTable(data) {
+  const pfs = data.nodes.filter(n => n.type === 'pf');
+  if (!pfs.length) {
+    document.getElementById('sociosBody').innerHTML = `<tr><td colspan="4" style="text-align:center;padding:32px;color:var(--g3)">Nenhum sócio PF identificado</td></tr>`;
+    return;
+  }
+  document.getElementById('sociosBody').innerHTML = pfs.map(n => {
+    const quals = data.edges.filter(e=>e.from===n.id).map(e=>`${e.qualif||''}${e.pct?` (${e.pct}%)`:''}`.trim()).filter(Boolean);
+    const emps = data.edges.filter(e=>e.from===n.id).map(e=>{
+      const emp = data.nodes.find(x=>x.id===e.to);
+      return emp ? (emp.razao_social||emp.cnpj) : e.to;
+    });
+    return `<tr>
+      <td><div class="td-name">${n.nome}</div></td>
+      <td><span style="font-family:var(--mono);font-size:11px;color:var(--g3)">${n.cpf||'—'}</span></td>
+      <td>${emps.map(e=>`<div style="font-size:11px;color:var(--g2)">• ${e}</div>`).join('')}</td>
+      <td>${quals.length?`<div style="font-size:11px;color:var(--g3)">${quals[0]}</div>`:'—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ─── ALERTAS ──────────────────────────────────────────────────
+function renderAlertas(data) {
+  const el = document.getElementById('alertasList');
+  if (!data.alertas.length) {
+    el.innerHTML = `<div class="no-alertas"><div class="big">✅</div><div style="font-size:15px;font-weight:700;color:var(--g2)">Nenhum alerta identificado</div><div style="font-size:13px;color:var(--g3);margin-top:6px">A estrutura societária mapeada não apresenta pontos de atenção.</div></div>`;
+    return;
+  }
+  const icons = { danger:'🔴', warning:'🟡', info:'🔵' };
+  el.innerHTML = data.alertas.map(a => `
+    <div class="alerta alerta-${a.tipo}">
+      <div class="alerta-ico">${icons[a.tipo]||'⚪'}</div>
+      <div>
+        <div class="alerta-title">${a.titulo}</div>
+        <div class="alerta-msg">${a.msg}</div>
+      </div>
+    </div>`).join('');
+}
+
+// ─── EXPORT EXCEL ─────────────────────────────────────────────
+function exportarExcel() {
+  if (!currentData) { showToast('⚠️ Realize uma consulta primeiro.'); return; }
+  const wb = XLSX.utils.book_new();
+  const pjs = currentData.nodes.filter(n=>n.type==='pj');
+  const pfs = currentData.nodes.filter(n=>n.type==='pf');
+
+  const wsEmpresas = XLSX.utils.json_to_sheet(pjs.map(n=>({
+    'Razão Social': n.razao_social||'',
+    'Nome Fantasia': n.nome_fantasia||'',
+    'CNPJ': n.cnpj_fmt||'',
+    'Situação': n.situacao||'',
+    'CNAE Código': n.cnae_cod||'',
+    'CNAE Descrição': n.cnae_desc||'',
+    'Natureza Jurídica': n.natureza||'',
+    'Capital Social': n.capital||0,
+    'Data Abertura': n.abertura||'',
+    'UF': n.uf||'',
+    'Município': n.municipio||'',
+    'Holding': n.is_holding?'Sim':'Não',
+    'Profundidade': n.depth||0,
+  })));
+  XLSX.utils.book_append_sheet(wb, wsEmpresas, 'Empresas');
+
+  const wsSocios = XLSX.utils.json_to_sheet(pfs.map(n=>({
+    'Nome': n.nome||'',
+    'CPF (Mascarado)': n.cpf||'',
+    'Empresas no grupo': (n.empresas_no_grafo||[]).length,
+  })));
+  XLSX.utils.book_append_sheet(wb, wsSocios, 'Sócios PF');
+
+  const wsVinculos = XLSX.utils.json_to_sheet(currentData.edges.map(e=>{
+    const fn = currentData.nodes.find(n=>n.id===e.from);
+    const tn = currentData.nodes.find(n=>n.id===e.to);
+    return {
+      'De (Sócio/Controlador)': fn ? (fn.razao_social||fn.nome||fn.id) : e.from,
+      'Para (Empresa)': tn ? (tn.razao_social||tn.id) : e.to,
+      'Qualificação': e.qualif||'',
+      'Participação %': e.pct||0,
+    };
+  }));
+  XLSX.utils.book_append_sheet(wb, wsVinculos, 'Vínculos');
+
+  const wsAlertas = XLSX.utils.json_to_sheet(currentData.alertas.map(a=>({
+    'Tipo': a.tipo, 'Título': a.titulo, 'Descrição': a.msg,
+  })));
+  XLSX.utils.book_append_sheet(wb, wsAlertas, 'Alertas');
+
+  const nome = (currentData.razao_social_raiz||'grupo').replace(/[^a-zA-Z0-9]/g,'_').substring(0,30);
+  XLSX.writeFile(wb, `societario_${nome}_${new Date().toISOString().slice(0,10)}.xlsx`);
+  showToast('✅ Excel exportado com sucesso!');
+}
+
+// ─── EXPORT PDF ───────────────────────────────────────────────
+function exportarPDF() {
+  if (!currentData) { showToast('⚠️ Realize uma consulta primeiro.'); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation:'landscape', unit:'mm', format:'a4' });
+  const W = doc.internal.pageSize.getWidth();
+  const gray = '#6B7D94', dark = '#060D1A', teal = '#06B6D4';
+
+  // Header
+  doc.setFillColor(6,13,26);
+  doc.rect(0,0,W,22,'F');
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(14);
+  doc.setTextColor(255,255,255);
+  doc.text('Mapeamento Societário — Rumo Brasil', 14, 14);
+  doc.setFontSize(9);
+  doc.setTextColor(107,125,148);
+  doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, W-14, 14, {align:'right'});
+
+  // Title block
+  doc.setFontSize(16); doc.setFont('helvetica','bold'); doc.setTextColor(6,182,212);
+  doc.text(currentData.razao_social_raiz||'Grupo Empresarial', 14, 34);
+  doc.setFontSize(10); doc.setFont('helvetica','normal'); doc.setTextColor(107,125,148);
+  doc.text(`CNPJ: ${currentData.cnpj_raiz}`, 14, 41);
+
+  // Summary boxes
+  const sumItems = [
+    ['Empresas', currentData.total_empresas],
+    ['Sócios PF', currentData.total_pf],
+    ['Alertas', currentData.alertas.length],
+  ];
+  sumItems.forEach((item,i) => {
+    const x = 14 + i*60;
+    doc.setFillColor(12,22,37);
+    doc.roundedRect(x, 47, 54, 16, 2, 2, 'F');
+    doc.setFontSize(18); doc.setFont('helvetica','bold'); doc.setTextColor(6,182,212);
+    doc.text(String(item[1]), x+8, 59);
+    doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(107,125,148);
+    doc.text(item[0], x+8, 63+2);
+  });
+
+  // Empresas table
+  const pjs = currentData.nodes.filter(n=>n.type==='pj');
+  doc.setFontSize(11); doc.setFont('helvetica','bold'); doc.setTextColor(255,255,255);
+  doc.text('Empresas Mapeadas', 14, 75);
+  doc.autoTable({
+    startY: 79,
+    head:[['Razão Social','CNPJ','Situação','CNAE','UF','Capital Social','Holding']],
+    body: pjs.map(n=>[
+      (n.razao_social||'—').substring(0,40),
+      n.cnpj_fmt||'—', n.situacao||'—',
+      (n.cnae_desc||'—').substring(0,35),
+      n.uf||'—',
+      n.capital?`R$ ${Number(n.capital).toLocaleString('pt-BR')}` : '—',
+      n.is_holding?'Sim':'—',
+    ]),
+    styles:{ font:'helvetica', fontSize:8, textColor:[232,237,245], cellPadding:3, lineColor:[26,46,72], lineWidth:0.3 },
+    headStyles:{ fillColor:[18,32,53], textColor:[168,184,204], fontStyle:'bold', fontSize:8 },
+    alternateRowStyles:{ fillColor:[12,22,37] },
+    bodyStyles:{ fillColor:[6,13,26] },
+    margin:{left:14,right:14},
+  });
+
+  // Alertas (new page if needed)
+  if (currentData.alertas.length) {
+    doc.addPage();
+    doc.setFillColor(6,13,26); doc.rect(0,0,W,22,'F');
+    doc.setFontSize(14); doc.setFont('helvetica','bold'); doc.setTextColor(255,255,255);
+    doc.text('Alertas e Pontos de Atenção', 14, 14);
+    doc.autoTable({
+      startY: 28,
+      head:[['Tipo','Título','Descrição']],
+      body: currentData.alertas.map(a=>[a.tipo.toUpperCase(), a.titulo, a.msg]),
+      styles:{ font:'helvetica', fontSize:9, textColor:[232,237,245], cellPadding:4 },
+      headStyles:{ fillColor:[18,32,53], textColor:[168,184,204], fontStyle:'bold' },
+      bodyStyles:{ fillColor:[6,13,26] },
+      alternateRowStyles:{ fillColor:[12,22,37] },
+      margin:{left:14,right:14},
+    });
+  }
+
+  const nome = (currentData.razao_social_raiz||'grupo').replace(/[^a-zA-Z0-9]/g,'_').substring(0,30);
+  doc.save(`societario_${nome}_${new Date().toISOString().slice(0,10)}.pdf`);
+  showToast('✅ PDF exportado com sucesso!');
+}
+
+// ─── INIT ─────────────────────────────────────────────────────
+carregarHistorico();
+</script>
+</body>
+</html>
