@@ -80,7 +80,8 @@
       "Bash(curl -sv http://localhost:5000/api/societario/historico)",
       "Bash(curl -s http://localhost:5000/societario.html)",
       "Bash(python -c \"import urllib.request; print\\(urllib.request.urlopen\\('http://localhost:5000/api/health',timeout=3\\).read\\(\\).decode\\(\\)\\)\")",
-      "Bash(python -c \"import urllib.request; r=urllib.request.urlopen\\('http://localhost:5000/api/health',timeout=3\\); print\\(r.read\\(\\).decode\\(\\)\\)\")"
+      "Bash(python -c \"import urllib.request; r=urllib.request.urlopen\\('http://localhost:5000/api/health',timeout=3\\); print\\(r.read\\(\\).decode\\(\\)\\)\")",
+      "Bash(curl -sI \"https://unpkg.com/vis-network@9.1.9/standalone/umd/vis-network.min.js\")"
     ]
   },
   "hooks": {
