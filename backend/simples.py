@@ -27,7 +27,7 @@ _UPL.mkdir(exist_ok=True)
 _RES.mkdir(exist_ok=True)
 
 ANO_FIM    = date.today().year
-ANO_INICIO = ANO_FIM - 4   # últimos 5 anos
+ANO_INICIO = ANO_FIM - 5   # últimos 60 meses
 
 # ── DB ────────────────────────────────────────────────────────────────────────
 
