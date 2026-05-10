@@ -122,10 +122,19 @@ def _update_job(job_id, **kw):
 
 # ── API query ─────────────────────────────────────────────────────────────────
 
+def _extrair_simples(raw) -> tuple[bool, str | None, str | None]:
+    """Extrai (optante, data_opcao, data_exclusao) de um campo simples que pode ser dict ou str."""
+    if isinstance(raw, dict):
+        return bool(raw.get("optante")), raw.get("data_opcao"), raw.get("data_exclusao")
+    if isinstance(raw, str):
+        return raw.strip().upper() in ("SIM", "S", "TRUE", "1"), None, None
+    return False, None, None
+
 async def _brasil_api(session: aiohttp.ClientSession, cnpj: str) -> dict | None:
     url = f"https://brasilapi.com.br/api/cnpj/v1/{cnpj}"
+    hdrs = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
     try:
-        async with session.get(url, timeout=aiohttp.ClientTimeout(total=18)) as r:
+        async with session.get(url, headers=hdrs, timeout=aiohttp.ClientTimeout(total=18)) as r:
             if r.status == 200:
                 return await r.json(content_type=None)
     except Exception:
@@ -144,29 +153,64 @@ async def _receita_ws(session: aiohttp.ClientSession, cnpj: str) -> dict | None:
         pass
     return None
 
+async def _cnpj_ws(session: aiohttp.ClientSession, cnpj: str) -> dict | None:
+    """Terceiro fallback: publica.cnpj.ws"""
+    url = f"https://publica.cnpj.ws/cnpj/{cnpj}"
+    hdrs = {"User-Agent": "Mozilla/5.0"}
+    try:
+        async with session.get(url, headers=hdrs, timeout=aiohttp.ClientTimeout(total=15)) as r:
+            if r.status == 200:
+                return await r.json(content_type=None)
+    except Exception:
+        pass
+    return None
+
 async def _consultar(session: aiohttp.ClientSession, cnpj: str) -> dict | None:
+    # ── BrasilAPI ──
     d = await _brasil_api(session, cnpj)
     if d:
-        sim = d.get("simples") or {}
-        mei = d.get("mei") or {}
+        opt, ent, exc = _extrair_simples(d.get("simples"))
+        opt_m, _, _  = _extrair_simples(d.get("mei"))
         return {
-            "razao_social":        d.get("razao_social", ""),
-            "optante_simples":     bool(sim.get("optante")),
-            "data_opcao_simples":  sim.get("data_opcao"),
-            "data_exclusao_simples": sim.get("data_exclusao"),
-            "optante_mei":         bool(mei.get("optante")),
+            "razao_social":          d.get("razao_social", ""),
+            "optante_simples":       opt,
+            "data_opcao_simples":    ent,
+            "data_exclusao_simples": exc,
+            "optante_mei":           opt_m,
             "fonte": "BrasilAPI",
         }
+
+    # ── ReceitaWS ──
     d = await _receita_ws(session, cnpj)
     if d:
+        opt, ent, exc = _extrair_simples(d.get("simples"))
+        opt_m, _, _  = _extrair_simples(d.get("mei"))
+        # ReceitaWS às vezes traz datas no nível raiz como fallback
+        if not ent: ent = d.get("data_opcao_pelo_simples")
+        if not exc: exc = d.get("data_exclusao_do_simples")
         return {
-            "razao_social":        d.get("nome", ""),
-            "optante_simples":     d.get("simples", "Não") == "Sim",
-            "data_opcao_simples":  d.get("data_opcao_pelo_simples"),
-            "data_exclusao_simples": d.get("data_exclusao_do_simples"),
-            "optante_mei":         d.get("mei", "Não") == "Sim",
+            "razao_social":          d.get("nome", ""),
+            "optante_simples":       opt,
+            "data_opcao_simples":    ent,
+            "data_exclusao_simples": exc,
+            "optante_mei":           opt_m,
             "fonte": "ReceitaWS",
         }
+
+    # ── publica.cnpj.ws ──
+    d = await _cnpj_ws(session, cnpj)
+    if d:
+        sim = d.get("simples_nacional") or d.get("simples") or {}
+        opt, ent, exc = _extrair_simples(sim)
+        return {
+            "razao_social":          d.get("razao_social", ""),
+            "optante_simples":       opt,
+            "data_opcao_simples":    ent,
+            "data_exclusao_simples": exc,
+            "optante_mei":           False,
+            "fonte": "cnpj.ws",
+        }
+
     return None
 
 # ── Processing ────────────────────────────────────────────────────────────────
