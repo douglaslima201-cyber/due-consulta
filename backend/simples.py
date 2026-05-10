@@ -130,47 +130,60 @@ def _extrair_simples(raw) -> tuple[bool, str | None, str | None]:
         return raw.strip().upper() in ("SIM", "S", "TRUE", "1"), None, None
     return False, None, None
 
+_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36"
+
+async def _get_json(session: aiohttp.ClientSession, url: str, tentativas: int = 3) -> tuple[int, dict | None]:
+    """GET com retry automático em 429/503. Retorna (status, dados)."""
+    for t in range(tentativas):
+        try:
+            async with session.get(url, headers={"User-Agent": _UA},
+                                   timeout=aiohttp.ClientTimeout(total=20)) as r:
+                if r.status == 200:
+                    return 200, await r.json(content_type=None)
+                if r.status in (429, 503):
+                    wait = 22 * (t + 1)   # 22s, 44s, 66s
+                    await asyncio.sleep(wait)
+                    continue
+                return r.status, None
+        except asyncio.TimeoutError:
+            await asyncio.sleep(3)
+        except Exception:
+            break
+    return 0, None
+
 async def _brasil_api(session: aiohttp.ClientSession, cnpj: str) -> dict | None:
-    url = f"https://brasilapi.com.br/api/cnpj/v1/{cnpj}"
-    hdrs = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
-    try:
-        async with session.get(url, headers=hdrs, timeout=aiohttp.ClientTimeout(total=18)) as r:
-            if r.status == 200:
-                return await r.json(content_type=None)
-    except Exception:
-        pass
-    return None
+    _, d = await _get_json(session, f"https://brasilapi.com.br/api/cnpj/v1/{cnpj}")
+    return d
 
 async def _receita_ws(session: aiohttp.ClientSession, cnpj: str) -> dict | None:
-    url = f"https://www.receitaws.com.br/v1/cnpj/{cnpj}"
-    try:
-        async with session.get(url, timeout=aiohttp.ClientTimeout(total=15)) as r:
-            if r.status == 200:
-                d = await r.json(content_type=None)
-                if d.get("status") != "ERROR":
-                    return d
-    except Exception:
-        pass
+    _, d = await _get_json(session, f"https://www.receitaws.com.br/v1/cnpj/{cnpj}")
+    if d and d.get("status") != "ERROR":
+        return d
     return None
 
 async def _cnpj_ws(session: aiohttp.ClientSession, cnpj: str) -> dict | None:
-    """Terceiro fallback: publica.cnpj.ws"""
-    url = f"https://publica.cnpj.ws/cnpj/{cnpj}"
-    hdrs = {"User-Agent": "Mozilla/5.0"}
-    try:
-        async with session.get(url, headers=hdrs, timeout=aiohttp.ClientTimeout(total=15)) as r:
-            if r.status == 200:
-                return await r.json(content_type=None)
-    except Exception:
-        pass
-    return None
+    _, d = await _get_json(session, f"https://publica.cnpj.ws/cnpj/{cnpj}")
+    return d
 
 async def _consultar(session: aiohttp.ClientSession, cnpj: str) -> dict | None:
     # ── BrasilAPI ──
     d = await _brasil_api(session, cnpj)
     if d:
-        opt, ent, exc = _extrair_simples(d.get("simples"))
-        opt_m, _, _  = _extrair_simples(d.get("mei"))
+        # Nova estrutura: simples=null, dados no nível raiz
+        sim = d.get("simples")
+        if isinstance(sim, dict) and sim:
+            opt, ent, exc = _extrair_simples(sim)
+        else:
+            opt = bool(d.get("opcao_pelo_simples"))
+            ent = d.get("data_opcao_pelo_simples")
+            exc = d.get("data_exclusao_do_simples")
+
+        mei = d.get("mei")
+        if isinstance(mei, dict) and mei:
+            opt_m, _, _ = _extrair_simples(mei)
+        else:
+            opt_m = bool(d.get("opcao_pelo_mei"))
+
         return {
             "razao_social":          d.get("razao_social", ""),
             "optante_simples":       opt,
@@ -183,11 +196,18 @@ async def _consultar(session: aiohttp.ClientSession, cnpj: str) -> dict | None:
     # ── ReceitaWS ──
     d = await _receita_ws(session, cnpj)
     if d:
-        opt, ent, exc = _extrair_simples(d.get("simples"))
-        opt_m, _, _  = _extrair_simples(d.get("mei"))
-        # ReceitaWS às vezes traz datas no nível raiz como fallback
-        if not ent: ent = d.get("data_opcao_pelo_simples")
-        if not exc: exc = d.get("data_exclusao_do_simples")
+        sim = d.get("simples")
+        if isinstance(sim, dict) and sim:
+            opt, ent, exc = _extrair_simples(sim)
+        else:
+            opt = str(sim or "").strip().upper() in ("SIM", "S", "TRUE")
+            ent = d.get("data_opcao_pelo_simples")
+            exc = d.get("data_exclusao_do_simples")
+
+        mei = d.get("mei")
+        opt_m = (isinstance(mei, dict) and bool(mei.get("optante"))) or \
+                str(mei or "").strip().upper() in ("SIM", "S", "TRUE")
+
         return {
             "razao_social":          d.get("nome", ""),
             "optante_simples":       opt,
@@ -220,17 +240,16 @@ async def _processar_job(job_id: str, cnpjs: list[str]):
     _log(job_id, f"▶ Iniciando — {len(cnpjs)} CNPJs")
 
     resultados = []
-    conn = aiohttp.TCPConnector(limit=4)
-    headers = {"User-Agent": "Mozilla/5.0 (compatible; SimpesNacionalConsulta/1.0)"}
+    conn = aiohttp.TCPConnector(limit=2)
 
-    async with aiohttp.ClientSession(connector=conn, headers=headers) as session:
+    async with aiohttp.ClientSession(connector=conn) as session:
         for i, cnpj in enumerate(cnpjs):
             try:
-                if i and i % 5 == 0:
-                    await asyncio.sleep(1.2)
-
                 _log(job_id, f"[{i+1}/{len(cnpjs)}] {_fmt(cnpj)}")
                 info = await _consultar(session, cnpj)
+
+                # Delay fixo entre requisições para evitar rate limit
+                await asyncio.sleep(0.8)
 
                 if info:
                     entrada  = _parse_date(info.get("data_opcao_simples"))

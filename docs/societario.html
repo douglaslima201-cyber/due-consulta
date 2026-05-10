@@ -826,6 +826,9 @@ function renderResultados(data) {
   document.getElementById('badgeAlertas').textContent = data.alertas.length;
 
   chartsRendered = false;
+  filiaisCarregadas = false;
+  filiaisData = [];
+  document.getElementById('badgeFiliais').textContent = '—';
   renderGrafo(data);
   renderEmpresasTable(data);
   renderSociosTable(data);
@@ -842,6 +845,7 @@ function switchTab(tab) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
   document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id === 'tab-'+tab));
   if (tab === 'dashboard') renderCharts();
+  if (tab === 'filiais') carregarFiliais();
 }
 
 // ─── VIS.JS GRAPH ─────────────────────────────────────────────
@@ -1456,6 +1460,87 @@ function _buildVisNode(n, cnpjRaiz) {
     borderWidth: isRoot?3:(isRF?2:2),
     borderDashes: isRF ? [4,2] : false,
   };
+}
+
+// ─── FILIAIS ─────────────────────────────────────────────────
+let filiaisData = [];
+let filiaisCarregadas = false;
+
+async function carregarFiliais() {
+  if (!currentData || filiaisCarregadas) return;
+  filiaisCarregadas = true;
+
+  document.getElementById('filiaisLoading').style.display = 'block';
+  document.getElementById('filiaisEmpty').style.display = 'none';
+  document.getElementById('filiaisContent').style.display = 'none';
+
+  const cnpj = currentData.cnpj_raiz;
+  try {
+    const r = await fetch(`${API}/filiais/${cnpj}?max=300`);
+    const d = await r.json();
+    if (d.error) { showToast('❌ ' + d.error); filiaisCarregadas = false; return; }
+
+    filiaisData = d.filiais || [];
+    document.getElementById('badgeFiliais').textContent = filiaisData.length;
+
+    document.getElementById('filiaisLoading').style.display = 'none';
+
+    if (!filiaisData.length) {
+      document.getElementById('filiaisEmpty').style.display = 'block';
+      return;
+    }
+
+    document.getElementById('filiaisContent').style.display = 'block';
+    document.getElementById('filiaisResumo').textContent =
+      `${d.total_filiais} filial(is) · ${d.total_estabelecimentos} estabelecimento(s) no total`;
+
+    // Popular filtro UF
+    const ufs = [...new Set(filiaisData.map(f => f.uf).filter(Boolean))].sort();
+    const selUF = document.getElementById('filiaisFilterUF');
+    selUF.innerHTML = '<option value="">Todos os estados</option>' + ufs.map(u => `<option value="${u}">${u}</option>`).join('');
+
+    renderFiliaisTable(filiaisData);
+  } catch(e) {
+    showToast('❌ Erro ao carregar filiais: ' + e.message);
+    filiaisCarregadas = false;
+    document.getElementById('filiaisLoading').style.display = 'none';
+  }
+}
+
+function filtrarFiliais() {
+  const q   = (document.getElementById('filiaisSearch').value || '').toLowerCase();
+  const sit = (document.getElementById('filiaisFilterSit').value || '').toUpperCase();
+  const uf  = document.getElementById('filiaisFilterUF').value;
+  const filtradas = filiaisData.filter(f => {
+    if (sit && !(f.situacao||'').toUpperCase().includes(sit)) return false;
+    if (uf  && f.uf !== uf) return false;
+    if (q && !(f.municipio||'').toLowerCase().includes(q) &&
+             !(f.cnpj_fmt||'').includes(q) &&
+             !(f.nome_fantasia||'').toLowerCase().includes(q)) return false;
+    return true;
+  });
+  renderFiliaisTable(filtradas);
+}
+
+function renderFiliaisTable(lista) {
+  document.getElementById('filiaisBody').innerHTML = lista.map(f => {
+    const sc = sitClass(f.situacao);
+    return `<tr>
+      <td style="font-family:var(--mono);font-size:11px;white-space:nowrap">
+        ${f.cnpj_fmt||'—'}<br>
+        <span style="color:var(--g4);font-size:10px">ordem: ${f.cnpj_ordem||'?'}</span>
+      </td>
+      <td style="font-size:12px">${f.nome_fantasia||'<span style="color:var(--g4)">—</span>'}</td>
+      <td><span class="status-pill sp-${sc}">${f.situacao||'—'}</span></td>
+      <td>
+        <div style="font-size:11px;max-width:180px;line-height:1.4">${f.cnae_desc||'—'}</div>
+        <div style="font-size:10px;color:var(--g4);font-family:var(--mono)">${f.cnae_cod||''}</div>
+      </td>
+      <td style="font-size:11px;color:var(--g2);max-width:200px">${f.logradouro||'—'}</td>
+      <td style="font-family:var(--mono);font-size:11px;white-space:nowrap">${f.municipio||'—'}${f.uf?' / '+f.uf:''}</td>
+      <td style="font-family:var(--mono);font-size:11px;white-space:nowrap">${fmtDate(f.abertura)}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--g3)">Nenhuma filial encontrada com os filtros aplicados</td></tr>';
 }
 
 // ─── STATUS DO BACKEND ────────────────────────────────────────
