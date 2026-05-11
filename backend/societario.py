@@ -88,12 +88,13 @@ def _limpar(cnpj: str) -> str:
 
 def _cnpj_dv(base12: str) -> str:
     """Calcula os dois dígitos verificadores de um CNPJ de 12 dígitos."""
-    def dv(s, n):
-        pesos = list(range(n, 1, -1)) + list(range(9, 1, -1))
-        r = sum(int(c) * p for c, p in zip(s, pesos)) % 11
+    _W1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
+    _W2 = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
+    def dv(digits, weights):
+        r = sum(int(d) * w for d, w in zip(digits, weights)) % 11
         return "0" if r < 2 else str(11 - r)
-    d1 = dv(base12, 13)
-    return d1 + dv(base12 + d1, 14)
+    d1 = dv(base12, _W1)
+    return d1 + dv(base12 + d1, _W2)
 
 def _basico_to_cnpj_matriz(basico: str) -> str:
     """cnpj_basico (8 dígitos) → CNPJ completo da matriz (sufixo 0001 + DV)."""

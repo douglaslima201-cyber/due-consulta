@@ -88,7 +88,10 @@
       "Bash(curl -s \"http://localhost:5000/api/societario/expandir/11455829000103\")",
       "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('node:', d.get\\('node',{}\\).get\\('razao_social'\\)\\); print\\('qsa nodes:', len\\(d.get\\('nodes',[]\\)\\), 'edges:', len\\(d.get\\('edges',[]\\)\\)\\)\")",
       "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('status-rf OK, organico:', d.get\\('organico'\\), 'registros:', d.get\\('total_registros'\\)\\)\")",
-      "Bash(curl -s http://localhost:5000/api/societario/status-rf)"
+      "Bash(curl -s http://localhost:5000/api/societario/status-rf)",
+      "Bash(curl -s \"http://localhost:5000/api/societario/filiais/11455829000103\")",
+      "Bash(curl -s \"http://localhost:5000/api/societario/filiais/60701190000104?max=20\")",
+      "Bash(curl -s \"http://localhost:5000/api/societario/filiais/02387241000160?max=15\")"
     ]
   },
   "hooks": {

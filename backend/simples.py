@@ -132,8 +132,8 @@ def _extrair_simples(raw) -> tuple[bool, str | None, str | None]:
 
 _UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36"
 
-async def _get_json(session: aiohttp.ClientSession, url: str, tentativas: int = 3) -> tuple[int, dict | None]:
-    """GET com retry automático em 429/503. Retorna (status, dados)."""
+async def _get_json(session: aiohttp.ClientSession, url: str, tentativas: int = 2) -> tuple[int, dict | None]:
+    """GET com retry em 429/503. Retorna (status, dados)."""
     for t in range(tentativas):
         try:
             async with session.get(url, headers={"User-Agent": _UA},
@@ -141,12 +141,11 @@ async def _get_json(session: aiohttp.ClientSession, url: str, tentativas: int = 
                 if r.status == 200:
                     return 200, await r.json(content_type=None)
                 if r.status in (429, 503):
-                    wait = 22 * (t + 1)   # 22s, 44s, 66s
-                    await asyncio.sleep(wait)
+                    await asyncio.sleep(65 if t == 0 else 120)
                     continue
                 return r.status, None
         except asyncio.TimeoutError:
-            await asyncio.sleep(3)
+            await asyncio.sleep(5)
         except Exception:
             break
     return 0, None
@@ -164,6 +163,17 @@ async def _receita_ws(session: aiohttp.ClientSession, cnpj: str) -> dict | None:
 async def _cnpj_ws(session: aiohttp.ClientSession, cnpj: str) -> dict | None:
     _, d = await _get_json(session, f"https://publica.cnpj.ws/cnpj/{cnpj}")
     return d
+
+def _parse_cnpj_ws_simples(d: dict) -> tuple[bool, str | None, str | None]:
+    """cnpj.ws retorna 'simples' como bloco com estrutura própria."""
+    bloco = d.get("simples") or {}
+    if not bloco:
+        return False, None, None
+    # Dentro do bloco: {'simples':'Sim', 'data_opcao_simples':'2021-08-27', ...}
+    optante = str(bloco.get("simples", "")).strip().upper() in ("SIM", "S", "TRUE", "1")
+    entrada = bloco.get("data_opcao_simples")
+    exclusao = bloco.get("data_exclusao_simples")
+    return optante, entrada, exclusao
 
 async def _consultar(session: aiohttp.ClientSession, cnpj: str) -> dict | None:
     # ── BrasilAPI ──
