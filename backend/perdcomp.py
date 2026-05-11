@@ -913,96 +913,60 @@ def ecac_script_js():
 (async function(){
   const API='http://localhost:5000/api/perdcomp';
 
-  const getBotoes=()=>{
-    // Estratégia 1: Angular app — ícone <i class="icon-print"> dentro de elemento clicável
-    const icons=[...document.querySelectorAll('i.icon-print,i[class*="icon-print"]')];
-    if(icons.length>0){
-      console.log('[Analyzer] Ícones icon-print encontrados: '+icons.length);
-      return icons.map(i=>i.parentElement||i);
-    }
-    // Estratégia 2: coluna Imprimir pelo cabeçalho de tabela (HTML clássico)
-    const ths=[...document.querySelectorAll('th,td.headerRow')];
-    const thImp=ths.find(th=>['imprimir','print'].some(k=>th.textContent.trim().toLowerCase().startsWith(k)));
-    if(thImp){
-      const idx=thImp.cellIndex,tab=thImp.closest('table');
-      if(tab&&idx>=0){
-        const b=[];
-        [...tab.querySelectorAll('tr td:nth-child('+(idx+1)+')')].forEach(td=>{
-          const el=td.querySelector('a,button,img,input[type="button"]');
-          if(el)b.push(el);
-        });
-        if(b.length>0){console.log('[Analyzer] Coluna Imprimir (tabela): '+b.length);return b;}
-      }
-    }
-    // Estratégia 3: busca genérica por atributos
-    const kw=['imprimir','print','impressao','printer'];
-    return [...document.querySelectorAll('img,button,a,i,span,input[type="button"]')].filter(el=>{
-      const s=[el.className,el.id,el.title,el.alt||'',el.src||'',
-        el.getAttribute('ng-click')||'',el.getAttribute('aria-label')||''].join(' ').toLowerCase();
-      return kw.some(k=>s.includes(k));
-    });
+  // API descoberta: GET rest/api/documento-enviado/copia/{numero_sem_formatacao}
+  // Extrai números da tabela e busca direto — sem precisar clicar em nada
+  const BASE=window.location.href.split('#')[0].replace(/\/$/,'');
+  const API_DOC=BASE+'/rest/api/documento-enviado/copia/';
+
+  const getNumeros=()=>{
+    const pat=/\d{5}[.\s]\d{5}[.\s]\d{6}[.\s]\d[.\s]\d+[.\s]\d{2}[-]\d{4}/g;
+    const found=new Set();
+    let m;
+    while((m=pat.exec(document.body.innerText))!==null) found.add(m[0]);
+    return[...found];
   };
 
-  const getProxPag=()=>{
-    const els=[...document.querySelectorAll('a,button,span,li,td')];
-    for(const el of els){
-      if(el.offsetParent===null) continue;
-      const txt=el.textContent.trim();
-      const tit=(el.title||'').toLowerCase();
-      const cls=(el.className||'').toLowerCase();
-      const isNext=txt==='>'||txt==='>>'||txt==='»'||
-        tit.includes('próxima')||tit.includes('proxima')||tit.includes('next')||
-        txt.toLowerCase()==='próxima'||txt.toLowerCase()==='próximo'||
-        cls.includes('proximo')||cls.includes('next');
-      const disabled=el.disabled||cls.includes('disabled')||el.getAttribute('disabled')!==null||
-        (el.closest&&el.closest('.disabled'));
-      if(isNext&&!disabled) return el;
-    }
-    return null;
-  };
+  const getProxPag=()=>[...document.querySelectorAll('a,button,span,li')].find(el=>{
+    const t=el.textContent.trim(),cls=(el.className||'').toLowerCase();
+    return(t==='>'||t==='»'||t.toLowerCase()==='próxima'||cls.includes('next')||cls.includes('proximo'))&&
+      !el.disabled&&!cls.includes('disabled');
+  });
 
-  // Chrome bloqueia fetch de HTTPS para localhost (PNA policy)
-  // Solução: acumular em memória e gerar arquivo JSON para importar
   const capturas=[];
   let total=0,pag=1;
-  const origOpen=window.open;
+  const processadas=new Set();
 
   while(true){
-    const botoes=getBotoes();
-    if(!botoes.length&&pag===1){
-      alert('Nenhum botão de impressão encontrado.\nVá para Documentos Entregues, filtre o período e tente novamente.');
+    const numeros=getNumeros();
+    if(!numeros.length&&pag===1){
+      alert('Nenhum número de PER/DCOMP encontrado.\nVá para Documentos Entregues, filtre o período e tente novamente.');
       return;
     }
-    console.log('[Analyzer] Página '+pag+': '+botoes.length+' declaração(ões)');
+    console.log('[Analyzer] Pág.'+pag+': '+numeros.length+' documento(s)');
 
-    for(let i=0;i<botoes.length;i++){
-      console.log('[Analyzer] Capturando '+(i+1)+'/'+botoes.length+' (pág.'+pag+')...');
-      const jan=[];
-      window.open=function(...a){const w=origOpen.apply(window,a);if(w)jan.push(w);return w;};
-      botoes[i].click();
-      await new Promise(r=>setTimeout(r,3500));
-      window.open=origOpen;
-      if(!jan.length){console.warn('[Analyzer] Sem janela no doc '+(i+1));continue;}
-      const jn=jan[0];
-      for(let t=0;t<25;t++){await new Promise(r=>setTimeout(r,200));if(jn.document?.readyState==='complete')break;}
+    for(const num of numeros){
+      if(processadas.has(num)) continue;
+      processadas.add(num);
+      const numLimpo=num.replace(/\D/g,'');
+      const url=API_DOC+numLimpo;
+      console.log('[Analyzer] Buscando: '+num);
       try{
-        capturas.push({html:jn.document.documentElement.outerHTML,indice:total});
-        total++;console.log('[Analyzer] ✓ Doc '+total+' capturado');
-      }catch(ex){console.error('[Analyzer] Erro:',ex);}
-      try{jn.close();}catch(e){}
-      await new Promise(r=>setTimeout(r,500));
+        const resp=await fetch(url,{credentials:'include'});
+        if(!resp.ok){console.warn('[Analyzer] HTTP '+resp.status+' para '+num);continue;}
+        const html=await resp.text();
+        capturas.push({html,indice:total,numero:num});
+        total++;console.log('[Analyzer] ✓ Doc '+total+' ('+num+')');
+      }catch(ex){console.error('[Analyzer] Erro:',ex.message);}
+      await new Promise(r=>setTimeout(r,300));
     }
 
     const prox=getProxPag();
     if(!prox){console.log('[Analyzer] Última página.');break;}
-    const fp=getBotoes().length+'|'+document.body.innerText.slice(0,300);
+    const fp=document.body.innerText.slice(0,300);
     prox.click();
     let mudou=false;
-    for(let t=0;t<50;t++){
-      await new Promise(r=>setTimeout(r,200));
-      if((getBotoes().length+'|'+document.body.innerText.slice(0,300))!==fp){mudou=true;break;}
-    }
-    if(!mudou){console.log('[Analyzer] Última página (sem mudança).');break;}
+    for(let t=0;t<50;t++){await new Promise(r=>setTimeout(r,200));if(document.body.innerText.slice(0,300)!==fp){mudou=true;break;}}
+    if(!mudou){console.log('[Analyzer] Última página.');break;}
     pag++;await new Promise(r=>setTimeout(r,1000));
   }
 
