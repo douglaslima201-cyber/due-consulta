@@ -227,11 +227,10 @@ async def _consultar(session: aiohttp.ClientSession, cnpj: str) -> dict | None:
             "fonte": "ReceitaWS",
         }
 
-    # ── publica.cnpj.ws ──
+        # -- publica.cnpj.ws --
     d = await _cnpj_ws(session, cnpj)
     if d:
-        sim = d.get("simples_nacional") or d.get("simples") or {}
-        opt, ent, exc = _extrair_simples(sim)
+        opt, ent, exc = _parse_cnpj_ws_simples(d)
         return {
             "razao_social":          d.get("razao_social", ""),
             "optante_simples":       opt,
@@ -259,7 +258,7 @@ async def _processar_job(job_id: str, cnpjs: list[str]):
                 info = await _consultar(session, cnpj)
 
                 # Delay fixo entre requisições para evitar rate limit
-                await asyncio.sleep(0.8)
+                await asyncio.sleep(1.5)
 
                 if info:
                     entrada  = _parse_date(info.get("data_opcao_simples"))
