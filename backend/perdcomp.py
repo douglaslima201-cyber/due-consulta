@@ -988,8 +988,11 @@ def ecac_script_js():
 
 @bp.route('/api/perdcomp/ecac/importar-json', methods=['POST'])
 def ecac_importar_json():
-    """Importa arquivo JSON gerado pelo script do console."""
-    import html as html_mod, re as _re, json as _json
+    """Importa JSON gerado pelo script do console.
+    Suporta pdf_b64 (PDF binário em base64 — formato atual) e html (legado)."""
+    import base64 as _b64, json as _json
+    import html as html_mod, re as _re
+
     f = request.files.get('file')
     if not f:
         return jsonify({"error": "Nenhum arquivo enviado"}), 400
@@ -998,17 +1001,43 @@ def ecac_importar_json():
     except Exception as e:
         return jsonify({"error": f"JSON inválido: {e}"}), 400
 
-    _ecac_capturas.clear()
-    for item in data:
-        html_raw = item.get('html', '')
-        indice   = item.get('indice', len(_ecac_capturas))
-        texto = _re.sub(r'<[^>]+>', ' ', html_raw)
-        texto = html_mod.unescape(texto)
-        texto = _re.sub(r'\s+', ' ', texto).strip()
-        nome  = f"ecac_captura_{indice+1:03d}.html"
-        _ecac_capturas.append(extrair_registro(texto, nome))
+    if not isinstance(data, list) or not data:
+        return jsonify({"error": "JSON vazio ou formato inválido"}), 400
 
-    return jsonify({"ok": True, "total": len(_ecac_capturas)})
+    _ecac_capturas.clear()
+    erros = []
+
+    for item in data:
+        numero = item.get('numero', '')
+        indice = item.get('indice', len(_ecac_capturas))
+        nome   = f"ecac_{re.sub(r'[^0-9]', '', numero) or str(indice+1)}.pdf"
+
+        # ── Formato atual: PDF em base64 ──────────────────────────────────
+        pdf_b64 = item.get('pdf_b64') or item.get('pdf_base64')
+        if pdf_b64:
+            try:
+                pdf_bytes = _b64.b64decode(pdf_b64)
+                texto = extrair_texto(pdf_bytes)
+                if texto.strip() and not texto.startswith("ERRO"):
+                    _ecac_capturas.append(extrair_registro(texto, nome))
+                    continue
+                else:
+                    erros.append({"arquivo": nome, "erro": "PDF sem texto extraível"})
+                    continue
+            except Exception as exc:
+                erros.append({"arquivo": nome, "erro": str(exc)[:200]})
+                continue
+
+        # ── Formato legado: HTML ──────────────────────────────────────────
+        html_raw = item.get('html', '')
+        if html_raw:
+            texto = _re.sub(r'<[^>]+>', ' ', html_raw)
+            texto = html_mod.unescape(texto)
+            texto = _re.sub(r'\s+', ' ', texto).strip()
+            if texto:
+                _ecac_capturas.append(extrair_registro(texto, nome))
+
+    return jsonify({"ok": True, "total": len(_ecac_capturas), "erros": erros})
 
 @bp.route('/api/perdcomp/ecac/abrir-pasta')
 def ecac_abrir_pasta():
