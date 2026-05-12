@@ -387,48 +387,88 @@ def detectar_tributo(texto: str) -> str | None:
 _VAL = r'([\d]{1,3}(?:\.[\d]{3})*,\d{2})'
 
 def _val(texto: str, labels: list) -> float:
+    """Busca valor monetário após um label — suporta múltiplas linhas e espaços."""
     for label in labels:
-        m = re.search(label + r'[\s\t:]*' + _VAL, texto, re.IGNORECASE)
+        m = re.search(label + r'[\s\t\n:R$]*' + _VAL, texto, re.IGNORECASE | re.MULTILINE)
         if m:
             return parse_valor(m.group(1))
     return 0.0
 
+def _normalizar_competencia(comp: str | None) -> str:
+    """Normaliza competência para MM/AAAA para comparação uniforme.
+    '3º Trimestre de 2025' → '09/2025' (último mês do trimestre)."""
+    if not comp:
+        return ""
+    m = re.search(r'(\d)[°º\s]*\s*[Tt]rimestre\s+de\s+(\d{4})', comp)
+    if m:
+        tri, ano = int(m.group(1)), m.group(2)
+        return {1: f"03/{ano}", 2: f"06/{ano}", 3: f"09/{ano}", 4: f"12/{ano}"}.get(tri, comp)
+    m = re.search(r'(\d{2})/(\d{4})', comp)
+    if m:
+        return comp
+    return comp
+
+def _extrair_competencia_texto(texto: str) -> str | None:
+    """Extrai competência reconhecendo formato trimestral e mensal."""
+    # Formato trimestral: "3º Trimestre de 2025"
+    m = re.search(r'(\d[°º]?\s*[Tt]rimestre\s+de\s+\d{4})', texto)
+    if m:
+        return m.group(1).strip()
+    # Formato mensal precedido de label
+    return primeiro_match(texto, [
+        r'Per[íi]odo de Apura[çc][aã]o[:\s]+(\d{2}/\d{4})',
+        r'Compet[eê]ncia[:\s]+(\d{2}/\d{4})',
+        r'Per[íi]odo[:\s]+(\d{2}/\d{4})',
+    ])
+
 def extrair_referencia_per(texto: str) -> str | None:
     """Extrai o número do PER referenciado dentro de uma DCOMP."""
+    # Formato longo Receita Federal: XXXXX.XXXXX.XXXXXX.X.X.XX-XXXX
+    pat_num = r'(\d{5}\.\d{5}\.\d{6}\.\d+\.\d+\.\d{2}-\d{4})'
     return primeiro_match(texto, [
-        r'(?:N[úu]mero do )?PER[:\s]+(\d{5}\.\d{6}/\d{4}-\d{2})',
-        r'Pedido de Ressarcimento[:\s]+(\d{5}\.\d{6}/\d{4}-\d{2})',
-        r'Processo do Cr[eé]dito[:\s]+(\d{5}\.\d{6}/\d{4}-\d{2})',
-        r'N[úu]mero do Cr[eé]dito[:\s]+(\d{5}\.\d{6}/\d{4}-\d{2})',
-        r'Cr[eé]dito[^\n]{0,80}N[úu]mero[:\s]+(\d{5}\.\d{6}/\d{4}-\d{2})',
+        r'N[úu]mero do Processo[:\s]+' + pat_num,
+        r'(?:N[úu]mero do )?PER[:\s]+' + pat_num,
+        r'Pedido de Ressarcimento[:\s]+' + pat_num,
+        r'Processo do Cr[eé]dito[:\s]+' + pat_num,
+        r'N[úu]mero do Cr[eé]dito[:\s]+' + pat_num,
+        r'Cr[eé]dito[^\n]{0,80}N[úu]mero[:\s]+' + pat_num,
     ])
 
 def extrair_competencia_credito(texto: str) -> str | None:
-    """Extrai a competência do CRÉDITO dentro de uma DCOMP (pode ser diferente do débito)."""
-    return primeiro_match(texto, [
-        r'Per[íi]odo de Apura[çc][aã]o do Cr[eé]dito[:\s]+(\d{2}/\d{4})',
-        r'Compet[eê]ncia do Cr[eé]dito[:\s]+(\d{2}/\d{4})',
-        r'Per[íi]odo do Cr[eé]dito[:\s]+(\d{2}/\d{4})',
-        r'Per[íi]odo de Apura[çc][aã]o[:\s]+(\d{2}/\d{4})',
-        r'Per[íi]odo[:\s]+(\d{2}/\d{4})',
-        r'Compet[eê]ncia[:\s]+(\d{2}/\d{4})',
-        r'(\d{2}/\d{4})',
-    ])
+    """Extrai competência do crédito (para DCOMPs)."""
+    m = re.search(r'Per[íi]odo de Apura[çc][aã]o do Cr[eé]dito[:\s]+([^\n]+)', texto, re.IGNORECASE)
+    if m:
+        val = m.group(1).strip()
+        tri = re.search(r'\d[°º]?\s*[Tt]rimestre\s+de\s+\d{4}', val)
+        if tri:
+            return tri.group(0)
+        data = re.search(r'\d{2}/\d{4}', val)
+        if data:
+            return data.group(0)
+    return _extrair_competencia_texto(texto)
 
 def extrair_dcomp(texto: str, tl: str) -> dict:
     valor_credito = _val(texto, [
-        r'Valor do Cr[eé]dito Dispon[íi]vel', r'Valor do Cr[eé]dito Original',
-        r'Valor Total do Cr[eé]dito', r'Valor do Cr[eé]dito',
+        r'Valor do Cr[eé]dito Dispon[íi]vel',
+        r'Valor do Cr[eé]dito Original',
+        r'Valor Total do Cr[eé]dito',
         r'Cr[eé]dito Dispon[íi]vel',
+        r'Valor do Cr[eé]dito',
+        r'Total do Cr[eé]dito',
     ])
     valor_compensado = _val(texto, [
-        r'Valor Compensado', r'Valor da Compensa[çc][aã]o',
-        r'Valor do D[eé]bito Compensado', r'Valor Objeto da Compensa[çc][aã]o',
+        r'Valor da Declara[çc][aã]o de Compensa[çc][aã]o',
+        r'Valor Compensado',
+        r'Valor da Compensa[çc][aã]o',
+        r'Valor do D[eé]bito Compensado',
+        r'Valor Objeto da Compensa[çc][aã]o',
         r'Valor do D[eé]bito',
     ])
     saldo = _val(texto, [
-        r'Saldo do Cr[eé]dito ap[oó]s', r'Saldo Remanescente',
-        r'Saldo a Compensar', r'Saldo Dispon[íi]vel',
+        r'Saldo do Cr[eé]dito ap[oó]s',
+        r'Saldo Remanescente',
+        r'Saldo a Compensar',
+        r'Saldo Dispon[íi]vel',
     ])
     if valor_compensado == 0 and valor_credito > 0 and saldo > 0:
         valor_compensado = max(0.0, valor_credito - saldo)
@@ -442,12 +482,28 @@ def extrair_dcomp(texto: str, tl: str) -> dict:
     }
 
 def extrair_per_ressarcimento(texto: str, tl: str) -> dict:
+    # PIS/COFINS não-cumulativo: labels específicos do eCAC
     valor_credito = _val(texto, [
-        r'Valor do Ressarcimento', r'Valor Solicitado',
-        r'Valor do Cr[eé]dito a Ressarcir', r'Valor do Cr[eé]dito', r'Total do Cr[eé]dito',
+        r'Valor do Ressarcimento Requerido',
+        r'Valor do Ressarcimento',
+        r'Cr[eé]dito a Ressarcir',
+        r'Valor do Cr[eé]dito a Ressarcir',
+        r'Total do Cr[eé]dito do Per[íi]odo',
+        r'Cr[eé]dito do Per[íi]odo',
+        r'Valor do Cr[eé]dito Apurado',
+        r'Valor Apurado',
+        r'Valor Solicitado',
+        r'Valor do Cr[eé]dito',
+        r'Total do Cr[eé]dito',
     ])
-    valor_ressarcido = _val(texto, [r'Valor Ressarcido', r'Valor Pago', r'Valor Deferido'])
-    saldo = _val(texto, [r'Saldo Remanescente', r'Saldo a Ressarcir', r'Saldo Dispon[íi]vel'])
+    valor_ressarcido = _val(texto, [
+        r'Valor Ressarcido', r'Valor Pago', r'Valor Deferido',
+        r'Valor Creditado',
+    ])
+    saldo = _val(texto, [
+        r'Saldo Remanescente', r'Saldo a Ressarcir',
+        r'Saldo do Cr[eé]dito', r'Saldo Dispon[íi]vel',
+    ])
     if saldo == 0 and valor_credito > 0:
         saldo = max(0.0, valor_credito - valor_ressarcido)
     return {
@@ -476,11 +532,13 @@ def extrair_per_restituicao(texto: str, tl: str) -> dict:
 # ─── CAMPOS COMUNS ────────────────────────────────────────────────────────────
 
 def extrair_numero(texto: str) -> str | None:
+    # Formato eCAC: XXXXX.XXXXX.XXXXXX.X.X.XX-XXXX
+    pat = r'(\d{5}\.\d{5}\.\d{6}\.\d+\.\d+\.\d{2}-\d{4})'
     return primeiro_match(texto, [
-        r'N[úu]mero do Processo[:\s]+(\d{5}\.\d{6}/\d{4}-\d{2})',
-        r'Processo[:\s]+(\d{5}\.\d{6}/\d{4}-\d{2})',
-        r'N[úu]mero do PER/DCOMP[:\s]+([A-Z0-9\-\/\.]{5,40})',
-        r'N[úu]mero[:\s]+([A-Z0-9\-\/\.]{8,40})',
+        r'N[úu]mero do Processo[:\s]+' + pat,
+        r'Processo[:\s]+' + pat,
+        r'N[úu]mero[:\s]+' + pat,
+        pat,  # fallback: qualquer ocorrência do padrão
     ])
 
 def extrair_data_tx(texto: str) -> str | None:
@@ -512,19 +570,11 @@ def extrair_registro(texto: str, nome: str) -> dict:
     elif tipo == 'Ressarcimento':
         vals = extrair_per_ressarcimento(texto, tl)
         referencia_per = None
-        competencia = primeiro_match(texto, [
-            r'Per[íi]odo de Apura[çc][aã]o[:\s]+(\d{2}/\d{4})',
-            r'Compet[eê]ncia[:\s]+(\d{2}/\d{4})',
-            r'Per[íi]odo[:\s]+(\d{2}/\d{4})',
-            r'(\d{2}/\d{4})',
-        ])
+        competencia = _extrair_competencia_texto(texto)
     else:
         vals = extrair_per_restituicao(texto, tl)
         referencia_per = None
-        competencia = primeiro_match(texto, [
-            r'Per[íi]odo de Apura[çc][aã]o[:\s]+(\d{2}/\d{4})',
-            r'(\d{2}/\d{4})',
-        ])
+        competencia = _extrair_competencia_texto(texto)
 
     retificador = bool(re.search(r'retificador|retificadora', tl))
     numero_original = None
@@ -571,6 +621,13 @@ def vincular_pers_dcomps(registros: list) -> tuple[list, list]:
         chave = (p.get("tributo"), p.get("competencia"))
         per_por_chave.setdefault(chave, []).append(p)
 
+    # Reindexar usando competência NORMALIZADA como chave
+    per_por_chave_norm: dict[tuple, list] = {}
+    for (trib, comp), grupo in per_por_chave.items():
+        chave_norm = (trib, _normalizar_competencia(comp))
+        per_por_chave_norm.setdefault(chave_norm, []).extend(grupo)
+    per_por_chave = per_por_chave_norm
+
     per_por_numero: dict[str, dict] = {}   # numero normalizado → PER efetivo
     grupos_per: list[dict] = []
 
@@ -613,9 +670,9 @@ def vincular_pers_dcomps(registros: list) -> tuple[list, list]:
         if ref and ref in per_por_numero:
             vinculado_a = per_por_numero[ref]
 
-        # 2b. Por tributo + competência do crédito (mesmo crédito)
+        # 2b. Por tributo + competência normalizada (mesmo crédito)
         if not vinculado_a:
-            chave_dcomp = (dcomp.get("tributo"), dcomp.get("competencia"))
+            chave_dcomp = (dcomp.get("tributo"), _normalizar_competencia(dcomp.get("competencia")))
             for g in grupos_per:
                 if g["chave"] == chave_dcomp:
                     vinculado_a = g["per_efetivo"]
@@ -1173,6 +1230,26 @@ def ecac_analisar():
             "total_dcomps":sum(1 for r in registros if r["tipo"] == "Compensação"),
         }
     })
+
+@bp.route('/api/perdcomp/capturas-debug')
+def capturas_debug():
+    """Retorna o que foi extraído de cada declaração capturada — para diagnóstico."""
+    return jsonify([
+        {
+            "arquivo":    r["arquivo"],
+            "tipo":       r["tipo"],
+            "tributo":    r["tributo"],
+            "numero":     r["numero"],
+            "competencia": r["competencia"],
+            "valor_credito":     r["valor_credito"],
+            "valor_compensado":  r["valor_compensado"],
+            "valor_ressarcido":  r["valor_ressarcido"],
+            "saldo_remanescente":r["saldo_remanescente"],
+            "referencia_per":    r.get("referencia_per"),
+            "retificador":       r["retificador"],
+        }
+        for r in _ecac_capturas
+    ])
 
 @bp.route('/api/perdcomp/debug', methods=['POST'])
 def debug():
