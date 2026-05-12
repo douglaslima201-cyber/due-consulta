@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Passivos Tributários — Rumo Brasil</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#060D1A;--bg2:#0C1625;--bg3:#122035;--bg4:#1A2E48;--bg5:#243D5E;
+  --acc:#0D9488;--acc2:#14B8A6;--acc3:#0F766E;
+  --orange:#F97316;--red:#EF4444;--yellow:#F59E0B;--green:#22C55E;--blue:#3B82F6;
+  --white:#FFFFFF;--g1:#E8EDF5;--g2:#A8B8CC;--g3:#6B7D94;--g4:#3D5068;
+  --sw:240px;--th:60px;--r:8px;--r2:12px;--r3:16px;
+  --font:'Inter',sans-serif;--mono:'JetBrains Mono',monospace;
+}
+html{height:100%;}
+body{font-family:var(--font);background:var(--bg);color:var(--white);height:100%;overflow:hidden;}
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:rgba(13,148,136,.3);border-radius:2px;}
+
+/* LAYOUT */
+#app{display:flex;height:100vh;}
+#sidebar{width:var(--sw);flex-shrink:0;background:var(--bg2);border-right:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;overflow-y:auto;}
+#main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+#topbar{height:var(--th);flex-shrink:0;background:rgba(6,13,26,.95);backdrop-filter:blur(20px);border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:center;padding:0 24px;gap:12px;}
+#content{flex:1;overflow-y:auto;padding:24px;}
+
+/* SIDEBAR */
+.sb-logo{padding:18px 16px;border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:center;gap:10px;}
+.sb-logo-icon{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,var(--acc),var(--acc3));display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+.sb-logo-name{font-size:13px;font-weight:700;letter-spacing:-.01em;line-height:1.2;}
+.sb-logo-name small{display:block;font-size:10px;font-weight:400;color:var(--g3);font-family:var(--mono);}
+.sb-section{padding:14px 16px 4px;font-size:10px;font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--g4);}
+.sb-item{display:flex;align-items:center;gap:10px;padding:9px 12px;margin:1px 8px;border-radius:var(--r);font-size:13px;font-weight:500;color:var(--g2);cursor:pointer;transition:all .15s;text-decoration:none;border:none;background:none;width:calc(100% - 16px);text-align:left;}
+.sb-item:hover{background:rgba(255,255,255,.05);color:var(--white);}
+.sb-item.active{background:rgba(13,148,136,.12);color:var(--acc2);border:1px solid rgba(13,148,136,.2);}
+.sb-ic{font-size:15px;flex-shrink:0;width:20px;text-align:center;}
+.sb-spacer{flex:1;}
+.sb-bottom{padding:12px;border-top:1px solid rgba(255,255,255,.06);}
+.sb-back{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:var(--r);font-size:12px;color:var(--g3);cursor:pointer;transition:all .15s;text-decoration:none;}
+.sb-back:hover{color:var(--g2);background:rgba(255,255,255,.04);}
+
+/* TOPBAR */
+.tb-breadcrumb{font-size:13px;color:var(--g3);}
+.tb-breadcrumb span{color:var(--white);font-weight:600;}
+.tb-spacer{flex:1;}
+.tb-btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:var(--r);font-size:12px;font-weight:600;font-family:var(--font);cursor:pointer;border:none;transition:all .2s;white-space:nowrap;}
+.tb-btn-p{background:linear-gradient(135deg,var(--acc),var(--acc3));color:var(--white);box-shadow:0 3px 12px rgba(13,148,136,.25);}
+.tb-btn-p:hover{transform:translateY(-1px);}
+.tb-btn-g{background:rgba(255,255,255,.06);color:var(--g2);border:1px solid rgba(255,255,255,.08);}
+.tb-btn-g:hover{background:rgba(255,255,255,.1);color:var(--white);}
+.tb-search{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:var(--r);padding:6px 12px;}
+.tb-search input{background:none;border:none;color:var(--white);font-size:13px;font-family:var(--font);outline:none;width:160px;}
+.tb-search input::placeholder{color:var(--g4);}
+
+/* KPI CARDS */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;}
+.kpi{background:var(--bg2);border:1px solid rgba(255,255,255,.06);border-radius:var(--r3);padding:18px;position:relative;overflow:hidden;}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;border-radius:var(--r3) var(--r3) 0 0;}
+.kpi.k-teal::before{background:linear-gradient(90deg,var(--acc),var(--acc2));}
+.kpi.k-red::before{background:linear-gradient(90deg,var(--red),#F87171);}
+.kpi.k-yellow::before{background:linear-gradient(90deg,var(--yellow),#FCD34D);}
+.kpi.k-green::before{background:linear-gradient(90deg,var(--green),#4ADE80);}
+.kpi.k-blue::before{background:linear-gradient(90deg,var(--blue),#60A5FA);}
+.kpi-label{font-size:10px;font-family:var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--g3);margin-bottom:8px;}
+.kpi-val{font-size:22px;font-weight:800;letter-spacing:-.03em;margin-bottom:3px;}
+.kpi-sub{font-size:11px;color:var(--g4);}
+.kpi-icon{position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:26px;opacity:.12;}
+
+/* CHARTS */
+.chart-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px;}
+.chart-card{background:var(--bg2);border:1px solid rgba(255,255,255,.06);border-radius:var(--r3);padding:18px;}
+.chart-title{font-size:13px;font-weight:600;margin-bottom:3px;}
+.chart-sub{font-size:11px;color:var(--g4);margin-bottom:14px;font-family:var(--mono);}
+.chart-wrap{position:relative;height:190px;}
+
+/* TABLE */
+.tbl-wrap{background:var(--bg2);border:1px solid rgba(255,255,255,.06);border-radius:var(--r3);overflow:hidden;}
+.tbl-head{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid rgba(255,255,255,.05);}
+.tbl-title{font-size:14px;font-weight:700;}
+.tbl-count{font-size:11px;color:var(--g4);font-family:var(--mono);}
+table{width:100%;border-collapse:collapse;}
+thead tr{background:rgba(255,255,255,.02);}
+th{padding:9px 14px;text-align:left;font-size:10px;font-family:var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--g4);border-bottom:1px solid rgba(255,255,255,.04);}
+td{padding:11px 14px;font-size:13px;border-bottom:1px solid rgba(255,255,255,.03);}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:rgba(255,255,255,.02);}
+.td-num{font-family:var(--mono);font-size:11px;color:var(--g3);}
+.td-val{font-family:var(--mono);font-size:12px;font-weight:600;}
+.td-val.v-red{color:#F87171;}
+.td-val.v-yellow{color:#FCD34D;}
+.td-actions{display:flex;gap:5px;white-space:nowrap;}
+
+/* BADGES */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:100px;font-size:10px;font-weight:600;letter-spacing:.05em;font-family:var(--mono);}
+.b-red{background:rgba(239,68,68,.1);color:#F87171;border:1px solid rgba(239,68,68,.2);}
+.b-yellow{background:rgba(245,158,11,.1);color:#FCD34D;border:1px solid rgba(245,158,11,.2);}
+.b-green{background:rgba(34,197,94,.1);color:#4ADE80;border:1px solid rgba(34,197,94,.2);}
+.b-blue{background:rgba(59,130,246,.1);color:#60A5FA;border:1px solid rgba(59,130,246,.2);}
+.b-teal{background:rgba(13,148,136,.12);color:var(--acc2);border:1px solid rgba(13,148,136,.25);}
+.b-gray{background:rgba(107,125,148,.1);color:var(--g3);border:1px solid rgba(107,125,148,.2);}
+.b-orange{background:rgba(249,115,22,.1);color:#FB923C;border:1px solid rgba(249,115,22,.2);}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border-radius:var(--r);font-size:12px;font-weight:600;font-family:var(--font);cursor:pointer;border:none;transition:all .15s;text-decoration:none;}
+.btn-p{background:linear-gradient(135deg,var(--acc),var(--acc3));color:var(--white);}
+.btn-p:hover{opacity:.9;}
+.btn-r{background:rgba(239,68,68,.1);color:#F87171;border:1px solid rgba(239,68,68,.2);}
+.btn-r:hover{background:rgba(239,68,68,.2);}
+.btn-g{background:rgba(255,255,255,.05);color:var(--g2);border:1px solid rgba(255,255,255,.08);}
+.btn-g:hover{background:rgba(255,255,255,.09);color:var(--white);}
+.btn-sm{padding:5px 10px;font-size:11px;}
+
+/* ALERTS */
+.alert-list{display:flex;flex-direction:column;gap:8px;}
+.alert{display:flex;align-items:flex-start;gap:10px;padding:11px 14px;border-radius:var(--r2);font-size:12px;line-height:1.5;}
+.alert-red{background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.15);}
+.alert-yellow{background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.15);}
+.alert-teal{background:rgba(13,148,136,.06);border:1px solid rgba(13,148,136,.15);}
+.alert-ic{font-size:15px;flex-shrink:0;}
+.alert-title{font-weight:600;margin-bottom:2px;}
+.alert-desc{color:var(--g3);}
+
+/* SECTION */
+.sec-h{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:14px;}
+.sec-h h2{font-size:15px;font-weight:700;letter-spacing:-.02em;}
+.sec-lbl{font-size:10px;font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--acc2);margin-bottom:4px;}
+
+/* FILTERS */
+.filter-bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px;background:var(--bg2);border:1px solid rgba(255,255,255,.06);border-radius:var(--r2);padding:13px 15px;align-items:flex-end;}
+.filter-group{display:flex;flex-direction:column;gap:4px;}
+.filter-group label{font-size:10px;color:var(--g4);font-family:var(--mono);letter-spacing:.06em;text-transform:uppercase;}
+.filter-bar select,.filter-bar input{background:var(--bg3);border:1px solid rgba(255,255,255,.08);border-radius:var(--r);padding:6px 10px;color:var(--white);font-size:12px;font-family:var(--font);outline:none;}
+.filter-bar select option{background:var(--bg3);}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);z-index:1000;display:none;align-items:center;justify-content:center;padding:20px;}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--bg2);border:1px solid rgba(255,255,255,.1);border-radius:var(--r3);padding:26px;width:100%;max-width:580px;max-height:90vh;overflow-y:auto;}
+.modal-lg{max-width:760px;}
+.modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;}
+.modal-title{font-size:15px;font-weight:700;}
+.modal-close{background:rgba(255,255,255,.06);border:none;color:var(--g3);width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;transition:all .15s;}
+.modal-close:hover{background:rgba(255,255,255,.1);color:var(--white);}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:13px;}
+.form-full{grid-column:1/-1;}
+.form-group{display:flex;flex-direction:column;gap:5px;}
+.form-group label{font-size:10px;font-family:var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--g3);}
+.form-group input,.form-group select,.form-group textarea{background:var(--bg3);border:1px solid rgba(255,255,255,.1);border-radius:var(--r);padding:8px 11px;color:var(--white);font-size:13px;font-family:var(--font);outline:none;transition:border-color .15s;}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:rgba(13,148,136,.5);}
+.form-group select option{background:var(--bg3);}
+.form-group textarea{resize:vertical;min-height:68px;}
+.form-sep{grid-column:1/-1;height:1px;background:rgba(255,255,255,.06);}
+.form-sec-title{grid-column:1/-1;font-size:10px;font-family:var(--mono);letter-spacing:.09em;text-transform:uppercase;color:var(--acc2);margin-top:4px;}
+.modal-foot{display:flex;gap:10px;justify-content:flex-end;margin-top:22px;padding-top:18px;border-top:1px solid rgba(255,255,255,.06);}
+
+/* TABS */
+.tabs{display:flex;gap:2px;margin-bottom:18px;background:var(--bg3);border-radius:var(--r2);padding:3px;}
+.tab-btn{flex:1;padding:8px 12px;border:none;background:none;color:var(--g3);font-size:12px;font-weight:600;font-family:var(--font);cursor:pointer;border-radius:9px;transition:all .15s;}
+.tab-btn.active{background:var(--bg2);color:var(--white);box-shadow:0 2px 8px rgba(0,0,0,.3);}
+
+/* TIMELINE */
+.timeline{position:relative;padding-left:22px;}
+.timeline::before{content:'';position:absolute;left:8px;top:8px;bottom:8px;width:1px;background:rgba(255,255,255,.08);}
+.tl-item{position:relative;margin-bottom:18px;}
+.tl-dot{position:absolute;left:-18px;top:4px;width:9px;height:9px;border-radius:50%;border:2px solid var(--bg2);}
+.tl-dot-teal{background:var(--acc2);}
+.tl-dot-red{background:var(--red);}
+.tl-date{font-size:10px;font-family:var(--mono);color:var(--g4);margin-bottom:4px;}
+.tl-card{background:var(--bg3);border:1px solid rgba(255,255,255,.06);border-radius:var(--r2);padding:12px 13px;}
+.tl-type{font-size:11px;font-weight:600;font-family:var(--mono);color:var(--acc2);margin-bottom:4px;}
+.tl-desc{font-size:12px;color:var(--g2);line-height:1.5;}
+.tl-resp{font-size:11px;color:var(--g4);margin-top:6px;}
+.tl-next{font-size:11px;color:var(--yellow);margin-top:4px;}
+
+/* UPLOAD */
+.upload-zone{border:2px dashed rgba(13,148,136,.3);border-radius:var(--r2);padding:22px;text-align:center;cursor:pointer;transition:all .2s;background:rgba(13,148,136,.03);}
+.upload-zone:hover{border-color:rgba(13,148,136,.6);background:rgba(13,148,136,.06);}
+#file-input{display:none;}
+
+/* DOCS */
+.doc-list{display:flex;flex-direction:column;gap:7px;margin-top:12px;}
+.doc-item{display:flex;align-items:center;gap:10px;background:var(--bg3);border:1px solid rgba(255,255,255,.06);border-radius:var(--r);padding:10px 13px;}
+.doc-ic{font-size:18px;flex-shrink:0;}
+.doc-name{font-size:13px;font-weight:500;flex:1;}
+.doc-meta{font-size:11px;color:var(--g4);font-family:var(--mono);}
+
+/* DETAIL INFO */
+.info-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px;}
+.info-item{background:var(--bg3);border:1px solid rgba(255,255,255,.06);border-radius:var(--r2);padding:13px;}
+.info-lbl{font-size:10px;font-family:var(--mono);letter-spacing:.07em;text-transform:uppercase;color:var(--g4);margin-bottom:4px;}
+.info-val{font-size:13px;font-weight:600;line-height:1.4;}
+.info-val.mono{font-family:var(--mono);font-size:12px;}
+
+/* EMPTY */
+.empty{text-align:center;padding:50px 20px;}
+.empty-ic{font-size:36px;margin-bottom:10px;opacity:.35;}
+.empty-title{font-size:14px;font-weight:600;color:var(--g2);margin-bottom:5px;}
+.empty-desc{font-size:12px;color:var(--g4);}
+
+/* TOAST */
+#toast{position:fixed;bottom:22px;right:22px;z-index:9999;background:var(--bg4);border:1px solid rgba(13,148,136,.35);border-radius:var(--r2);padding:11px 18px;display:flex;align-items:center;gap:9px;font-size:13px;font-weight:500;transform:translateY(80px);opacity:0;transition:all .3s;pointer-events:none;min-width:220px;}
+#toast.show{transform:none;opacity:1;}
+
+/* TWO COLUMN LAYOUT */
+.two-col{display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:20px;}
+
+@media(max-width:1100px){.kpi-grid{grid-template-columns:1fr 1fr;}.chart-row{grid-template-columns:1fr;}.two-col{grid-template-columns:1fr;}}
+@media(max-width:800px){#sidebar{display:none;}#content{padding:16px;}.form-grid{grid-template-columns:1fr;}.info-grid{grid-template-columns:1fr 1fr;}}
+@media(max-width:500px){.kpi-grid{grid-template-columns:1fr;}.info-grid{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+<div id="app">
+  <aside id="sidebar">
+    <div class="sb-logo">
+      <div class="sb-logo-icon">⚖</div>
+      <div class="sb-logo-name">Passivos<br><small>Gestão Tributária</small></div>
+    </div>
+    <div class="sb-section">Principal</div>
+    <button class="sb-item active" id="nav-dashboard" onclick="App.nav('dashboard')"><span class="sb-ic">⊞</span>Dashboard</button>
+    <button class="sb-item" id="nav-clientes" onclick="App.nav('clientes')"><span class="sb-ic">◉</span>Clientes</button>
+    <button class="sb-item" id="nav-processos" onclick="App.nav('processos')"><span class="sb-ic">⚖</span>Processos</button>
+    <div class="sb-section">Análise</div>
+    <button class="sb-item" id="nav-relatorios" onclick="App.nav('relatorios')"><span class="sb-ic">↗</span>Relatórios</button>
+    <div class="sb-spacer"></div>
+    <div class="sb-bottom">
+      <a class="sb-back" href="portal.html">← Voltar ao Portal</a>
+    </div>
+  </aside>
+  <div id="main">
+    <div id="topbar">
+      <div class="tb-breadcrumb" id="breadcrumb"><span>Dashboard</span></div>
+      <div class="tb-spacer"></div>
+      <div class="tb-search">
+        <span style="color:var(--g4);font-size:13px">🔍</span>
+        <input type="text" id="global-search" placeholder="Buscar processo, cliente..." oninput="App.search(this.value)">
+      </div>
+      <button class="tb-btn tb-btn-g" onclick="App.exportExcel()">⬇ Excel</button>
+      <button class="tb-btn tb-btn-g" onclick="App.exportPDF()">📄 PDF</button>
+      <button class="tb-btn tb-btn-p" id="topbar-add-btn" onclick="App.add()" style="display:none">+ Novo</button>
+    </div>
+    <div id="content"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)App.closeModal()">
+  <div class="modal modal-lg" id="modal-box"></div>
+</div>
+<div id="toast"><span id="toast-ic">✓</span> <span id="toast-msg"></span></div>
+
+<script>
+const TRIBUTOS=['PIS','COFINS','ICMS','IRPJ','CSLL','INSS','ISS','IPI','Outros'];
+const STATUS_LIST=['Em andamento','Aguardando julgamento','Suspenso','Encerrado','Ganho','Perdido'];
+const FASES=['Inicial','Instrução','Julgamento','1ª instância','2ª instância','Superior','Execução','Transitado'];
+const TIPOS=['Judicial','Administrativo'];
+const ESFERAS=['Federal','Estadual','Municipal'];
+const RISCOS=['Alto','Médio','Baixo'];
+const TIPOS_AND=['Despacho','Decisão','Sentença','Acórdão','Petição inicial','Recurso','Embargos','Penhora','Citação','Outro'];
+const TIPOS_DOC=['Petição','Decisão','Sentença','Acórdão','Procuração','Comprovante','Contrato','Outro'];
+const SEGMENTOS=['Transporte','Logística','Indústria','Comércio','Serviços','Agronegócio','Tecnologia','Outro'];
+
+const fmt={
+  brl:v=>v==null||v===''?'—':parseFloat(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0}),
+  dt:s=>s?new Date(s+'T12:00').toLocaleDateString('pt-BR'):'—',
+  id:()=>Math.random().toString(36).slice(2,9),
+};
+
+const App=(()=>{
+  let state={view:'dashboard',detailId:null,detailTab:0,searchQ:'',filters:{cliente:'',tributo:'',status:'',risco:'',tipo:''},clientes:[],processos:[],andamentos:[],documentos:[]};
+  let _charts={};
+
+  function save(){localStorage.setItem('passivos_v1',JSON.stringify({clientes:state.clientes,processos:state.processos,andamentos:state.andamentos,documentos:state.documentos}));}
+
+  function load(){
+    const raw=localStorage.getItem('passivos_v1');
+    if(raw){const d=JSON.parse(raw);state.clientes=d.clientes||[];state.processos=d.processos||[];state.andamentos=d.andamentos||[];state.documentos=d.documentos||[];}
+    else loadDemo();
+  }
+
+  function loadDemo(){
+    state.clientes=[
+      {id:'c1',razaoSocial:'Transportes ABC Ltda',cnpj:'12.345.678/0001-90',grupo:'Grupo ABC',responsavel:'João Silva',segmento:'Transporte',status:'Ativo'},
+      {id:'c2',razaoSocial:'Logística XYZ S/A',cnpj:'98.765.432/0001-10',grupo:'Grupo XYZ',responsavel:'Maria Santos',segmento:'Logística',status:'Ativo'},
+      {id:'c3',razaoSocial:'Rodofrota Brasil S/A',cnpj:'55.444.333/0001-22',grupo:'Independente',responsavel:'Carlos Lima',segmento:'Transporte',status:'Ativo'},
+    ];
+    state.processos=[
+      {id:'p1',clienteId:'c1',numero:'0001234-56.2021.8.26.0100',tipo:'Judicial',esfera:'Estadual',tribunal:'TJSP',vara:'1ª Vara Fazendária',dataDistribuicao:'2021-03-15',status:'Em andamento',fase:'2ª instância',objeto:'Contestação de auto de infração ICMS sobre exportações — Tese: imunidade constitucional nas operações de exportação.',tributo:'ICMS',valorOriginal:2100000,valorAtualizado:2850000,multa:420000,juros:330000,garantias:'Depósito judicial',depositos:2850000,risco:'Alto'},
+      {id:'p2',clienteId:'c1',numero:'0002345-67.2022.4.03.6100',tipo:'Judicial',esfera:'Federal',tribunal:'TRF3',vara:'2ª Vara Federal',dataDistribuicao:'2022-07-10',status:'Em andamento',fase:'1ª instância',objeto:'Exclusão do ICMS da base de cálculo do PIS/COFINS — Tese do Século (RE 574.706).',tributo:'PIS',valorOriginal:650000,valorAtualizado:890000,multa:130000,juros:110000,garantias:'Seguro garantia',depositos:0,risco:'Médio'},
+      {id:'p3',clienteId:'c2',numero:'13516.720023/2020-89',tipo:'Administrativo',esfera:'Federal',tribunal:'CARF',vara:'1ª Turma Ordinária',dataDistribuicao:'2020-11-22',status:'Aguardando julgamento',fase:'Julgamento',objeto:'Glosa de créditos INSS sobre contribuições de terceiros — Divergência de alíquotas.',tributo:'INSS',valorOriginal:980000,valorAtualizado:1420000,multa:196000,juros:244000,garantias:'Sem garantia',depositos:0,risco:'Alto'},
+      {id:'p4',clienteId:'c2',numero:'0003456-78.2023.4.01.3400',tipo:'Judicial',esfera:'Federal',tribunal:'TRF1',vara:'5ª Vara Federal',dataDistribuicao:'2023-02-14',status:'Em andamento',fase:'Instrução',objeto:'Revisão de base de cálculo IRPJ — exclusão de despesas operacionais glosadas pelo fisco.',tributo:'IRPJ',valorOriginal:380000,valorAtualizado:430000,multa:76000,juros:50000,garantias:'Carta fiança',depositos:0,risco:'Baixo'},
+      {id:'p5',clienteId:'c3',numero:'0004567-89.2022.8.13.0024',tipo:'Judicial',esfera:'Municipal',tribunal:'TJMG',vara:'Vara Fazenda Municipal',dataDistribuicao:'2022-09-05',status:'Em andamento',fase:'1ª instância',objeto:'Contestação ISS sobre serviço de frete — Discussão sobre local de prestação do serviço.',tributo:'ISS',valorOriginal:290000,valorAtualizado:340000,multa:58000,juros:52000,garantias:'Depósito judicial',depositos:340000,risco:'Médio'},
+    ];
+    state.andamentos=[
+      {id:'a1',processoId:'p1',data:'2024-10-15',tipo:'Acórdão',responsavel:'Dr. Roberto Faria',obs:'Acórdão proferido negando provimento ao recurso do fisco. Contribuinte saiu vencedor em 2ª instância. Aguarda trânsito em julgado.',proximo:'Aguardar publicação e analisar possibilidade de recurso do fisco ao STJ'},
+      {id:'a2',processoId:'p1',data:'2024-08-22',tipo:'Recurso',responsavel:'Dr. Roberto Faria',obs:'Interposição de recurso especial ao STJ contra decisão desfavorável do TJSP em sede de agravo regimental.',proximo:'Aguardar admissão do recurso pelo Presidente do Tribunal'},
+      {id:'a3',processoId:'p2',data:'2024-11-05',tipo:'Despacho',responsavel:'Dra. Ana Carvalho',obs:'Despacho ordenando produção de prova pericial contábil. Nomeado perito judicial. Prazo de 30 dias para indicação de assistente técnico.',proximo:'Indicar assistente técnico e elaborar quesitos — prazo: 10/11/2024'},
+      {id:'a4',processoId:'p3',data:'2024-09-18',tipo:'Decisão',responsavel:'Dr. Paulo Mendes',obs:'Processo pautado para julgamento em câmara do CARF. Sessão designada para 18/02/2025.',proximo:'Preparar sustentação oral — verificar novo regimento CARF'},
+      {id:'a5',processoId:'p5',data:'2024-12-01',tipo:'Petição inicial',responsavel:'Dr. Carlos Lima',obs:'Ação anulatória proposta contra auto de infração ISS 2022. Pedido liminar para suspensão da exigibilidade indeferido.',proximo:'Aguardar contestação da Procuradoria Municipal'},
+    ];
+    state.documentos=[
+      {id:'d1',processoId:'p1',nome:'Acórdão TJSP out-2024.pdf',tipo:'Acórdão',tamanho:'1.2 MB',data:'2024-10-16'},
+      {id:'d2',processoId:'p1',nome:'Recurso Especial STJ ago-2024.pdf',tipo:'Recurso',tamanho:'850 KB',data:'2024-08-23'},
+      {id:'d3',processoId:'p2',nome:'Petição Inicial PIS-COFINS jul-2022.pdf',tipo:'Petição',tamanho:'620 KB',data:'2022-07-10'},
+      {id:'d4',processoId:'p3',nome:'Defesa Administrativa CARF.pdf',tipo:'Petição',tamanho:'2.1 MB',data:'2021-03-10'},
+    ];
+    save();
+  }
+
+  function nav(view,opts={}){
+    Object.values(_charts).forEach(c=>{if(c)c.destroy();});
+    _charts={};
+    state.view=view;state.detailId=opts.id||null;state.detailTab=opts.tab||0;
+    document.querySelectorAll('.sb-item').forEach(el=>el.classList.remove('active'));
+    const navEl=document.getElementById('nav-'+view);if(navEl)navEl.classList.add('active');
+    const labels={dashboard:'Dashboard',clientes:'Clientes',processos:'Processos',relatorios:'Relatórios',detalhe:'Processo'};
+    document.getElementById('breadcrumb').innerHTML=`<span>${labels[view]||view}</span>`;
+    const addLabels={dashboard:'',clientes:'+ Cliente',processos:'+ Processo',relatorios:'',detalhe:''};
+    const addBtn=document.getElementById('topbar-add-btn');
+    if(addLabels[view]){addBtn.style.display='';addBtn.textContent=addLabels[view];}else{addBtn.style.display='none';}
+    render();
+  }
+
+  function search(q){state.searchQ=q;render();}
+  function add(){if(state.view==='clientes')openClienteModal();else if(state.view==='processos')openProcessoModal();}
+
+  function render(){
+    const c=document.getElementById('content');
+    if(state.view==='dashboard'){c.innerHTML=renderDashboard();initDashboardCharts();}
+    else if(state.view==='clientes')c.innerHTML=renderClientes();
+    else if(state.view==='processos')c.innerHTML=renderProcessos();
+    else if(state.view==='detalhe')c.innerHTML=renderDetalhe();
+    else if(state.view==='relatorios')c.innerHTML=renderRelatorios();
+  }
+
+  /* ── DASHBOARD ── */
+  function renderDashboard(){
+    const ps=state.processos;
+    const totalVal=ps.reduce((s,p)=>s+(parseFloat(p.valorAtualizado)||0),0);
+    const totalDep=ps.reduce((s,p)=>s+(parseFloat(p.depositos)||0),0);
+    const altos=ps.filter(p=>p.risco==='Alto').length;
+    const medios=ps.filter(p=>p.risco==='Médio').length;
+    const criticos=[...ps].filter(p=>p.risco==='Alto').sort((a,b)=>(b.valorAtualizado||0)-(a.valorAtualizado||0)).slice(0,5);
+    const alertasHtml=gerarAlertas().map(a=>`<div class="alert alert-${a.tipo}"><span class="alert-ic">${a.ic}</span><div><div class="alert-title">${a.title}</div><div class="alert-desc">${a.desc}</div></div></div>`).join('');
+    return `
+    <div class="kpi-grid">
+      <div class="kpi k-teal"><div class="kpi-icon">💼</div><div class="kpi-label">Total em Discussão</div><div class="kpi-val">${fmt.brl(totalVal)}</div><div class="kpi-sub">${ps.length} processo${ps.length!==1?'s':''} cadastrado${ps.length!==1?'s':''}</div></div>
+      <div class="kpi k-red"><div class="kpi-icon">🚨</div><div class="kpi-label">Risco Alto</div><div class="kpi-val">${altos}</div><div class="kpi-sub">${altos} processo${altos!==1?'s':''} crítico${altos!==1?'s':''}</div></div>
+      <div class="kpi k-yellow"><div class="kpi-icon">⚠</div><div class="kpi-label">Risco Médio</div><div class="kpi-val">${medios}</div><div class="kpi-sub">${medios} processo${medios!==1?'s':''} em atenção</div></div>
+      <div class="kpi k-green"><div class="kpi-icon">🏦</div><div class="kpi-label">Depósitos Judiciais</div><div class="kpi-val">${fmt.brl(totalDep)}</div><div class="kpi-sub">Valores garantidos</div></div>
+    </div>
+    <div class="chart-row">
+      <div class="chart-card"><div class="chart-title">Distribuição por Tributo</div><div class="chart-sub">Valor atualizado por tributo (R$)</div><div class="chart-wrap"><canvas id="ch-tributo"></canvas></div></div>
+      <div class="chart-card"><div class="chart-title">Processos por Risco</div><div class="chart-sub">Quantidade de processos</div><div class="chart-wrap"><canvas id="ch-risco"></canvas></div>
+    </div>
+    <div class="two-col">
+      <div>
+        <div class="sec-h"><div><div class="sec-lbl">Atenção Prioritária</div><h2>Processos Críticos</h2></div><button class="btn btn-g btn-sm" onclick="App.nav('processos')">Ver todos →</button></div>
+        <div class="tbl-wrap"><table><thead><tr><th>Processo</th><th>Cliente</th><th>Tributo</th><th>Valor</th><th>Risco</th><th></th></tr></thead><tbody>
+          ${criticos.length?criticos.map(p=>`<tr><td class="td-num" style="cursor:pointer;color:var(--acc2)" onclick="App.nav('detalhe',{id:'${p.id}'})">${truncNum(p.numero)}</td><td style="font-size:12px">${nomeCliente(p.clienteId)}</td><td><span class="badge b-orange">${p.tributo}</span></td><td class="td-val v-red">${fmt.brl(p.valorAtualizado)}</td><td>${badgeRisco(p.risco)}</td><td><button class="btn btn-g btn-sm" onclick="App.nav('detalhe',{id:'${p.id}'})">Ver →</button></td></tr>`).join(''):'<tr><td colspan="6" style="text-align:center;color:var(--g4);padding:20px">Nenhum processo de alto risco</td></tr>'}
+        </tbody></table></div>
+      </div>
+      <div>
+        <div class="sec-h"><div><div class="sec-lbl">Alertas do Sistema</div><h2>Atenção Necessária</h2></div></div>
+        <div class="alert-list">${alertasHtml||'<div class="alert alert-teal"><span class="alert-ic">✓</span><div><div class="alert-title">Tudo em ordem</div><div class="alert-desc">Nenhum alerta no momento</div></div></div>'}</div>
+      </div>
+    </div>
+    <div class="sec-h"><div><div class="sec-lbl">Visão Geral</div><h2>Todos os Processos</h2></div></div>
+    ${tabelaProcessos(state.processos)}`;
+  }
+
+  function initDashboardCharts(){
+    const ps=state.processos;
+    const tribMap={};
+    ps.forEach(p=>{const v=parseFloat(p.valorAtualizado)||0;tribMap[p.tributo]=(tribMap[p.tributo]||0)+v;});
+    const tribLabels=Object.keys(tribMap);const tribData=tribLabels.map(k=>tribMap[k]);
+    const colors=['#0D9488','#3B82F6','#F59E0B','#EF4444','#8B5CF6','#22C55E','#F97316','#EC4899','#06B6D4'];
+    const ctx1=document.getElementById('ch-tributo');
+    if(ctx1){_charts.tributo=new Chart(ctx1,{type:'doughnut',data:{labels:tribLabels,datasets:[{data:tribData,backgroundColor:colors,borderWidth:0,hoverOffset:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:'#A8B8CC',font:{size:10,family:'JetBrains Mono'},boxWidth:10,padding:8}},tooltip:{callbacks:{label:ctx=>`${ctx.label}: ${fmt.brl(ctx.raw)}`}}},cutout:'65%'}});}
+    const riscos={Alto:0,Médio:0,Baixo:0};ps.forEach(p=>riscos[p.risco]=(riscos[p.risco]||0)+1);
+    const ctx2=document.getElementById('ch-risco');
+    if(ctx2){_charts.risco=new Chart(ctx2,{type:'bar',data:{labels:['Alto','Médio','Baixo'],datasets:[{data:[riscos['Alto'],riscos['Médio'],riscos['Baixo']],backgroundColor:['rgba(239,68,68,.7)','rgba(245,158,11,.7)','rgba(34,197,94,.7)'],borderRadius:6,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.parsed.y} processo${ctx.parsed.y!==1?'s':''}`}}},scales:{x:{ticks:{color:'#6B7D94',font:{size:11}},grid:{display:false}},y:{ticks:{color:'#6B7D94',font:{size:11},stepSize:1},grid:{color:'rgba(255,255,255,.04)'},beginAtZero:true}}}});}
+  }
+
+  function gerarAlertas(){
+    const alerts=[];const ps=state.processos;
+    const altos=ps.filter(p=>p.risco==='Alto');
+    if(altos.length)alerts.push({tipo:'red',ic:'🔴',title:`${altos.length} processo${altos.length>1?'s':''} de alto risco`,desc:altos.map(p=>truncNum(p.numero,20)).join(' · ')});
+    const semGarantia=ps.filter(p=>(!p.garantias||p.garantias==='Sem garantia')&&p.risco!=='Baixo');
+    if(semGarantia.length)alerts.push({tipo:'yellow',ic:'⚠',title:`${semGarantia.length} processo${semGarantia.length>1?'s':''} sem garantia`,desc:'Verificar necessidade de garantia processual'});
+    const semAnd=ps.filter(p=>!state.andamentos.find(a=>a.processoId===p.id));
+    if(semAnd.length)alerts.push({tipo:'yellow',ic:'🟡',title:`${semAnd.length} processo${semAnd.length>1?'s':''} sem andamento registrado`,desc:'Processos sem nenhuma movimentação cadastrada'});
+    return alerts.slice(0,4);
+  }
+
+  /* ── CLIENTES ── */
+  function renderClientes(){
+    let cl=state.clientes;
+    if(state.searchQ)cl=cl.filter(c=>c.razaoSocial.toLowerCase().includes(state.searchQ.toLowerCase())||c.cnpj.includes(state.searchQ));
+    return `<div class="tbl-wrap"><div class="tbl-head"><div class="tbl-title">Clientes Cadastrados</div><span class="tbl-count">${cl.length} cliente${cl.length!==1?'s':''}</span></div>
+    ${cl.length?`<table><thead><tr><th>Razão Social</th><th>CNPJ</th><th>Grupo</th><th>Responsável</th><th>Segmento</th><th>Processos</th><th>Status</th><th>Ações</th></tr></thead><tbody>
+    ${cl.map(c=>{const qp=state.processos.filter(p=>p.clienteId===c.id).length;return`<tr><td style="font-weight:600">${c.razaoSocial}</td><td class="td-num">${c.cnpj}</td><td>${c.grupo||'—'}</td><td>${c.responsavel||'—'}</td><td><span class="badge b-teal">${c.segmento}</span></td><td><button class="btn btn-g btn-sm" onclick="App.filtrarPorCliente('${c.id}')">${qp} processo${qp!==1?'s':''}</button></td><td><span class="badge ${c.status==='Ativo'?'b-green':'b-gray'}">${c.status}</span></td><td><div class="td-actions"><button class="btn btn-g btn-sm" onclick="App.editCliente('${c.id}')">✏</button><button class="btn btn-r btn-sm" onclick="App.deleteCliente('${c.id}')">🗑</button></div></td></tr>`;}).join('')}
+    </tbody></table>`:`<div class="empty"><div class="empty-ic">◉</div><div class="empty-title">Nenhum cliente cadastrado</div><div class="empty-desc">Clique em "+ Cliente" para adicionar</div></div>`}</div>`;
+  }
+
+  /* ── PROCESSOS ── */
+  function renderProcessos(){
+    let ps=state.processos;const f=state.filters;
+    if(f.cliente)ps=ps.filter(p=>p.clienteId===f.cliente);
+    if(f.tributo)ps=ps.filter(p=>p.tributo===f.tributo);
+    if(f.status)ps=ps.filter(p=>p.status===f.status);
+    if(f.risco)ps=ps.filter(p=>p.risco===f.risco);
+    if(f.tipo)ps=ps.filter(p=>p.tipo===f.tipo);
+    if(state.searchQ)ps=ps.filter(p=>p.numero.includes(state.searchQ)||(p.objeto||'').toLowerCase().includes(state.searchQ.toLowerCase())||(nomeCliente(p.clienteId)||'').toLowerCase().includes(state.searchQ.toLowerCase()));
+    const clOpts=state.clientes.map(c=>`<option value="${c.id}" ${f.cliente===c.id?'selected':''}>${c.razaoSocial}</option>`).join('');
+    const tribOpts=TRIBUTOS.map(t=>`<option value="${t}" ${f.tributo===t?'selected':''}>${t}</option>`).join('');
+    const statusOpts=STATUS_LIST.map(s=>`<option value="${s}" ${f.status===s?'selected':''}>${s}</option>`).join('');
+    const riscoOpts=RISCOS.map(r=>`<option value="${r}" ${f.risco===r?'selected':''}>${r}</option>`).join('');
+    return `<div class="filter-bar">
+      <div class="filter-group"><label>Cliente</label><select onchange="App.setFilter('cliente',this.value)"><option value="">Todos</option>${clOpts}</select></div>
+      <div class="filter-group"><label>Tributo</label><select onchange="App.setFilter('tributo',this.value)"><option value="">Todos</option>${tribOpts}</select></div>
+      <div class="filter-group"><label>Status</label><select onchange="App.setFilter('status',this.value)"><option value="">Todos</option>${statusOpts}</select></div>
+      <div class="filter-group"><label>Risco</label><select onchange="App.setFilter('risco',this.value)"><option value="">Todos</option>${riscoOpts}</select></div>
+      <div class="filter-group"><label>Tipo</label><select onchange="App.setFilter('tipo',this.value)"><option value="">Todos</option><option value="Judicial" ${f.tipo==='Judicial'?'selected':''}>Judicial</option><option value="Administrativo" ${f.tipo==='Administrativo'?'selected':''}>Administrativo</option></select></div>
+      <button class="btn btn-g btn-sm" onclick="App.clearFilters()" style="align-self:flex-end">✕ Limpar</button>
+    </div>${tabelaProcessos(ps)}`;
+  }
+
+  function tabelaProcessos(ps){
+    if(!ps.length)return`<div class="tbl-wrap"><div class="empty"><div class="empty-ic">⚖</div><div class="empty-title">Nenhum processo encontrado</div><div class="empty-desc">Ajuste os filtros ou cadastre um novo processo</div></div></div>`;
+    return`<div class="tbl-wrap"><div class="tbl-head"><div class="tbl-title">Processos</div><span class="tbl-count">${ps.length} resultado${ps.length!==1?'s':''}</span></div>
+    <table><thead><tr><th>Nº Processo</th><th>Cliente</th><th>Tipo</th><th>Tributo</th><th>Valor Atualizado</th><th>Risco</th><th>Status</th><th>Ações</th></tr></thead><tbody>
+    ${ps.map(p=>`<tr><td class="td-num" style="cursor:pointer;color:var(--acc2)" onclick="App.nav('detalhe',{id:'${p.id}'})">${truncNum(p.numero)}</td><td style="font-size:12px">${nomeCliente(p.clienteId)}</td><td><span class="badge ${p.tipo==='Judicial'?'b-blue':'b-teal'}">${p.tipo}</span></td><td><span class="badge b-orange">${p.tributo}</span></td><td class="td-val ${riscoCls(p.risco)}">${fmt.brl(p.valorAtualizado)}</td><td>${badgeRisco(p.risco)}</td><td>${badgeStatus(p.status)}</td><td><div class="td-actions"><button class="btn btn-g btn-sm" onclick="App.nav('detalhe',{id:'${p.id}'})">Ver</button><button class="btn btn-g btn-sm" onclick="App.editProcesso('${p.id}')">✏</button><button class="btn btn-r btn-sm" onclick="App.deleteProcesso('${p.id}')">🗑</button></div></td></tr>`).join('')}
+    </tbody></table></div>`;
+  }
+
+  /* ── DETALHE ── */
+  function renderDetalhe(){
+    const p=state.processos.find(x=>x.id===state.detailId);
+    if(!p)return`<div class="empty"><div class="empty-ic">⚖</div><div class="empty-title">Processo não encontrado</div></div>`;
+    const cl=state.clientes.find(c=>c.id===p.clienteId);
+    const ands=state.andamentos.filter(a=>a.processoId===p.id).sort((a,b)=>b.data.localeCompare(a.data));
+    const docs=state.documentos.filter(d=>d.processoId===p.id);
+    document.getElementById('breadcrumb').innerHTML=`<span style="color:var(--g4);cursor:pointer" onclick="App.nav('processos')">Processos</span> <span style="color:var(--g4);margin:0 5px">›</span> <span>${truncNum(p.numero,26)}</span>`;
+    let tabContent='';
+    if(state.detailTab===0){
+      tabContent=`
+      <div class="info-grid">
+        <div class="info-item"><div class="info-lbl">Número do Processo</div><div class="info-val mono">${p.numero}</div></div>
+        <div class="info-item"><div class="info-lbl">Tipo</div><div class="info-val">${p.tipo}</div></div>
+        <div class="info-item"><div class="info-lbl">Esfera</div><div class="info-val">${p.esfera}</div></div>
+        <div class="info-item"><div class="info-lbl">Tribunal / Órgão</div><div class="info-val">${p.tribunal||'—'}</div></div>
+        <div class="info-item"><div class="info-lbl">Vara / Delegacia</div><div class="info-val">${p.vara||'—'}</div></div>
+        <div class="info-item"><div class="info-lbl">Data de Distribuição</div><div class="info-val">${fmt.dt(p.dataDistribuicao)}</div></div>
+        <div class="info-item"><div class="info-lbl">Fase Processual</div><div class="info-val">${p.fase}</div></div>
+        <div class="info-item"><div class="info-lbl">Status</div><div class="info-val">${badgeStatus(p.status)}</div></div>
+        <div class="info-item"><div class="info-lbl">Classificação de Risco</div><div class="info-val">${badgeRisco(p.risco)}</div></div>
+      </div>
+      <div class="info-item" style="margin-bottom:18px;background:var(--bg3);border:1px solid rgba(255,255,255,.06);border-radius:var(--r2);padding:13px">
+        <div class="info-lbl">Objeto / Tese Jurídica</div>
+        <div style="font-size:13px;color:var(--g2);line-height:1.65;margin-top:6px">${p.objeto||'—'}</div>
+      </div>
+      <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr)">
+        <div class="kpi k-teal"><div class="kpi-label">Valor Original</div><div class="kpi-val" style="font-size:17px">${fmt.brl(p.valorOriginal)}</div></div>
+        <div class="kpi k-red"><div class="kpi-label">Valor Atualizado</div><div class="kpi-val" style="font-size:17px">${fmt.brl(p.valorAtualizado)}</div></div>
+        <div class="kpi k-yellow"><div class="kpi-label">Multa + Juros</div><div class="kpi-val" style="font-size:17px">${fmt.brl((parseFloat(p.multa)||0)+(parseFloat(p.juros)||0))}</div></div>
+        <div class="kpi k-green"><div class="kpi-label">Depósitos Judiciais</div><div class="kpi-val" style="font-size:17px">${fmt.brl(p.depositos)}</div></div>
+      </div>
+      <div class="info-grid" style="grid-template-columns:1fr 1fr 1fr;margin-top:14px">
+        <div class="info-item"><div class="info-lbl">Tributo</div><div class="info-val"><span class="badge b-orange">${p.tributo}</span></div></div>
+        <div class="info-item"><div class="info-lbl">Garantias</div><div class="info-val" style="font-weight:400">${p.garantias||'Sem garantia'}</div></div>
+        <div class="info-item"><div class="info-lbl">Cliente</div><div class="info-val" style="font-weight:400">${cl?cl.razaoSocial:'—'}</div></div>
+      </div>`;
+    } else if(state.detailTab===1){
+      tabContent=`<div style="display:flex;justify-content:flex-end;margin-bottom:14px"><button class="btn btn-p" onclick="App.openAndamentoModal('${p.id}')">+ Andamento</button></div>
+      ${ands.length?`<div class="timeline">${ands.map(a=>`<div class="tl-item"><div class="tl-dot tl-dot-teal"></div><div class="tl-date">${fmt.dt(a.data)}</div><div class="tl-card"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px"><div class="tl-type">${a.tipo}</div><button class="btn btn-r btn-sm" onclick="App.deleteAndamento('${a.id}')">🗑</button></div><div class="tl-desc">${a.obs}</div><div class="tl-resp">Responsável: ${a.responsavel||'—'}</div>${a.proximo?`<div class="tl-next">→ Próximo passo: ${a.proximo}</div>`:''}</div></div>`).join('')}</div>`:`<div class="empty"><div class="empty-ic">≡</div><div class="empty-title">Sem andamentos registrados</div><div class="empty-desc">Adicione a primeira movimentação processual</div></div>`}`;
+    } else {
+      tabContent=`<div style="display:flex;justify-content:flex-end;margin-bottom:14px"><button class="btn btn-p" onclick="App.openDocModal('${p.id}')">+ Documento</button></div>
+      <div class="upload-zone" onclick="document.getElementById('file-input').click()">
+        <input type="file" id="file-input" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.png" onchange="App.handleFiles(event,'${p.id}')">
+        <div style="font-size:26px;margin-bottom:8px">📎</div>
+        <div style="font-size:13px;color:var(--g2)">Clique ou arraste arquivos aqui</div>
+        <div style="font-size:11px;color:var(--g4);margin-top:4px;font-family:var(--mono)">PDF, DOC, XLS, JPG — máx. 10 MB por arquivo</div>
+      </div>
+      ${docs.length?`<div class="doc-list">${docs.map(d=>`<div class="doc-item"><span class="doc-ic">${docIcon(d.tipo)}</span><div style="flex:1"><div class="doc-name">${d.nome}</div><div class="doc-meta">${d.tipo} · ${d.tamanho} · ${fmt.dt(d.data)}</div></div><button class="btn btn-r btn-sm" onclick="App.deleteDoc('${d.id}')">🗑</button></div>`).join('')}</div>`:`<div style="text-align:center;color:var(--g4);padding:20px;font-size:13px">Nenhum documento anexado</div>`}`;
+    }
+    return `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+      <div><div style="font-size:11px;color:var(--acc2);font-family:var(--mono);margin-bottom:5px">${p.tipo} · ${p.esfera} · ${p.tributo}</div>
+      <h2 style="font-size:17px;font-weight:700;letter-spacing:-.02em">${p.numero}</h2>
+      <div style="font-size:12px;color:var(--g3);margin-top:4px">${cl?cl.razaoSocial:'Cliente não encontrado'}</div></div>
+      <div style="display:flex;gap:8px;align-items:center">${badgeRisco(p.risco)} ${badgeStatus(p.status)}<button class="btn btn-g" onclick="App.editProcesso('${p.id}')">✏ Editar</button></div>
+    </div>
+    <div class="tabs"><button class="tab-btn ${state.detailTab===0?'active':''}" onclick="App.nav('detalhe',{id:'${p.id}',tab:0})">Dados Gerais</button><button class="tab-btn ${state.detailTab===1?'active':''}" onclick="App.nav('detalhe',{id:'${p.id}',tab:1})">Andamentos (${ands.length})</button><button class="tab-btn ${state.detailTab===2?'active':''}" onclick="App.nav('detalhe',{id:'${p.id}',tab:2})">Documentos (${docs.length})</button></div>
+    ${tabContent}`;
+  }
+
+  /* ── RELATÓRIOS ── */
+  function renderRelatorios(){
+    const ps=state.processos;
+    const totalVal=ps.reduce((s,p)=>s+(parseFloat(p.valorAtualizado)||0),0);
+    return `<div style="max-width:820px">
+    <div class="tbl-wrap" style="margin-bottom:18px"><div class="tbl-head"><div class="tbl-title">Resumo Consolidado</div><span class="tbl-count">Atualizado em ${new Date().toLocaleDateString('pt-BR')}</span></div>
+    <div style="padding:20px;display:grid;grid-template-columns:repeat(3,1fr);gap:16px">
+      <div><div class="info-lbl">Total em Discussão</div><div style="font-size:20px;font-weight:800;margin-top:4px">${fmt.brl(totalVal)}</div></div>
+      <div><div class="info-lbl">Total de Processos</div><div style="font-size:20px;font-weight:800;margin-top:4px">${ps.length}</div></div>
+      <div><div class="info-lbl">Clientes Ativos</div><div style="font-size:20px;font-weight:800;margin-top:4px">${state.clientes.length}</div></div>
+      <div><div class="info-lbl">Alto Risco</div><div style="font-size:20px;font-weight:800;color:#F87171;margin-top:4px">${ps.filter(p=>p.risco==='Alto').length}</div></div>
+      <div><div class="info-lbl">Judiciais</div><div style="font-size:20px;font-weight:800;margin-top:4px">${ps.filter(p=>p.tipo==='Judicial').length}</div></div>
+      <div><div class="info-lbl">Administrativos</div><div style="font-size:20px;font-weight:800;margin-top:4px">${ps.filter(p=>p.tipo==='Administrativo').length}</div></div>
+    </div></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px">
+      <button class="btn btn-p" style="justify-content:center;padding:16px;font-size:14px;flex-direction:column;height:auto;gap:4px" onclick="App.exportExcel()"><span>⬇ Exportar Excel</span><small style="font-weight:400;opacity:.75;font-size:11px">Planilha completa — processos, clientes, andamentos</small></button>
+      <button class="btn btn-g" style="justify-content:center;padding:16px;font-size:14px;flex-direction:column;height:auto;gap:4px" onclick="App.exportPDF()"><span>📄 Exportar PDF</span><small style="font-weight:400;opacity:.75;font-size:11px">Relatório executivo resumido</small></button>
+    </div>
+    <div class="tbl-wrap"><div class="tbl-head"><div class="tbl-title">Distribuição por Tributo</div></div>
+    <table><thead><tr><th>Tributo</th><th>Processos</th><th>Valor Total</th><th>% do Total</th></tr></thead><tbody>
+    ${TRIBUTOS.map(t=>{const tps=ps.filter(p=>p.tributo===t);if(!tps.length)return'';const tv=tps.reduce((s,p)=>s+(parseFloat(p.valorAtualizado)||0),0);const pct=totalVal>0?((tv/totalVal)*100).toFixed(1):'0.0';return`<tr><td><span class="badge b-orange">${t}</span></td><td>${tps.length}</td><td class="td-val">${fmt.brl(tv)}</td><td style="font-family:var(--mono);font-size:11px">${pct}%</td></tr>`;}).join('')}
+    </tbody></table></div></div>`;
+  }
+
+  /* ── MODALS ── */
+  function openClienteModal(id){
+    const cl=id?state.clientes.find(c=>c.id===id):null;
+    const v=cl||{razaoSocial:'',cnpj:'',grupo:'',responsavel:'',segmento:'Transporte',status:'Ativo'};
+    showModal(`<div class="modal-head"><div class="modal-title">${cl?'Editar':'Novo'} Cliente</div><button class="modal-close" onclick="App.closeModal()">✕</button></div>
+    <form id="fm" onsubmit="App.saveCliente(event,'${id||''}')"><div class="form-grid">
+      <div class="form-group form-full"><label>Razão Social *</label><input required name="razaoSocial" value="${v.razaoSocial}" placeholder="Nome da empresa"></div>
+      <div class="form-group"><label>CNPJ *</label><input required name="cnpj" value="${v.cnpj}" placeholder="00.000.000/0001-00"></div>
+      <div class="form-group"><label>Grupo Econômico</label><input name="grupo" value="${v.grupo}" placeholder="Nome do grupo"></div>
+      <div class="form-group"><label>Responsável</label><input name="responsavel" value="${v.responsavel}" placeholder="Nome do responsável"></div>
+      <div class="form-group"><label>Segmento</label><select name="segmento">${SEGMENTOS.map(s=>`<option value="${s}" ${v.segmento===s?'selected':''}>${s}</option>`).join('')}</select></div>
+      <div class="form-group"><label>Status</label><select name="status"><option value="Ativo" ${v.status==='Ativo'?'selected':''}>Ativo</option><option value="Inativo" ${v.status==='Inativo'?'selected':''}>Inativo</option></select></div>
+    </div><div class="modal-foot"><button type="button" class="btn btn-g" onclick="App.closeModal()">Cancelar</button><button type="submit" class="btn btn-p">Salvar Cliente</button></div></form>`);
+  }
+
+  function saveCliente(e,id){
+    e.preventDefault();const data=Object.fromEntries(new FormData(e.target));
+    if(id){const i=state.clientes.findIndex(c=>c.id===id);state.clientes[i]={...state.clientes[i],...data};}
+    else state.clientes.push({id:fmt.id(),...data});
+    save();closeModal();render();toast('Cliente salvo com sucesso');
+  }
+
+  function editCliente(id){openClienteModal(id);}
+  function deleteCliente(id){
+    if(!confirm('Excluir este cliente?'))return;
+    state.clientes=state.clientes.filter(c=>c.id!==id);save();render();toast('Cliente excluído');
+  }
+
+  function openProcessoModal(id){
+    const p=id?state.processos.find(x=>x.id===id):null;
+    const v=p||{numero:'',tipo:'Judicial',esfera:'Federal',tribunal:'',vara:'',dataDistribuicao:'',status:'Em andamento',fase:'Inicial',objeto:'',tributo:'ICMS',valorOriginal:'',valorAtualizado:'',multa:'',juros:'',garantias:'',depositos:'',risco:'Médio',clienteId:''};
+    const clOpts=state.clientes.map(c=>`<option value="${c.id}" ${v.clienteId===c.id?'selected':''}>${c.razaoSocial}</option>`).join('');
+    showModal(`<div class="modal-head"><div class="modal-title">${p?'Editar':'Novo'} Processo</div><button class="modal-close" onclick="App.closeModal()">✕</button></div>
+    <form id="fm" onsubmit="App.saveProcesso(event,'${id||''}')"><div class="form-grid">
+      <div class="form-sec-title">Identificação</div>
+      <div class="form-group form-full"><label>Número do Processo *</label><input required name="numero" value="${v.numero}" placeholder="0000000-00.0000.0.00.0000"></div>
+      <div class="form-group"><label>Cliente *</label><select name="clienteId" required><option value="">Selecione...</option>${clOpts}</select></div>
+      <div class="form-group"><label>Tipo</label><select name="tipo">${TIPOS.map(t=>`<option value="${t}" ${v.tipo===t?'selected':''}>${t}</option>`).join('')}</select></div>
+      <div class="form-group"><label>Esfera</label><select name="esfera">${ESFERAS.map(e=>`<option value="${e}" ${v.esfera===e?'selected':''}>${e}</option>`).join('')}</select></div>
+      <div class="form-group"><label>Tribunal / Órgão</label><input name="tribunal" value="${v.tribunal}" placeholder="Ex: TJSP, TRF3, CARF"></div>
+      <div class="form-group"><label>Vara / Delegacia</label><input name="vara" value="${v.vara}" placeholder="Ex: 1ª Vara Fazendária"></div>
+      <div class="form-group"><label>Data de Distribuição</label><input type="date" name="dataDistribuicao" value="${v.dataDistribuicao}"></div>
+      <div class="form-group"><label>Status</label><select name="status">${STATUS_LIST.map(s=>`<option value="${s}" ${v.status===s?'selected':''}>${s}</option>`).join('')}</select></div>
+      <div class="form-group"><label>Fase Processual</label><select name="fase">${FASES.map(f=>`<option value="${f}" ${v.fase===f?'selected':''}>${f}</option>`).join('')}</select></div>
+      <div class="form-group"><label>Risco</label><select name="risco">${RISCOS.map(r=>`<option value="${r}" ${v.risco===r?'selected':''}>${r}</option>`).join('')}</select></div>
+      <div class="form-group form-full"><label>Objeto / Tese Jurídica</label><textarea name="objeto" placeholder="Descreva o objeto da ação e a tese jurídica...">${v.objeto}</textarea></div>
+      <div class="form-sep"></div>
+      <div class="form-sec-title">Dados Tributários e Valores</div>
+      <div class="form-group"><label>Tributo</label><select name="tributo">${TRIBUTOS.map(t=>`<option value="${t}" ${v.tributo===t?'selected':''}>${t}</option>`).join('')}</select></div>
+      <div class="form-group"><label>Valor Original (R$)</label><input type="number" name="valorOriginal" value="${v.valorOriginal}" placeholder="0"></div>
+      <div class="form-group"><label>Valor Atualizado (R$)</label><input type="number" name="valorAtualizado" value="${v.valorAtualizado}" placeholder="0"></div>
+      <div class="form-group"><label>Multa (R$)</label><input type="number" name="multa" value="${v.multa}" placeholder="0"></div>
+      <div class="form-group"><label>Juros (R$)</label><input type="number" name="juros" value="${v.juros}" placeholder="0"></div>
+      <div class="form-group"><label>Depósitos Judiciais (R$)</label><input type="number" name="depositos" value="${v.depositos}" placeholder="0"></div>
+      <div class="form-group form-full"><label>Garantias</label><input name="garantias" value="${v.garantias}" placeholder="Ex: Depósito judicial, Seguro garantia, Carta fiança..."></div>
+    </div><div class="modal-foot"><button type="button" class="btn btn-g" onclick="App.closeModal()">Cancelar</button><button type="submit" class="btn btn-p">Salvar Processo</button></div></form>`,true);
+  }
+
+  function saveProcesso(e,id){
+    e.preventDefault();const data=Object.fromEntries(new FormData(e.target));
+    if(id){const i=state.processos.findIndex(p=>p.id===id);state.processos[i]={...state.processos[i],...data};}
+    else state.processos.push({id:fmt.id(),...data});
+    save();closeModal();render();toast('Processo salvo');
+  }
+
+  function editProcesso(id){openProcessoModal(id);}
+  function deleteProcesso(id){
+    if(!confirm('Excluir este processo? Andamentos e documentos vinculados também serão removidos.'))return;
+    state.processos=state.processos.filter(p=>p.id!==id);
+    state.andamentos=state.andamentos.filter(a=>a.processoId!==id);
+    state.documentos=state.documentos.filter(d=>d.processoId!==id);
+    save();if(state.view==='detalhe')nav('processos');else render();toast('Processo excluído');
+  }
+
+  function openAndamentoModal(processoId){
+    showModal(`<div class="modal-head"><div class="modal-title">Novo Andamento</div><button class="modal-close" onclick="App.closeModal()">✕</button></div>
+    <form id="fm" onsubmit="App.saveAndamento(event,'${processoId}')"><div class="form-grid">
+      <div class="form-group"><label>Data *</label><input required type="date" name="data" value="${new Date().toISOString().slice(0,10)}"></div>
+      <div class="form-group"><label>Tipo *</label><select name="tipo">${TIPOS_AND.map(t=>`<option value="${t}">${t}</option>`).join('')}</select></div>
+      <div class="form-group form-full"><label>Responsável</label><input name="responsavel" placeholder="Nome do advogado ou responsável"></div>
+      <div class="form-group form-full"><label>Observações *</label><textarea required name="obs" placeholder="Descreva detalhadamente o andamento processual..." style="min-height:90px"></textarea></div>
+      <div class="form-group form-full"><label>Próximo Passo</label><input name="proximo" placeholder="O que precisa ser feito? Qual o prazo?"></div>
+    </div><div class="modal-foot"><button type="button" class="btn btn-g" onclick="App.closeModal()">Cancelar</button><button type="submit" class="btn btn-p">Registrar Andamento</button></div></form>`);
+  }
+
+  function saveAndamento(e,processoId){
+    e.preventDefault();const data=Object.fromEntries(new FormData(e.target));
+    state.andamentos.push({id:fmt.id(),processoId,...data});
+    save();closeModal();nav('detalhe',{id:processoId,tab:1});toast('Andamento registrado');
+  }
+
+  function deleteAndamento(id){
+    if(!confirm('Remover este andamento?'))return;
+    const a=state.andamentos.find(x=>x.id===id);
+    const pid=a?a.processoId:null;
+    state.andamentos=state.andamentos.filter(x=>x.id!==id);
+    save();render();toast('Andamento removido');
+  }
+
+  function openDocModal(processoId){
+    showModal(`<div class="modal-head"><div class="modal-title">Registrar Documento</div><button class="modal-close" onclick="App.closeModal()">✕</button></div>
+    <form id="fm" onsubmit="App.saveDoc(event,'${processoId}')"><div class="form-grid">
+      <div class="form-group form-full"><label>Nome do Documento *</label><input required name="nome" placeholder="Ex: Petição inicial.pdf"></div>
+      <div class="form-group"><label>Tipo</label><select name="tipo">${TIPOS_DOC.map(t=>`<option value="${t}">${t}</option>`).join('')}</select></div>
+      <div class="form-group"><label>Data do Documento</label><input type="date" name="data" value="${new Date().toISOString().slice(0,10)}"></div>
+      <div class="form-group"><label>Tamanho</label><input name="tamanho" placeholder="Ex: 1.2 MB"></div>
+    </div><div class="modal-foot"><button type="button" class="btn btn-g" onclick="App.closeModal()">Cancelar</button><button type="submit" class="btn btn-p">Salvar Documento</button></div></form>`);
+  }
+
+  function saveDoc(e,processoId){
+    e.preventDefault();const data=Object.fromEntries(new FormData(e.target));
+    state.documentos.push({id:fmt.id(),processoId,...data});
+    save();closeModal();nav('detalhe',{id:processoId,tab:2});toast('Documento registrado');
+  }
+
+  function handleFiles(event,processoId){
+    Array.from(event.target.files).forEach(file=>{
+      state.documentos.push({id:fmt.id(),processoId,nome:file.name,tipo:TIPOS_DOC.find(t=>file.name.toLowerCase().includes(t.toLowerCase()))||'Outro',tamanho:formatSize(file.size),data:new Date().toISOString().slice(0,10)});
+    });
+    save();render();toast(`${event.target.files.length} documento(s) adicionado(s)`);
+  }
+
+  function deleteDoc(id){
+    if(!confirm('Remover este documento?'))return;
+    state.documentos=state.documentos.filter(d=>d.id!==id);save();render();toast('Documento removido');
+  }
+
+  function setFilter(key,val){state.filters[key]=val;render();}
+  function clearFilters(){state.filters={cliente:'',tributo:'',status:'',risco:'',tipo:''};render();}
+  function filtrarPorCliente(id){state.filters.cliente=id;nav('processos');}
+
+  /* ── EXPORT ── */
+  function exportExcel(){
+    if(typeof XLSX==='undefined'){toast('Biblioteca XLSX não carregada','⚠');return;}
+    const wb=XLSX.utils.book_new();
+    const psData=state.processos.map(p=>({'Número':p.numero,'Cliente':nomeCliente(p.clienteId),'Tipo':p.tipo,'Esfera':p.esfera,'Tribunal':p.tribunal,'Vara':p.vara,'Data Distribuição':fmt.dt(p.dataDistribuicao),'Status':p.status,'Fase':p.fase,'Tributo':p.tributo,'Valor Original':parseFloat(p.valorOriginal)||0,'Valor Atualizado':parseFloat(p.valorAtualizado)||0,'Multa':parseFloat(p.multa)||0,'Juros':parseFloat(p.juros)||0,'Depósitos':parseFloat(p.depositos)||0,'Risco':p.risco,'Garantias':p.garantias,'Objeto':p.objeto}));
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(psData),'Processos');
+    const clData=state.clientes.map(c=>({'Razão Social':c.razaoSocial,'CNPJ':c.cnpj,'Grupo':c.grupo,'Responsável':c.responsavel,'Segmento':c.segmento,'Status':c.status}));
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(clData),'Clientes');
+    const andData=state.andamentos.map(a=>({'Processo':(state.processos.find(p=>p.id===a.processoId)||{}).numero||'','Data':fmt.dt(a.data),'Tipo':a.tipo,'Responsável':a.responsavel,'Observações':a.obs,'Próximo Passo':a.proximo}));
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(andData),'Andamentos');
+    XLSX.writeFile(wb,`Passivos_Tributarios_${new Date().toISOString().slice(0,10)}.xlsx`);
+    toast('Excel gerado com sucesso');
+  }
+
+  function exportPDF(){
+    if(typeof window.jspdf==='undefined'){toast('jsPDF não carregado','⚠');return;}
+    const{jsPDF}=window.jspdf;
+    const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
+    doc.setFillColor(6,13,26);doc.rect(0,0,297,210,'F');
+    doc.setTextColor(255,255,255);doc.setFontSize(18);doc.setFont('helvetica','bold');
+    doc.text('Relatório de Passivos Tributários',14,18);
+    doc.setFontSize(9);doc.setFont('helvetica','normal');doc.setTextColor(107,125,148);
+    doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')} — Rumo Brasil Consultoria`,14,24);
+    const ps=state.processos;const totalVal=ps.reduce((s,p)=>s+(parseFloat(p.valorAtualizado)||0),0);
+    doc.setFontSize(11);doc.setTextColor(13,148,136);
+    doc.text(`Total em discussão: R$ ${totalVal.toLocaleString('pt-BR')}`,14,33);
+    doc.setTextColor(200,200,200);
+    doc.text(`Processos: ${ps.length}   Clientes: ${state.clientes.length}   Alto risco: ${ps.filter(p=>p.risco==='Alto').length}   Judiciais: ${ps.filter(p=>p.tipo==='Judicial').length}`,14,40);
+    doc.autoTable({startY:47,head:[['Processo','Cliente','Tipo','Tributo','Valor Atualizado','Risco','Status']],body:ps.map(p=>[truncNum(p.numero,22),nomeCliente(p.clienteId).slice(0,22),p.tipo,p.tributo,`R$ ${(parseFloat(p.valorAtualizado)||0).toLocaleString('pt-BR')}`,p.risco,p.status]),theme:'grid',styles:{fontSize:8,textColor:[200,200,200],fillColor:[12,22,37]},headStyles:{fillColor:[13,148,136],textColor:[255,255,255],fontStyle:'bold'},alternateRowStyles:{fillColor:[18,32,53]}});
+    doc.save(`Passivos_Tributarios_${new Date().toISOString().slice(0,10)}.pdf`);
+    toast('PDF gerado com sucesso');
+  }
+
+  /* ── HELPERS ── */
+  function showModal(html,large=false){
+    document.getElementById('modal-box').className=large?'modal modal-lg':'modal';
+    document.getElementById('modal-box').innerHTML=html;
+    document.getElementById('modal-overlay').classList.add('open');
+  }
+  function closeModal(){document.getElementById('modal-overlay').classList.remove('open');}
+  function toast(msg,ic='✓'){
+    const el=document.getElementById('toast');
+    document.getElementById('toast-msg').textContent=msg;document.getElementById('toast-ic').textContent=ic;
+    el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2800);
+  }
+  function nomeCliente(id){const c=state.clientes.find(c=>c.id===id);return c?c.razaoSocial:'—';}
+  function truncNum(n,max=22){return n&&n.length>max?n.slice(0,max)+'…':(n||'—');}
+  function badgeRisco(r){const m={Alto:'b-red',Médio:'b-yellow',Baixo:'b-green'};return`<span class="badge ${m[r]||'b-gray'}">${r||'—'}</span>`;}
+  function badgeStatus(s){const m={'Em andamento':'b-blue','Aguardando julgamento':'b-yellow','Suspenso':'b-gray','Encerrado':'b-gray','Ganho':'b-green','Perdido':'b-red'};return`<span class="badge ${m[s]||'b-gray'}">${s||'—'}</span>`;}
+  function riscoCls(r){return r==='Alto'?'v-red':r==='Médio'?'v-yellow':'';}
+  function docIcon(t){return{Petição:'📄',Decisão:'⚖',Sentença:'📋',Acórdão:'📗',Procuração:'📜',Comprovante:'🧾',Contrato:'📝'}[t]||'📎';}
+  function formatSize(b){if(b<1024)return b+'B';if(b<1048576)return(b/1024).toFixed(1)+' KB';return(b/1048576).toFixed(1)+' MB';}
+
+  function init(){load();nav('dashboard');}
+
+  return{nav,search,add,setFilter,clearFilters,filtrarPorCliente,saveCliente,editCliente,deleteCliente,openClienteModal,saveProcesso,editProcesso,deleteProcesso,openProcessoModal,saveAndamento,openAndamentoModal,deleteAndamento,saveDoc,openDocModal,handleFiles,deleteDoc,closeModal,exportExcel,exportPDF};
+})();
+
+document.addEventListener('DOMContentLoaded',App.init);
+</script>
+</body>
+</html>
