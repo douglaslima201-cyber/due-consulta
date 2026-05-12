@@ -27,6 +27,10 @@ _ECAC_DIR.mkdir(exist_ok=True)
 _ECAC_URL  = "https://cav.receita.fazenda.gov.br/eCAC/"
 _CHROME_PROFILE = os.path.expandvars(r"%LOCALAPPDATA%\Google\Chrome\User Data")
 _CDP_PORT = 9223
+_BACKEND_PORT = int(os.environ.get("PORT", 5000))
+
+_jobs_lock     = threading.Lock()
+_capturas_lock = threading.Lock()
 
 def _elog(job_id: str, msg: str):
     _ECAC_JOBS[job_id]["log"].append(msg)
@@ -111,6 +115,9 @@ def _encontrar_chrome() -> str | None:
         if Path(c).exists():
             return c
     return None
+
+def _chrome_bloqueado() -> bool:
+    return _encontrar_chrome() is None
 
 async def _ecac_download_async(job_id: str, periodo_ini: str, periodo_fim: str):
     from playwright.async_api import async_playwright, TimeoutError as PwTimeout
@@ -286,8 +293,16 @@ async def _ecac_download_async(job_id: str, periodo_ini: str, periodo_fim: str):
                     await asyncio.sleep(1)
 
                     nome = f"perdcomp_{i+1:03d}.pdf"
-                    # Salvar como PDF via Playwright (equivalente a Ctrl+P → Salvar PDF)
-                    await nova_pg.pdf(path=str(dest / nome), format="A4", print_background=True)
+                    # page.pdf() só funciona headless; usa CDP diretamente (funciona em headed)
+                    import base64 as _b64
+                    cdp = await ctx.new_cdp_session(nova_pg)
+                    result = await cdp.send("Page.printToPDF", {
+                        "printBackground": True,
+                        "paperWidth": 8.27,
+                        "paperHeight": 11.69,
+                    })
+                    await cdp.detach()
+                    (dest / nome).write_bytes(_b64.b64decode(result["data"]))
                     await nova_pg.close()
 
                     arquivos_baixados.append(nome)
@@ -851,25 +866,31 @@ def ecac_capturar_html():
 
     nome = f"ecac_captura_{indice+1:03d}.html"
     reg  = extrair_registro(texto, nome)
-    _ecac_capturas.append(reg)
-    return jsonify({"ok": True, "total": len(_ecac_capturas), "tipo": reg["tipo"]})
+    with _capturas_lock:
+        _ecac_capturas.append(reg)
+        total = len(_ecac_capturas)
+    return jsonify({"ok": True, "total": total, "tipo": reg["tipo"]})
 
 @bp.route('/api/perdcomp/ecac/capturas')
 def ecac_capturas_status():
-    return jsonify({"total": len(_ecac_capturas),
+    with _capturas_lock:
+        snapshot = list(_ecac_capturas)
+    return jsonify({"total": len(snapshot),
                     "registros": [{"arquivo": r["arquivo"], "tipo": r["tipo"],
-                                   "numero": r["numero"]} for r in _ecac_capturas]})
+                                   "numero": r["numero"]} for r in snapshot]})
 
 @bp.route('/api/perdcomp/ecac/limpar-capturas', methods=['POST'])
 def ecac_limpar_capturas():
-    _ecac_capturas.clear()
+    with _capturas_lock:
+        _ecac_capturas.clear()
     return jsonify({"ok": True})
 
 @bp.route('/api/perdcomp/ecac/analisar-capturas', methods=['POST'])
 def ecac_analisar_capturas():
-    if not _ecac_capturas:
+    with _capturas_lock:
+        registros = list(_ecac_capturas)
+    if not registros:
         return jsonify({"error": "Nenhuma declaração capturada ainda."}), 400
-    registros = list(_ecac_capturas)
     vinculos, nv = vincular_pers_dcomps(registros)
     alertas = analisar_compliance(registros, vinculos)
     total_credito    = sum(r["valor_credito"]      for r in registros)
@@ -1004,8 +1025,8 @@ def ecac_importar_json():
     if not isinstance(data, list) or not data:
         return jsonify({"error": "JSON vazio ou formato inválido"}), 400
 
-    _ecac_capturas.clear()
     erros = []
+    novos = []
 
     for item in data:
         numero = item.get('numero', '')
@@ -1019,7 +1040,7 @@ def ecac_importar_json():
                 pdf_bytes = _b64.b64decode(pdf_b64)
                 texto = extrair_texto(pdf_bytes)
                 if texto.strip() and not texto.startswith("ERRO"):
-                    _ecac_capturas.append(extrair_registro(texto, nome))
+                    novos.append(extrair_registro(texto, nome))
                     continue
                 else:
                     erros.append({"arquivo": nome, "erro": "PDF sem texto extraível"})
@@ -1035,9 +1056,13 @@ def ecac_importar_json():
             texto = html_mod.unescape(texto)
             texto = _re.sub(r'\s+', ' ', texto).strip()
             if texto:
-                _ecac_capturas.append(extrair_registro(texto, nome))
+                novos.append(extrair_registro(texto, nome))
 
-    return jsonify({"ok": True, "total": len(_ecac_capturas), "erros": erros})
+    with _capturas_lock:
+        _ecac_capturas.clear()
+        _ecac_capturas.extend(novos)
+        total = len(_ecac_capturas)
+    return jsonify({"ok": True, "total": total, "erros": erros})
 
 @bp.route('/api/perdcomp/ecac/abrir-pasta')
 def ecac_abrir_pasta():
