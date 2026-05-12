@@ -363,31 +363,19 @@ td.name{font-family:var(--body);font-size:12px;color:var(--g2);max-width:180px;o
     <div class="panel" id="p-ecac">
       <div class="sec-label">Captura via console</div>
       <h2 class="sec-title">Captura Automática do eCAC</h2>
-      <p class="sec-sub">Estando na página de Documentos Entregues do PER/DCOMP Web, cole o script abaixo no console do Chrome — ele captura todas as declarações automaticamente.</p>
+      <p class="sec-sub">No eCAC, filtre o período em Documentos Entregues, abra o console do Chrome e cole o script — ele baixa todos os PDFs automaticamente.</p>
 
-      <!-- Bookmarklet -->
+      <!-- Passo 1: Script -->
       <div class="card" style="margin-bottom:16px;border-color:rgba(249,115,22,.2)">
-        <div class="card-title">⚡ Passo 1 — Instalar o Bookmarklet (uma vez só)</div>
-        <div style="font-size:13px;color:var(--g2);margin-bottom:16px;line-height:1.7">
-          Arraste o botão abaixo para a <strong style="color:var(--white)">barra de favoritos</strong> do Chrome. Depois, sempre que estiver na lista de declarações do eCAC, é só clicar nele.
+        <div class="card-title">⚡ Passo 1 — Copiar e colar o script no console</div>
+        <div style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--g2);margin-bottom:14px;line-height:1.7">
+          <div><span style="color:var(--orange);font-family:var(--mono);margin-right:8px">01</span>No eCAC: <strong style="color:var(--white)">Restituição e Compensação → PERDCOMP Web → Visualizar Documentos → Documentos Entregues</strong> — filtre o período</div>
+          <div><span style="color:var(--orange);font-family:var(--mono);margin-right:8px">02</span>Pressione <kbd style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);padding:2px 7px;border-radius:4px;font-family:var(--mono)">F12</kbd> → Console → selecione o contexto <kbd style="background:rgba(249,115,22,.12);border:1px solid rgba(249,115,22,.2);padding:2px 7px;border-radius:4px;font-family:var(--mono);color:var(--orange)">frmApp</kbd> no dropdown</div>
+          <div><span style="color:var(--orange);font-family:var(--mono);margin-right:8px">03</span>Digite <kbd style="background:rgba(255,255,255,.08);padding:2px 7px;border-radius:4px;font-family:var(--mono)">allow pasting</kbd> e Enter, depois cole o script abaixo e Execute Enter</div>
+          <div><span style="color:var(--orange);font-family:var(--mono);margin-right:8px">04</span>O script percorre todas as páginas e baixa um arquivo <strong style="color:var(--white)">.json</strong> automaticamente</div>
         </div>
-        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:16px;background:rgba(255,255,255,.03);border-radius:var(--r);border:1px dashed rgba(249,115,22,.3)">
-          <a id="bookmarklet-link"
-             href="javascript:(function(){var s=document.createElement('script');s.src='http://localhost:5000/api/perdcomp/ecac-script.js?_='+Date.now();s.crossOrigin='anonymous';document.head.appendChild(s)})();"
-             style="display:inline-flex;align-items:center;gap:8px;padding:12px 20px;background:linear-gradient(135deg,var(--orange),var(--orange-d));color:var(--white);border-radius:var(--r);font-weight:700;font-size:13px;text-decoration:none;box-shadow:0 4px 16px rgba(249,115,22,.3);cursor:grab;user-select:none"
-             draggable="true"
-             onclick="alert('Arraste este botão para a barra de favoritos do Chrome. Não clique aqui diretamente.');return false;">
-            🔁 PER/DCOMP Capturar
-          </a>
-          <div style="font-size:12px;color:var(--g3);line-height:1.7">
-            <strong style="color:var(--g2)">Como instalar:</strong><br>
-            Mostre a barra de favoritos (<kbd style="background:rgba(255,255,255,.08);padding:1px 6px;border-radius:3px;font-family:var(--mono)">Ctrl+Shift+B</kbd>) e <strong style="color:var(--white)">arraste</strong> o botão laranja para ela.
-          </div>
-        </div>
-        <div style="margin-top:14px;font-size:13px;color:var(--g2);line-height:1.7">
-          <strong style="color:var(--white)">Como usar:</strong> No eCAC → Restituição e Compensação → PERDCOMP Web → Visualizar Documentos → <strong style="color:var(--white)">Documentos Entregues</strong> → filtre o período → clique no favorito <strong style="color:var(--orange)">PER/DCOMP Capturar</strong>.<br>
-          O script percorre <strong style="color:var(--white)">todas as páginas</strong> automaticamente e captura cada declaração.
-        </div>
+        <button class="btn btn-p btn-sm" onclick="ecacCopiarScript()">📋 Copiar script</button>
+        <div id="ecac-script-box" style="display:none"></div>
       </div>
 
       <!-- Importar JSON -->
