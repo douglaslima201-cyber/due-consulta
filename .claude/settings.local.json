@@ -97,7 +97,16 @@
       "Bash(.venv/Scripts/pip show *)",
       "Bash(.venv/bin/pip show *)",
       "Bash(.venv/Scripts/pip install *)",
-      "Bash(.venv/Scripts/python -c \"import pandas; print\\('pandas OK:', pandas.__version__\\)\")"
+      "Bash(.venv/Scripts/python -c \"import pandas; print\\('pandas OK:', pandas.__version__\\)\")",
+      "Bash(pip show *)",
+      "Bash(python -c \"import flask; print\\(flask.__version__\\)\")",
+      "Bash(python -c \"import flask_cors\")",
+      "Bash(py --list)",
+      "Bash(py -3.13 -c \"import flask; print\\(flask.__version__\\)\")",
+      "Bash(py -3.13 -m pip install flask flask-cors playwright openpyxl pdfplumber)",
+      "Bash(py -3.13 -c \"import flask, flask_cors, playwright, openpyxl, pdfplumber; import pandas; print\\('Tudo OK'\\)\")",
+      "Bash(py -3.13 -m pip install pandas)",
+      "Bash(py -3.13 -c \"import flask, flask_cors, playwright, openpyxl, pdfplumber, pandas; print\\('Tudo OK - todos os módulos importados com sucesso'\\)\")"
     ]
   },
   "hooks": {
