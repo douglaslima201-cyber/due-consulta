@@ -1001,6 +1001,7 @@ def ecac_script_js():
   alert('[PER/DCOMP Analyzer]\n✓ '+total+' declaração(ões) em '+pag+' página(s).\n\nArquivo JSON baixado automaticamente!\nImporte-o na ferramenta PER/DCOMP Analyzer para análise.');
 })();
 """
+    script = script.replace("http://localhost:5000", f"http://localhost:{_BACKEND_PORT}")
     return script, 200, {
         'Content-Type': 'application/javascript',
         'Cache-Control': 'no-cache',
