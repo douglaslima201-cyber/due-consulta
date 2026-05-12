@@ -91,7 +91,13 @@
       "Bash(curl -s http://localhost:5000/api/societario/status-rf)",
       "Bash(curl -s \"http://localhost:5000/api/societario/filiais/11455829000103\")",
       "Bash(curl -s \"http://localhost:5000/api/societario/filiais/60701190000104?max=20\")",
-      "Bash(curl -s \"http://localhost:5000/api/societario/filiais/02387241000160?max=15\")"
+      "Bash(curl -s \"http://localhost:5000/api/societario/filiais/02387241000160?max=15\")",
+      "Bash(.venv\\\\Scripts\\\\pip show *)",
+      "Bash(python -c \"import pandas\")",
+      "Bash(.venv/Scripts/pip show *)",
+      "Bash(.venv/bin/pip show *)",
+      "Bash(.venv/Scripts/pip install *)",
+      "Bash(.venv/Scripts/python -c \"import pandas; print\\('pandas OK:', pandas.__version__\\)\")"
     ]
   },
   "hooks": {
