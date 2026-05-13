@@ -969,7 +969,7 @@ def ecac_limpar_capturas():
 @bp.route('/api/perdcomp/ecac/analisar-capturas', methods=['POST'])
 def ecac_analisar_capturas():
     with _capturas_lock:
-        registros = list(_ecac_capturas)
+        registros = [r for r in _ecac_capturas if r.get("tipo") != "Cancelamento"]
     if not registros:
         return jsonify({"error": "Nenhuma declaração capturada ainda."}), 400
     vinculos, nv = vincular_pers_dcomps(registros)
@@ -1214,7 +1214,11 @@ def ecac_analisar():
             if not texto.strip():
                 erros.append({"arquivo": pdf.name, "erro": "PDF sem texto extraível"})
                 continue
-            registros.append(extrair_registro(texto, pdf.name))
+            reg = extrair_registro(texto, pdf.name)
+            if reg["tipo"] == "Cancelamento":
+                erros.append({"arquivo": pdf.name, "erro": "Pedido de Cancelamento — ignorado na análise"})
+                continue
+            registros.append(reg)
         except Exception as exc:
             erros.append({"arquivo": pdf.name, "erro": str(exc)[:200]})
 
