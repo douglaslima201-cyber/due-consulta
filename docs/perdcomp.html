@@ -982,36 +982,66 @@ const ECAC_SCRIPT = `(async function(){
       return kw.some(k=>s.includes(k));
     });
   };
-  const botoes=getBotoes();
-  if(!botoes.length){alert('Nenhum botão de impressão encontrado. Verifique se está na lista de Documentos Entregues.');return;}
-  console.log('[Analyzer] '+botoes.length+' declarações encontradas.');
-  const origOpen=window.open;
-  const capturas=[];
-  let erros=0;
-  for(let i=0;i<botoes.length;i++){
-    console.log('[Analyzer] Capturando '+(i+1)+'/'+botoes.length+'...');
-    const janelas=[];
-    window.open=function(...a){const w=origOpen.apply(window,a);if(w)janelas.push(w);return w;};
-    botoes[i].click();
-    await new Promise(r=>setTimeout(r,3500));
-    window.open=origOpen;
-    if(!janelas.length){console.warn('[Analyzer] Nenhuma janela aberta no doc '+(i+1));erros++;continue;}
-    const jn=janelas[0];
-    for(let t=0;t<25;t++){await new Promise(r=>setTimeout(r,200));if(jn.document&&jn.document.readyState==='complete')break;}
-    try{
-      const html=jn.document.documentElement.outerHTML;
-      capturas.push({html,indice:i});
-      console.log('[Analyzer] ✓ Doc '+(i+1)+' capturado');
-    }catch(ex){erros++;console.error('[Analyzer] Erro doc '+(i+1),ex);}
-    try{jn.close();}catch(e){}
-    await new Promise(r=>setTimeout(r,500));
+  const getProxPag=()=>[...document.querySelectorAll('a,button,span,li')].find(el=>{
+    const t=el.textContent.trim(),cls=(el.className||'').toLowerCase();
+    return(t==='>'||t==='»'||t.toLowerCase()==='próxima'||cls.includes('next')||cls.includes('proximo'))&&!el.disabled&&!cls.includes('disabled');
+  });
+  const blobToB64=blob=>new Promise((res,rej)=>{
+    const r=new FileReader();r.onloadend=()=>res(r.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(blob);
+  });
+  const extrairNumero=(el,idx)=>{
+    const tr=el.closest('tr');
+    const txt=tr?tr.innerText:el.title||'';
+    const m=txt.match(/\d{5}[.\s]\d{5}[.\s]\d{6}[.\s]\d[.\s]\d+[.\s]\d{2}[-]\d{4}/);
+    return m?m[0].replace(/\\s/g,'.'):'doc_'+(idx+1);
+  };
+  const capturas=[];let total=0,pag=1;const origOpen=window.open;
+  while(true){
+    const botoes=getBotoes();
+    if(!botoes.length&&pag===1){alert('Nenhum botão de impressão encontrado.\\nVá para Documentos Entregues, filtre o período e tente novamente.');return;}
+    console.log('[Analyzer] Pág.'+pag+': '+botoes.length+' documento(s)');
+    for(let i=0;i<botoes.length;i++){
+      console.log('[Analyzer] Capturando '+(i+1)+'/'+botoes.length+' (pág.'+pag+')...');
+      const numero=extrairNumero(botoes[i],total);
+      const janelas=[];
+      window.open=function(...a){const w=origOpen.apply(window,a);if(w)janelas.push(w);return w;};
+      botoes[i].click();
+      await new Promise(r=>setTimeout(r,4000));
+      window.open=origOpen;
+      if(!janelas.length){console.warn('[Analyzer] Sem janela doc '+(i+1));continue;}
+      const jn=janelas[0];
+      for(let t=0;t<40;t++){await new Promise(r=>setTimeout(r,300));try{if(jn.location&&jn.location.href&&jn.location.href!=='about:blank')break;}catch(e){break;}}
+      await new Promise(r=>setTimeout(r,800));
+      try{
+        let pdfUrl;try{pdfUrl=jn.location.href;}catch(e){jn.close();continue;}
+        if(!pdfUrl||pdfUrl==='about:blank'){jn.close();continue;}
+        console.log('[Analyzer] URL: '+pdfUrl.slice(0,80));
+        const resp=await fetch(pdfUrl,{credentials:'include'});
+        if(!resp.ok){console.error('[Analyzer] HTTP '+resp.status);jn.close();continue;}
+        const blob=await resp.blob();
+        const b64=await blobToB64(blob);
+        capturas.push({pdf_b64:b64,indice:total,numero,contentType:blob.type});
+        total++;console.log('[Analyzer] ✓ PDF '+total+' ('+numero+') — '+Math.round(blob.size/1024)+' KB');
+      }catch(ex){console.error('[Analyzer] Erro doc '+(i+1)+':',ex.message);}
+      try{jn.close();}catch(e){}
+      await new Promise(r=>setTimeout(r,600));
+    }
+    const fp=document.body.innerText.slice(0,400);
+    const prox=getProxPag();
+    if(!prox){console.log('[Analyzer] Última página ('+pag+').');break;}
+    prox.click();
+    let mudou=false;
+    for(let t=0;t<60;t++){await new Promise(r=>setTimeout(r,200));if(document.body.innerText.slice(0,400)!==fp){mudou=true;break;}}
+    if(!mudou){console.log('[Analyzer] Última página.');break;}
+    pag++;await new Promise(r=>setTimeout(r,1500));
   }
+  if(!capturas.length){alert('[Analyzer] Nenhum PDF capturado. Verifique se a janela de impressão abre normalmente.');return;}
   const blob=new Blob([JSON.stringify(capturas)],{type:'application/json'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
-  a.href=url;a.download='perdcomp_capturas_'+new Date().toISOString().slice(0,10)+'.json';
+  a.href=url;a.download='perdcomp_pdfs_'+new Date().toISOString().slice(0,10)+'.json';
   document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
-  alert('[PER/DCOMP Analyzer] '+capturas.length+' de '+botoes.length+' declarações capturadas.\\n\\nArquivo JSON baixado! Importe-o na aba eCAC → Captura Manual.');
+  alert('[PER/DCOMP Analyzer]\\n✓ '+total+' PDF(s) em '+pag+' página(s) capturados.\\n\\nArquivo JSON baixado! Importe na ferramenta → Captura Manual.');
 })();`;
 
 function ecacMontarScript(){
