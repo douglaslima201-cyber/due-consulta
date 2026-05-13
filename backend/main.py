@@ -23,6 +23,12 @@ from playwright.async_api import async_playwright, TimeoutError as PlaywrightTim
 app = Flask(__name__)
 CORS(app)
 
+@app.after_request
+def allow_private_network(response):
+    if request.method == "OPTIONS":
+        response.headers["Access-Control-Allow-Private-Network"] = "true"
+    return response
+
 _BASE_DIR = Path(__file__).parent
 DB_PATH = str(_BASE_DIR / "consultas.db")
 UPLOAD_DIR = _BASE_DIR / "uploads"
