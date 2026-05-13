@@ -361,6 +361,8 @@ def detectar_tipo(texto: str, tl: str) -> str:
     m = re.search(r'Tipo de Documento\s+([^\n]+)', texto, re.IGNORECASE)
     if m:
         td = m.group(1).strip().lower()
+        if 'cancelamento' in td:
+            return 'Cancelamento'
         if 'compensa' in td:
             return 'Compensação'
         if 'ressarcimento' in td:
