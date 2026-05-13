@@ -1310,10 +1310,11 @@ def listar_jobs():
 def health():
     return jsonify({"status": "ok", "version": "1.0.0"})
 
-@app.route("/api/perdcomp/ecac/upload-pdfs", methods=["POST"])
+@app.route("/upload-pdfs-ecac", methods=["GET", "POST"])
 def ecac_upload_pdfs_main():
-    from pathlib import Path as _Path
-    from perdcomp import _ECAC_DIR, extrair_texto, extrair_registro, vincular_pers_dcomps, analisar_compliance
+    if request.method == "GET":
+        return jsonify({"status": "ok", "endpoint": "upload-pdfs-ecac"})
+    from perdcomp import _ECAC_DIR
     pasta = _ECAC_DIR / "entrada"
     pasta.mkdir(exist_ok=True)
     files = request.files.getlist("files")
@@ -1322,7 +1323,7 @@ def ecac_upload_pdfs_main():
         if not f.filename.lower().endswith(".pdf"):
             continue
         try:
-            dest = pasta / _Path(f.filename).name
+            dest = pasta / Path(f.filename).name
             dest.write_bytes(f.read())
             salvos.append(f.filename)
         except Exception as exc:

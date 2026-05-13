@@ -1158,23 +1158,6 @@ def ecac_extrair_zip():
     pdfs = list(pasta.glob("*.pdf"))
     return jsonify({"extraidos": extraidos, "total_pasta": len(pdfs), "erros": erros})
 
-@bp.route('/api/perdcomp/ecac/upload-pdfs', methods=['POST'])
-def ecac_upload_pdfs():
-    """Recebe múltiplos PDFs diretamente e salva na pasta de entrada."""
-    pasta = _ECAC_DIR / "entrada"
-    pasta.mkdir(exist_ok=True)
-    files = request.files.getlist('files')
-    salvos, erros = [], []
-    for f in files:
-        if not f.filename.lower().endswith('.pdf'):
-            continue
-        try:
-            dest = pasta / Path(f.filename).name
-            dest.write_bytes(f.read())
-            salvos.append(f.filename)
-        except Exception as exc:
-            erros.append({"arquivo": f.filename, "erro": str(exc)})
-    return jsonify({"salvos": len(salvos), "total_pasta": len(list(pasta.glob("*.pdf"))), "erros": erros})
 
 @bp.route('/api/perdcomp/ecac/limpar', methods=['POST'])
 def ecac_limpar():

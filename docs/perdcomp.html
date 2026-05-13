@@ -1108,7 +1108,7 @@ async function ecacUploadPdfs(files){
   const fd=new FormData();
   for(const f of files) fd.append('files', f);
   try{
-    const r=await fetch(`${API}/ecac/upload-pdfs`,{method:'POST',body:fd});
+    const r=await fetch(`http://localhost:5000/upload-pdfs-ecac`,{method:'POST',body:fd});
     const ct=r.headers.get('content-type')||'';
     if(!ct.includes('application/json')) throw new Error('Servidor não respondeu JSON (HTTP '+r.status+'). Verifique se o Flask está rodando e foi reiniciado.');
     const d=await r.json(); if(!r.ok) throw new Error(d.error||'Erro no upload');
