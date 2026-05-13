@@ -1310,6 +1310,19 @@ def listar_jobs():
 def health():
     return jsonify({"status": "ok", "version": "1.0.0"})
 
+@app.route("/debug-pdf-texto", methods=["POST"])
+def debug_pdf_texto():
+    """Retorna o texto bruto extraído de um PDF para diagnóstico."""
+    from perdcomp import _ECAC_DIR, extrair_texto
+    pasta = _ECAC_DIR / "entrada"
+    pdfs = list(pasta.glob("*.pdf"))
+    if not pdfs:
+        return jsonify({"error": "Nenhum PDF na pasta de entrada"}), 400
+    f = request.args.get("arquivo")
+    pdf = next((p for p in pdfs if p.name == f), pdfs[0])
+    texto = extrair_texto(pdf.read_bytes())
+    return jsonify({"arquivo": pdf.name, "texto": texto[:3000], "total_chars": len(texto)})
+
 @app.route("/upload-pdfs-ecac", methods=["GET", "POST"])
 def ecac_upload_pdfs_main():
     if request.method == "GET":
