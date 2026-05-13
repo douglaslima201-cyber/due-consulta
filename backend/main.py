@@ -21,21 +21,13 @@ from flask_cors import CORS
 from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeout
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "*"}})
-
-@app.before_request
-def handle_options_preflight():
-    if request.method == "OPTIONS":
-        resp = app.make_response("")
-        resp.headers["Access-Control-Allow-Origin"] = "*"
-        resp.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
-        resp.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
-        resp.headers["Access-Control-Allow-Private-Network"] = "true"
-        resp.status_code = 204
-        return resp
+CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=False)
 
 @app.after_request
-def add_private_network_header(response):
+def add_cors_headers(response):
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
     response.headers["Access-Control-Allow-Private-Network"] = "true"
     return response
 
