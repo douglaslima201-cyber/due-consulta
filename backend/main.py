@@ -1310,6 +1310,25 @@ def listar_jobs():
 def health():
     return jsonify({"status": "ok", "version": "1.0.0"})
 
+@app.route("/api/perdcomp/ecac/upload-pdfs", methods=["POST"])
+def ecac_upload_pdfs_main():
+    from pathlib import Path as _Path
+    from perdcomp import _ECAC_DIR, extrair_texto, extrair_registro, vincular_pers_dcomps, analisar_compliance
+    pasta = _ECAC_DIR / "entrada"
+    pasta.mkdir(exist_ok=True)
+    files = request.files.getlist("files")
+    salvos, erros = [], []
+    for f in files:
+        if not f.filename.lower().endswith(".pdf"):
+            continue
+        try:
+            dest = pasta / _Path(f.filename).name
+            dest.write_bytes(f.read())
+            salvos.append(f.filename)
+        except Exception as exc:
+            erros.append({"arquivo": f.filename, "erro": str(exc)})
+    return jsonify({"salvos": len(salvos), "total_pasta": len(list(pasta.glob("*.pdf"))), "erros": erros})
+
 @app.route("/api/proxies")
 def listar_proxies():
     rotator = ProxyRotator(PROXY_FILE)
