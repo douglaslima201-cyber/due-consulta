@@ -982,10 +982,15 @@ const ECAC_SCRIPT = `(async function(){
       return kw.some(k=>s.includes(k));
     });
   };
-  const getProxPag=()=>[...document.querySelectorAll('a,button,span,li')].find(el=>{
-    const t=el.textContent.trim(),cls=(el.className||'').toLowerCase();
-    return(t==='>'||t==='»'||t.toLowerCase()==='próxima'||cls.includes('next')||cls.includes('proximo'))&&!el.disabled&&!cls.includes('disabled');
-  });
+  const getProxPag=()=>{
+    const el=document.querySelector('a[aria-label="Próximo"].page-link,a[aria-label="Proximo"].page-link,a[aria-label*="róximo"].page-link');
+    if(el){const li=el.closest('li');if(!li||!li.classList.contains('disabled'))return el;}
+    return[...document.querySelectorAll('a.page-link,button.page-link')].find(el=>{
+      const t=el.textContent.trim(),li=el.closest('li');
+      return(t==='»'||/próximo|proximo|next/i.test(el.getAttribute('aria-label')||''))&&(!li||!li.classList.contains('disabled'));
+    });
+  };
+  const getPagAtual=()=>{const a=document.querySelector('li.page-item.active .page-link');return a?a.textContent.trim():'?';};
   const blobToB64=blob=>new Promise((res,rej)=>{
     const r=new FileReader();r.onloadend=()=>res(r.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(blob);
   });
@@ -1026,13 +1031,13 @@ const ECAC_SCRIPT = `(async function(){
       try{jn.close();}catch(e){}
       await new Promise(r=>setTimeout(r,600));
     }
-    const fp=document.body.innerText.slice(0,400);
     const prox=getProxPag();
     if(!prox){console.log('[Analyzer] Última página ('+pag+').');break;}
+    const pagAntes=getPagAtual();
     prox.click();
     let mudou=false;
-    for(let t=0;t<60;t++){await new Promise(r=>setTimeout(r,200));if(document.body.innerText.slice(0,400)!==fp){mudou=true;break;}}
-    if(!mudou){console.log('[Analyzer] Última página.');break;}
+    for(let t=0;t<60;t++){await new Promise(r=>setTimeout(r,300));if(getPagAtual()!==pagAntes){mudou=true;break;}}
+    if(!mudou){console.log('[Analyzer] Última página (sem mudança de paginador).');break;}
     pag++;await new Promise(r=>setTimeout(r,1500));
   }
   if(!capturas.length){alert('[Analyzer] Nenhum PDF capturado. Verifique se a janela de impressão abre normalmente.');return;}
