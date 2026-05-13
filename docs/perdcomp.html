@@ -1220,18 +1220,22 @@ async function ecacLimparPasta(){
 }
 
 async function ecacAnalisarPasta(){
-  const btn=document.getElementById('btn-ecac-analisar');
+  const btn=document.getElementById('btn-ecac-analisar-pdf');
   const errEl=document.getElementById('ecac-analisar-err');
-  btn.disabled=true; btn.textContent='⏳ Analisando...'; errEl.style.display='none';
+  if(btn){btn.disabled=true; btn.textContent='⏳ Analisando...';}
+  if(errEl) errEl.style.display='none';
   try{
     const r=await fetch(`${API}/ecac/analisar`,{method:'POST'});
+    const ct=r.headers.get('content-type')||'';
+    if(!ct.includes('application/json')) throw new Error('Servidor retornou HTTP '+r.status);
     const d=await r.json();
     if(!r.ok) throw new Error(d.error);
     DADOS=d; renderTudo(); sp('p-dash');
   }catch(err){
-    errEl.style.display='block'; errEl.textContent='Erro: '+err.message;
+    if(errEl){errEl.style.display='block'; errEl.textContent='Erro: '+err.message;}
+    else alert('Erro ao analisar: '+err.message);
   }finally{
-    btn.disabled=false; btn.textContent='🔍 Analisar PDFs da pasta';
+    if(btn){btn.disabled=false; btn.textContent='🔍 Analisar PDFs';}
     ecacAtualizarPasta();
   }
 }
