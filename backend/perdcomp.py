@@ -623,6 +623,31 @@ def extrair_registro(texto: str, nome: str) -> dict:
         **vals,
     }
 
+# ─── RETIFICADORAS DCOMP ─────────────────────────────────────────────────────
+
+def _marcar_retificadoras_dcomp(registros: list) -> None:
+    """Marca DCOMPs substituídas por retificadoras (mesmo tributo + competência)."""
+    from collections import defaultdict
+    dcomps = [r for r in registros if r["tipo"] == "Compensação"]
+    grupos: dict[tuple, list] = defaultdict(list)
+    for r in dcomps:
+        chave = (r.get("tributo"), _normalizar_competencia(r.get("competencia") or ""))
+        grupos[chave].append(r)
+    for chave, grupo in grupos.items():
+        rets = [r for r in grupo if r.get("retificador")]
+        orig = [r for r in grupo if not r.get("retificador")]
+        if rets and orig:
+            efetivo = rets[-1]
+            subs = orig + rets[:-1]
+            efetivo.setdefault("_efetivo", True)
+            efetivo.setdefault("_substitui", [r.get("arquivo") for r in subs])
+            for s in subs:
+                s["_efetivo"] = False
+                s["_substituido_por"] = efetivo.get("arquivo")
+        else:
+            for r in grupo:
+                r.setdefault("_efetivo", True)
+
 # ─── VINCULAÇÃO PER ↔ DCOMP ──────────────────────────────────────────────────
 
 def _normalizar_num(n: str | None) -> str:
@@ -973,14 +998,16 @@ def ecac_analisar_capturas():
     if not registros:
         return jsonify({"error": "Nenhuma declaração capturada ainda."}), 400
     vinculos, nv = vincular_pers_dcomps(registros)
+    _marcar_retificadoras_dcomp(registros)
     alertas = analisar_compliance(registros, vinculos)
-    total_credito    = sum(r["valor_credito"]      for r in registros)
-    total_compensado = sum(r["valor_compensado"]   for r in registros)
-    total_ressarcido = sum(r["valor_ressarcido"]   for r in registros)
-    saldo_total      = sum(r["saldo_remanescente"] for r in registros)
+    ativos = [r for r in registros if r.get("_efetivo", True)]
+    total_credito    = sum(r["valor_credito"]      for r in ativos)
+    total_compensado = sum(r["valor_compensado"]   for r in ativos)
+    total_ressarcido = sum(r["valor_ressarcido"]   for r in ativos)
+    saldo_total      = sum(r["saldo_remanescente"] for r in ativos)
     dist_tributos: dict[str, float] = {}
     dist_tipos:    dict[str, int]   = {}
-    for r in registros:
+    for r in ativos:
         t  = r["tributo"] or "Não identificado"
         tp = r["tipo"]    or "Não identificado"
         val = r["valor_compensado"] if r["tipo"] == "Compensação" else r["valor_credito"]
@@ -1223,16 +1250,18 @@ def ecac_analisar():
             erros.append({"arquivo": pdf.name, "erro": str(exc)[:200]})
 
     vinculos, dcomps_nao_vinculadas = vincular_pers_dcomps(registros)
+    _marcar_retificadoras_dcomp(registros)
     alertas = analisar_compliance(registros, vinculos)
 
-    total_credito    = sum(r["valor_credito"]      for r in registros)
-    total_compensado = sum(r["valor_compensado"]   for r in registros)
-    total_ressarcido = sum(r["valor_ressarcido"]   for r in registros)
-    saldo_total      = sum(r["saldo_remanescente"] for r in registros)
+    ativos = [r for r in registros if r.get("_efetivo", True)]
+    total_credito    = sum(r["valor_credito"]      for r in ativos)
+    total_compensado = sum(r["valor_compensado"]   for r in ativos)
+    total_ressarcido = sum(r["valor_ressarcido"]   for r in ativos)
+    saldo_total      = sum(r["saldo_remanescente"] for r in ativos)
 
     dist_tributos: dict[str, float] = {}
     dist_tipos:    dict[str, int]   = {}
-    for r in registros:
+    for r in ativos:
         t  = r["tributo"] or "Não identificado"
         tp = r["tipo"]    or "Não identificado"
         val = r["valor_compensado"] if r["tipo"] == "Compensação" else r["valor_credito"]
@@ -1244,7 +1273,7 @@ def ecac_analisar():
         "dcomps_nao_vinculadas": [d["arquivo"] for d in dcomps_nao_vinculadas],
         "alertas": alertas, "erros": erros,
         "sumario": {
-            "total_arquivos": len(registros), "total_credito": round(total_credito, 2),
+            "total_arquivos": len(ativos), "total_credito": round(total_credito, 2),
             "total_compensado": round(total_compensado, 2),
             "total_ressarcido": round(total_ressarcido, 2),
             "saldo_disponivel": round(saldo_total, 2),

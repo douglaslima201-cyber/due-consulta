@@ -331,13 +331,18 @@ td.name{font-family:var(--body);font-size:12px;color:var(--g2);max-width:180px;o
           <input type="text" id="f-busca" placeholder="Buscar arquivo ou número..." oninput="filtrarTabela()"/>
           <select id="f-tipo" onchange="filtrarTabela()"><option value="">Todos os tipos</option><option>Compensação</option><option>Ressarcimento</option><option>Restituição</option></select>
           <select id="f-tributo" onchange="filtrarTabela()"><option value="">Todos os tributos</option><option>PIS</option><option>COFINS</option><option>IRPJ</option><option>CSLL</option><option>IPI</option><option>INSS</option></select>
+          <select id="f-efetivo" onchange="filtrarTabela()">
+            <option value="">Todos os documentos</option>
+            <option value="ativos">Somente ativos</option>
+            <option value="substituidos">Somente substituídos</option>
+          </select>
         </div>
         <div class="tw">
           <table>
             <thead><tr>
               <th>Arquivo</th><th>Número</th><th>Tipo</th><th>Tributo</th>
               <th>Competência</th><th>Valor Crédito</th><th>Compensado</th>
-              <th>Ressarcido</th><th>Saldo</th><th>Situação</th><th>Ret.</th>
+              <th>Ressarcido</th><th>Saldo</th><th>Situação</th><th>Status</th>
             </tr></thead>
             <tbody id="reg-tbody"></tbody>
           </table>
@@ -874,18 +879,33 @@ function filtrarTabela(){
   const busca=(document.getElementById('f-busca').value||'').toLowerCase();
   const tipo=document.getElementById('f-tipo').value;
   const tributo=document.getElementById('f-tributo').value;
+  const efetivo=document.getElementById('f-efetivo')?.value||'';
   const rows=DADOS.registros.filter(r=>{
     if(busca&&!r.arquivo.toLowerCase().includes(busca)&&!(r.numero||'').toLowerCase().includes(busca)) return false;
     if(tipo&&r.tipo!==tipo) return false;
     if(tributo&&r.tributo!==tributo) return false;
+    const ativo=r._efetivo!==false;
+    if(efetivo==='ativos'&&!ativo) return false;
+    if(efetivo==='substituidos'&&ativo) return false;
     return true;
   });
-  document.getElementById('reg-count').textContent=`${rows.length} de ${DADOS.registros.length} registro(s)`;
+  document.getElementById('reg-count').textContent=`${rows.length} de ${DADOS.registros.length} registro(s) — ${DADOS.registros.filter(r=>r._efetivo!==false).length} ativos, ${DADOS.registros.filter(r=>r._efetivo===false).length} substituídos`;
   document.getElementById('reg-tbody').innerHTML=rows.map(r=>{
     const pillCls={Compensação:'pill-comp',Ressarcimento:'pill-res',Restituição:'pill-rest'}[r.tipo]||'pill-comp';
-    return `<tr>
+    const substituido=r._efetivo===false;
+    const rowStyle=substituido?'opacity:0.45;':'';
+    let statusCol;
+    if(substituido){
+      statusCol=`<span class="pill" style="background:rgba(107,114,128,.2);color:var(--g3);font-size:10px" title="Substituído por: ${e(r._substituido_por||'?')}">⚠ Substituído</span>`;
+    } else if(r.retificador){
+      const subs=(r._substitui||[]).join(', ');
+      statusCol=`<span class="pill pill-ret" title="Retificadora${subs?' — substitui: '+subs:''}">✓ Retificadora</span>`;
+    } else {
+      statusCol='<span style="font-size:11px;color:var(--g3)">—</span>';
+    }
+    return `<tr style="${rowStyle}">
       <td class="name" title="${e(r.arquivo)}">${e(r.arquivo)}</td>
-      <td>${e(r.numero||'—')}</td>
+      <td style="font-family:var(--mono);font-size:11px">${e(r.numero||'—')}</td>
       <td><span class="pill ${pillCls}">${e(r.tipo)}</span></td>
       <td>${e(r.tributo||'—')}</td>
       <td>${e(r.competencia||'—')}</td>
@@ -894,7 +914,7 @@ function filtrarTabela(){
       <td>${brl(r.valor_ressarcido)}</td>
       <td style="color:${r.saldo_remanescente<0?'var(--red)':''}">${brl(r.saldo_remanescente)}</td>
       <td>${e(r.situacao||'—')}</td>
-      <td>${r.retificador?'<span class="pill pill-ret">Ret</span>':'—'}</td>
+      <td>${statusCol}</td>
     </tr>`;
   }).join('');
 }
