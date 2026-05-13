@@ -474,6 +474,9 @@ def extrair_dcomp(texto: str, tl: str) -> dict:
         r'Valor do Cr[eé]dito',
         r'Total do Cr[eé]dito',
     ])
+    credito_na_transmissao = _val(texto, [
+        r'Cr[eé?]dito na Data de Transmiss[aã?]o',
+    ])
     valor_compensado = _val(texto, [
         r'Valor Utilizado nesta DCOMP',
         r'Valor da Declara[çc?][aã?]o de Compensa[çc?][aã?]o',
@@ -495,10 +498,11 @@ def extrair_dcomp(texto: str, tl: str) -> dict:
     if saldo == 0 and valor_credito > 0:
         saldo = max(0.0, valor_credito - valor_compensado)
     return {
-        "valor_credito":      round(valor_credito, 2),
-        "valor_compensado":   round(valor_compensado, 2),
-        "valor_ressarcido":   0.0,
-        "saldo_remanescente": round(saldo, 2),
+        "valor_credito":           round(valor_credito, 2),
+        "credito_na_transmissao":  round(credito_na_transmissao, 2),
+        "valor_compensado":        round(valor_compensado, 2),
+        "valor_ressarcido":        0.0,
+        "saldo_remanescente":      round(saldo, 2),
     }
 
 def extrair_per_ressarcimento(texto: str, tl: str) -> dict:
@@ -529,10 +533,11 @@ def extrair_per_ressarcimento(texto: str, tl: str) -> dict:
     if saldo == 0 and valor_credito > 0:
         saldo = max(0.0, valor_credito - valor_ressarcido)
     return {
-        "valor_credito":      round(valor_credito, 2),
-        "valor_compensado":   0.0,
-        "valor_ressarcido":   round(valor_ressarcido, 2),
-        "saldo_remanescente": round(saldo, 2),
+        "valor_credito":          round(valor_credito, 2),
+        "credito_na_transmissao": 0.0,
+        "valor_compensado":       0.0,
+        "valor_ressarcido":       round(valor_ressarcido, 2),
+        "saldo_remanescente":     round(saldo, 2),
     }
 
 def extrair_per_restituicao(texto: str, tl: str) -> dict:
@@ -545,10 +550,11 @@ def extrair_per_restituicao(texto: str, tl: str) -> dict:
     if saldo == 0 and valor_credito > 0:
         saldo = max(0.0, valor_credito - valor_ressarcido)
     return {
-        "valor_credito":      round(valor_credito, 2),
-        "valor_compensado":   0.0,
-        "valor_ressarcido":   round(valor_ressarcido, 2),
-        "saldo_remanescente": round(saldo, 2),
+        "valor_credito":          round(valor_credito, 2),
+        "credito_na_transmissao": 0.0,
+        "valor_compensado":       0.0,
+        "valor_ressarcido":       round(valor_ressarcido, 2),
+        "saldo_remanescente":     round(saldo, 2),
     }
 
 # ─── CAMPOS COMUNS ────────────────────────────────────────────────────────────

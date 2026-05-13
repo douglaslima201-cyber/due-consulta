@@ -341,8 +341,8 @@ td.name{font-family:var(--body);font-size:12px;color:var(--g2);max-width:180px;o
           <table>
             <thead><tr>
               <th>Arquivo</th><th>Número</th><th>Tipo</th><th>Tributo</th>
-              <th>Competência</th><th>Valor Crédito</th><th>Compensado</th>
-              <th>Ressarcido</th><th>Saldo</th><th>Situação</th><th>Status</th>
+              <th>Competência</th><th>Valor Crédito</th><th>Créd. Transmissão</th>
+              <th>Compensado</th><th>Saldo</th><th>Situação</th><th>Status</th>
             </tr></thead>
             <tbody id="reg-tbody"></tbody>
           </table>
@@ -910,8 +910,8 @@ function filtrarTabela(){
       <td>${e(r.tributo||'—')}</td>
       <td>${e(r.competencia||'—')}</td>
       <td>${brl(r.valor_credito)}</td>
+      <td>${r.credito_na_transmissao?brl(r.credito_na_transmissao):'<span style="color:var(--g4)">—</span>'}</td>
       <td>${brl(r.valor_compensado)}</td>
-      <td>${brl(r.valor_ressarcido)}</td>
       <td style="color:${r.saldo_remanescente<0?'var(--red)':''}">${brl(r.saldo_remanescente)}</td>
       <td>${e(r.situacao||'—')}</td>
       <td>${statusCol}</td>
