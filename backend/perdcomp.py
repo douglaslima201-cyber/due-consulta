@@ -138,6 +138,8 @@ async def _ecac_download_async(job_id: str, periodo_ini: str, periodo_fim: str):
             args=[
                 "--start-maximized",
                 "--disable-blink-features=AutomationControlled",
+                "--disable-features=BlockInsecurePrivateNetworkRequests",
+                "--disable-features=PrivateNetworkAccessSendPreflights",
             ],
         )
         ctx = await browser.new_context(
