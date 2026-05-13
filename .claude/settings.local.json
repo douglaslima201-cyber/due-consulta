@@ -109,7 +109,8 @@
       "Bash(py -3.13 -c \"import flask, flask_cors, playwright, openpyxl, pdfplumber, pandas; print\\('Tudo OK - todos os módulos importados com sucesso'\\)\")",
       "Bash(py -3.13 -m pip install pywin32)",
       "Bash(tasklist)",
-      "Bash(python -c \"import py_compile; py_compile.compile\\('main.py', doraise=True\\); print\\('OK - sem erros de sintaxe'\\)\")"
+      "Bash(python -c \"import py_compile; py_compile.compile\\('main.py', doraise=True\\); print\\('OK - sem erros de sintaxe'\\)\")",
+      "Bash(curl -s http://localhost:5000/upload-pdfs-ecac)"
     ]
   },
   "hooks": {
