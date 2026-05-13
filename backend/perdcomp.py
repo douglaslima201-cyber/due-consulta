@@ -357,19 +357,28 @@ def primeiro_match(texto: str, padroes: list, flags=re.IGNORECASE) -> str | None
 # ─── DETECÇÃO DE TIPO ─────────────────────────────────────────────────────────
 
 def detectar_tipo(texto: str, tl: str) -> str:
-    primeiras = texto[:600].lower()
-    if any(x in primeiras for x in ['declaração de compensação', 'dcomp', 'declaracao de compensacao']):
+    # Campo explícito do PDF — mais confiável (encoding pode conter '?' no lugar de acentos)
+    m = re.search(r'Tipo de Documento\s+([^\n]+)', texto, re.IGNORECASE)
+    if m:
+        td = m.group(1).strip().lower()
+        if 'compensa' in td:
+            return 'Compensação'
+        if 'ressarcimento' in td:
+            return 'Ressarcimento'
+        if 'restitui' in td:
+            return 'Restituição'
+    # Fallback: varredura nas primeiras linhas
+    primeiras = texto[:800].lower()
+    if 'declara' in primeiras and 'compensa' in primeiras:
         return 'Compensação'
-    if any(x in primeiras for x in ['pedido de ressarcimento', 'per - ressarcimento', 'ressarcimento']):
+    if 'ressarcimento' in primeiras and 'pedido' in primeiras:
         return 'Ressarcimento'
-    if any(x in primeiras for x in ['pedido de restituição', 'pedido de restituicao', 'restituição']):
+    if 'restitui' in primeiras and 'pedido' in primeiras:
         return 'Restituição'
-    if 'compensação' in tl or 'compensacao' in tl:
+    if 'compensa' in tl:
         return 'Compensação'
     if 'ressarcimento' in tl:
         return 'Ressarcimento'
-    if 'restituição' in tl or 'restituicao' in tl:
-        return 'Restituição'
     return 'PER/DCOMP'
 
 def detectar_tributo(texto: str) -> str | None:
@@ -411,16 +420,21 @@ def _normalizar_competencia(comp: str | None) -> str:
     return comp
 
 def _extrair_competencia_texto(texto: str) -> str | None:
-    """Extrai competência reconhecendo formato trimestral e mensal."""
-    # Formato trimestral: "3º Trimestre de 2025"
-    m = re.search(r'(\d[°º]?\s*[Tt]rimestre\s+de\s+\d{4})', texto)
+    """Extrai competência — suporta formato eCAC com Ano + Trimestre em linhas separadas."""
+    # Formato eCAC: "Ano 2024\nTrimestre 4? Trimestre" (? = º com encoding corrompido)
+    m = re.search(r'Ano\s+(\d{4})\s+Trimestre\s+(\d+)', texto, re.IGNORECASE)
+    if m:
+        ano, tri = m.group(1), int(m.group(2))
+        return f"{tri}º Trimestre de {ano}"
+    # Formato clássico: "3º Trimestre de 2025"
+    m = re.search(r'(\d[°º?]?\s*[Tt]rimestre\s+de\s+\d{4})', texto)
     if m:
         return m.group(1).strip()
-    # Formato mensal precedido de label
+    # Formato mensal
     return primeiro_match(texto, [
-        r'Per[íi]odo de Apura[çc][aã]o[:\s]+(\d{2}/\d{4})',
-        r'Compet[eê]ncia[:\s]+(\d{2}/\d{4})',
-        r'Per[íi]odo[:\s]+(\d{2}/\d{4})',
+        r'Per[íi?]odo de Apura[çc?][aã?]o[:\s]+(\d{2}/\d{4})',
+        r'Compet[eê?]ncia[:\s]+(\d{2}/\d{4})',
+        r'Per[íi?]odo[:\s]+(\d{2}/\d{4})',
     ])
 
 def extrair_referencia_per(texto: str) -> str | None:
@@ -459,18 +473,20 @@ def extrair_dcomp(texto: str, tl: str) -> dict:
         r'Total do Cr[eé]dito',
     ])
     valor_compensado = _val(texto, [
-        r'Valor da Declara[çc][aã]o de Compensa[çc][aã]o',
+        r'Valor Utilizado nesta DCOMP',
+        r'Valor da Declara[çc?][aã?]o de Compensa[çc?][aã?]o',
         r'Valor Compensado',
-        r'Valor da Compensa[çc][aã]o',
-        r'Valor do D[eé]bito Compensado',
-        r'Valor Objeto da Compensa[çc][aã]o',
-        r'Valor do D[eé]bito',
+        r'Valor da Compensa[çc?][aã?]o',
+        r'Valor do D[eé?]bito Compensado',
+        r'Valor Objeto da Compensa[çc?][aã?]o',
+        r'Valor do D[eé?]bito',
     ])
     saldo = _val(texto, [
-        r'Saldo do Cr[eé]dito ap[oó]s',
+        r'Saldo do Cr[eé?]dito ap[oó?]s',
+        r'Saldo do Cr[eé?]dito',
         r'Saldo Remanescente',
         r'Saldo a Compensar',
-        r'Saldo Dispon[íi]vel',
+        r'Saldo Dispon[íi?]vel',
     ])
     if valor_compensado == 0 and valor_credito > 0 and saldo > 0:
         valor_compensado = max(0.0, valor_credito - saldo)
@@ -486,17 +502,19 @@ def extrair_dcomp(texto: str, tl: str) -> dict:
 def extrair_per_ressarcimento(texto: str, tl: str) -> dict:
     # PIS/COFINS não-cumulativo: labels específicos do eCAC
     valor_credito = _val(texto, [
+        r'Valor do Pedido de Ressarcimento',
+        r'Cr[eé?]dito Pass[íi?]vel de Ressarcimento',
         r'Valor do Ressarcimento Requerido',
         r'Valor do Ressarcimento',
-        r'Cr[eé]dito a Ressarcir',
-        r'Valor do Cr[eé]dito a Ressarcir',
-        r'Total do Cr[eé]dito do Per[íi]odo',
-        r'Cr[eé]dito do Per[íi]odo',
-        r'Valor do Cr[eé]dito Apurado',
+        r'Cr[eé?]dito a Ressarcir',
+        r'Valor do Cr[eé?]dito a Ressarcir',
+        r'Total do Cr[eé?]dito do Per[íi?]odo',
+        r'Cr[eé?]dito do Per[íi?]odo',
+        r'Valor do Cr[eé?]dito Apurado',
         r'Valor Apurado',
         r'Valor Solicitado',
-        r'Valor do Cr[eé]dito',
-        r'Total do Cr[eé]dito',
+        r'Valor do Cr[eé?]dito',
+        r'Total do Cr[eé?]dito',
     ])
     valor_ressarcido = _val(texto, [
         r'Valor Ressarcido', r'Valor Pago', r'Valor Deferido',
@@ -578,7 +596,9 @@ def extrair_registro(texto: str, nome: str) -> dict:
         referencia_per = None
         competencia = _extrair_competencia_texto(texto)
 
-    retificador = bool(re.search(r'retificador|retificadora', tl))
+    # Campo "PER/DCOMP Retificador Sim/Não" — verifica o valor, não só a presença da palavra
+    m_ret = re.search(r'retificador[a]?\s+(sim|n.o)', tl, re.IGNORECASE)
+    retificador = bool(m_ret and m_ret.group(1).lower().startswith('s'))
     numero_original = None
     if retificador:
         numero_original = primeiro_match(texto, [
