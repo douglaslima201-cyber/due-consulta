@@ -114,7 +114,11 @@
       "Bash(\"c:/Users/Douglas Lima/Desktop/Demandas/PeD/Claude Code/Averbações/due-consulta/due-consulta/.venv/Scripts/python.exe\" -c \"import pdfplumber; print\\('ok'\\)\")",
       "Bash(\"c:/Users/Douglas Lima/Desktop/Demandas/PeD/Claude Code/Averbações/due-consulta/due-consulta/.venv-1/Scripts/python.exe\" -c \"import pdfplumber; print\\('ok'\\)\")",
       "Bash(where python *)",
-      "Bash(python -c \"import pdfplumber; print\\('pdfplumber ok'\\)\")"
+      "Bash(python -c \"import pdfplumber; print\\('pdfplumber ok'\\)\")",
+      "Bash(taskkill /PID 8360 /F)",
+      "Bash(powershell -Command \"Stop-Process -Name python -Force -ErrorAction SilentlyContinue; Start-Sleep -Seconds 2; Write-Host 'Done'\")",
+      "Bash(curl -s \"http://localhost:5000/api/perdcomp/ecac/analisar\" -X POST)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); regs=d.get\\('registros',[]\\); [print\\(r['arquivo'][:30], '|', r['tipo'], '|', r['competencia'], '|', 'ret:', r['retificador']\\) for r in regs[:5]]\")"
     ]
   },
   "hooks": {
