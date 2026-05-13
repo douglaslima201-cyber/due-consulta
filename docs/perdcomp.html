@@ -415,9 +415,26 @@ td.name{font-family:var(--body);font-size:12px;color:var(--g2);max-width:180px;o
         <div id="ecac-cap-err" style="display:none;margin-top:12px;padding:10px 14px;background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.2);border-radius:var(--r);font-size:12px;color:#FCA5A5"></div>
       </div>
 
-      <!-- Fallback pasta -->
-      <div style="margin-top:20px;border-top:1px solid rgba(255,255,255,.05);padding-top:16px">
-        <div style="font-size:11px;font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--g4);margin-bottom:10px">Alternativa — pasta de PDFs</div>
+      <!-- Upload direto de PDFs -->
+      <div class="card" style="margin-top:20px">
+        <div class="card-title">📂 Upload direto de PDFs</div>
+        <div style="font-size:13px;color:var(--g2);margin-bottom:12px">Selecione os PDFs que você baixou do eCac e clique em <strong style="color:var(--white)">Analisar</strong>. Sem scripts, sem JSON.</div>
+        <input type="file" id="ecac-pdf-input" accept=".pdf" multiple style="display:none" onchange="ecacUploadPdfs(this.files)"/>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <button class="btn btn-p" onclick="document.getElementById('ecac-pdf-input').click()">📁 Selecionar PDFs</button>
+          <span id="ecac-pdf-status" style="font-size:12px;color:var(--g3)"></span>
+        </div>
+        <div id="ecac-pdf-lista" style="margin-top:10px;display:flex;flex-direction:column;gap:3px"></div>
+        <div class="btn-row" style="margin-top:12px">
+          <button class="btn btn-p" id="btn-ecac-analisar-pdf" disabled onclick="ecacAnalisarPasta()">🔍 Analisar PDFs carregados</button>
+          <button class="btn btn-g btn-sm" onclick="ecacLimparPasta();document.getElementById('ecac-pdf-status').textContent='';document.getElementById('ecac-pdf-lista').innerHTML='';document.getElementById('btn-ecac-analisar-pdf').disabled=true" style="color:#FCA5A5">🗑 Limpar</button>
+        </div>
+        <div id="ecac-analisar-err" style="display:none;margin-top:8px;padding:8px 12px;background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.2);border-radius:var(--r);font-size:12px;color:#FCA5A5"></div>
+      </div>
+
+      <!-- Pasta de PDFs (avançado) -->
+      <div style="margin-top:16px;border-top:1px solid rgba(255,255,255,.05);padding-top:14px">
+        <div style="font-size:11px;font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--g4);margin-bottom:10px">Avançado — pasta de entrada</div>
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
           <code id="ecac-pasta-path" style="font-family:var(--mono);font-size:11px;color:var(--g3);background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);padding:8px 12px;border-radius:var(--r);flex:1">Carregando...</code>
           <button class="btn btn-g btn-sm" onclick="ecacCopiarPasta()">📋</button>
@@ -426,11 +443,6 @@ td.name{font-family:var(--body);font-size:12px;color:var(--g2);max-width:180px;o
         </div>
         <div style="margin-top:8px;font-size:11px;color:var(--g4)" id="ecac-pasta-count"></div>
         <div id="ecac-pasta-lista" style="margin-top:6px;display:flex;flex-direction:column;gap:4px"></div>
-        <div class="btn-row" style="margin-top:10px">
-          <button class="btn btn-g btn-sm" id="btn-ecac-analisar" onclick="ecacAnalisarPasta()">🔍 Analisar PDFs da pasta</button>
-          <button class="btn btn-g btn-sm" onclick="ecacLimparPasta()" style="color:#FCA5A5">🗑</button>
-        </div>
-        <div id="ecac-analisar-err" style="display:none;margin-top:8px;padding:8px 12px;background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.2);border-radius:var(--r);font-size:12px;color:#FCA5A5"></div>
       </div>
     </div>
 
@@ -1079,6 +1091,25 @@ async function ecacImportarJson(file){
     st.textContent=`✅ ${d.total} declaração(ões) importadas`;
     st.style.color='var(--green)';
     ecacAtualizarCapturas();
+  }catch(err){st.textContent='❌ '+err.message; st.style.color='var(--red)';}
+}
+async function ecacUploadPdfs(files){
+  if(!files||!files.length) return;
+  const st=document.getElementById('ecac-pdf-status');
+  const lista=document.getElementById('ecac-pdf-lista');
+  const btn=document.getElementById('btn-ecac-analisar-pdf');
+  st.textContent='⏳ Enviando '+files.length+' PDF(s)...'; st.style.color='var(--g3)';
+  lista.innerHTML=''; btn.disabled=true;
+  const fd=new FormData();
+  for(const f of files) fd.append('files', f);
+  try{
+    const r=await fetch(`${API}/ecac/upload-pdfs`,{method:'POST',body:fd});
+    const d=await r.json(); if(!r.ok) throw new Error(d.error||'Erro no upload');
+    st.textContent=`✅ ${d.salvos} PDF(s) carregados na fila de análise`;
+    st.style.color='var(--green)';
+    lista.innerHTML=[...files].map(f=>`<div style="font-size:11px;font-family:var(--mono);color:var(--g3);padding:2px 0">📄 ${e(f.name)}</div>`).join('');
+    btn.disabled=false;
+    ecacAtualizarPasta();
   }catch(err){st.textContent='❌ '+err.message; st.style.color='var(--red)';}
 }
 async function ecacLimparCapturas(){
