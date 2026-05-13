@@ -488,7 +488,7 @@ td.name{font-family:var(--body);font-size:12px;color:var(--g2);max-width:180px;o
           </div>
 
           <!-- Saldo resumo -->
-          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px" id="per-saldo-grid"></div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px" id="per-saldo-grid"></div>
 
           <!-- DCOMP table -->
           <div class="card" style="margin-bottom:16px">
@@ -699,7 +699,7 @@ function renderPerSelector(){
 const STATUS_CONFIG = {
   OK:          {cls:'sb-ok',  lbl:'✅ Saldo OK',         desc:'Valores dentro do esperado.'},
   EXCEDIDO:    {cls:'sb-red', lbl:'🔴 Crédito Excedido',  desc:'Total compensado supera o crédito disponível.'},
-  DIVERGENCIA: {cls:'sb-red', lbl:'🟡 Divergência de Saldo', desc:'Saldo calculado difere do declarado.'},
+  DIVERGENCIA: {cls:'sb-red', lbl:'🟡 Divergência de Saldo', desc:'Saldo atual diverge do esperado.'},
   SEM_DCOMPS:  {cls:'',       lbl:'⚪ Sem Compensações',  desc:'Nenhuma DCOMP vinculada a este PER.'},
   SEM_VALOR:   {cls:'',       lbl:'⚠ Valor Não Extraído', desc:'Valor do crédito não identificado no PDF.'},
 };
@@ -741,11 +741,11 @@ function renderPer(idx){
   }
 
   // Saldo grid
+  const saldoAtual = v.valor_credito - v.total_compensado;
   document.getElementById('per-saldo-grid').innerHTML=[
-    {l:'Crédito disponível', v:brl(v.valor_credito),    c:'c-o'},
-    {l:'Total compensado',   v:brl(v.total_compensado), c:v.total_compensado>v.valor_credito?'c-r':'c-b'},
-    {l:'Saldo calculado',    v:brl(v.saldo_calculado),  c:v.saldo_calculado<0?'c-r':'c-g'},
-    {l:'Saldo declarado',    v:brl(v.saldo_declarado),  c:'c-w'},
+    {l:'Crédito original',  v:brl(v.valor_credito),    c:'c-o'},
+    {l:'Total compensado',  v:brl(v.total_compensado), c:v.total_compensado>v.valor_credito?'c-r':'c-b'},
+    {l:'Saldo atual',       v:brl(saldoAtual),         c:saldoAtual<0?'c-r':'c-g'},
   ].map(x=>`<div class="stat ${x.c}"><div class="stat-n">${x.v}</div><div class="stat-l">${x.l}</div></div>`).join('');
 
   // DCOMP table
