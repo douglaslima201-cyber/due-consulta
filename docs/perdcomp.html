@@ -361,89 +361,83 @@ td.name{font-family:var(--body);font-size:12px;color:var(--g2);max-width:180px;o
 
     <!-- BAIXAR ECAC -->
     <div class="panel" id="p-ecac">
-      <div class="sec-label">Captura via console</div>
-      <h2 class="sec-title">Captura Automática do eCAC</h2>
-      <p class="sec-sub">No eCAC, filtre o período em Documentos Entregues, abra o console do Chrome e cole o script — ele baixa todos os PDFs automaticamente.</p>
+      <div class="sec-label">Download eCAC</div>
+      <h2 class="sec-title">Análise de PER/DCOMP</h2>
+      <p class="sec-sub">Baixe os PDFs das declarações no eCAC, faça o upload aqui e clique em Analisar.</p>
 
-      <!-- Passo 1: Script -->
+      <!-- Passo 1: Upload PDFs -->
       <div class="card" style="margin-bottom:16px;border-color:rgba(249,115,22,.2)">
-        <div class="card-title">⚡ Passo 1 — Copiar e colar o script no console</div>
-        <div style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--g2);margin-bottom:14px;line-height:1.7">
-          <div><span style="color:var(--orange);font-family:var(--mono);margin-right:8px">01</span>No eCAC: <strong style="color:var(--white)">Restituição e Compensação → PERDCOMP Web → Visualizar Documentos → Documentos Entregues</strong> — filtre o período</div>
-          <div><span style="color:var(--orange);font-family:var(--mono);margin-right:8px">02</span>Pressione <kbd style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);padding:2px 7px;border-radius:4px;font-family:var(--mono)">F12</kbd> → Console → selecione o contexto <kbd style="background:rgba(249,115,22,.12);border:1px solid rgba(249,115,22,.2);padding:2px 7px;border-radius:4px;font-family:var(--mono);color:var(--orange)">frmApp</kbd> no dropdown</div>
-          <div><span style="color:var(--orange);font-family:var(--mono);margin-right:8px">03</span>Digite <kbd style="background:rgba(255,255,255,.08);padding:2px 7px;border-radius:4px;font-family:var(--mono)">allow pasting</kbd> e Enter, depois cole o script abaixo e Execute Enter</div>
-          <div><span style="color:var(--orange);font-family:var(--mono);margin-right:8px">04</span>O script percorre todas as páginas e baixa um arquivo <strong style="color:var(--white)">.json</strong> automaticamente</div>
-        </div>
-        <button class="btn btn-p btn-sm" onclick="ecacCopiarScript()">📋 Copiar script</button>
-        <div id="ecac-script-box" style="display:none"></div>
-      </div>
-
-      <!-- Importar JSON -->
-      <div class="card" style="margin-bottom:16px">
-        <div class="card-title">📥 Passo 2 — Importar o arquivo JSON</div>
-        <div style="font-size:13px;color:var(--g2);margin-bottom:12px">O script gera um arquivo <code style="font-family:var(--mono);color:var(--orange)">perdcomp_capturas_AAAA-MM-DD.json</code> automaticamente. Faça o upload aqui:</div>
-        <input type="file" id="ecac-json-input" accept=".json" style="display:none" onchange="ecacImportarJson(this.files[0])"/>
-        <div style="display:flex;align-items:center;gap:10px">
-          <button class="btn btn-p" onclick="document.getElementById('ecac-json-input').click()">📥 Selecionar arquivo JSON</button>
-          <span id="ecac-json-status" style="font-size:12px;color:var(--g3)"></span>
-        </div>
-      </div>
-
-      <!-- Status capturas -->
-      <div class="card" style="margin-bottom:16px">
-        <div class="card-title">📊 Passo 3 — Status das capturas</div>
-        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
-          <div>
-            <div style="font-family:var(--display);font-size:28px;font-weight:800;color:var(--orange)" id="ecac-cap-count">0</div>
-            <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--g3)">declarações capturadas</div>
-          </div>
-          <div style="flex:1;font-size:12px;color:var(--g3)" id="ecac-cap-list">Nenhuma captura ainda. Execute o script no eCAC.</div>
-          <div class="btn-row" style="margin:0">
-            <button class="btn btn-g btn-sm" onclick="ecacAtualizarCapturas()">🔄 Atualizar</button>
-            <button class="btn btn-g btn-sm" onclick="ecacLimparCapturas()" style="color:#FCA5A5">🗑 Limpar</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Analisar -->
-      <div class="card">
-        <div class="card-title">🔍 Passo 4 — Analisar</div>
-        <div style="font-size:13px;color:var(--g2);margin-bottom:14px">Quando todas as declarações forem capturadas, clique para rodar o compliance.</div>
-        <div class="btn-row" style="margin-top:0">
-          <button class="btn btn-p" id="btn-ecac-analisar-cap" onclick="ecacAnalisarCapturas()">🔍 Analisar declarações capturadas</button>
-        </div>
-        <div id="ecac-cap-err" style="display:none;margin-top:12px;padding:10px 14px;background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.2);border-radius:var(--r);font-size:12px;color:#FCA5A5"></div>
-      </div>
-
-      <!-- Upload direto de PDFs -->
-      <div class="card" style="margin-top:20px">
-        <div class="card-title">📂 Upload direto de PDFs</div>
-        <div style="font-size:13px;color:var(--g2);margin-bottom:12px">Selecione os PDFs que você baixou do eCac e clique em <strong style="color:var(--white)">Analisar</strong>. Sem scripts, sem JSON.</div>
+        <div class="card-title">📁 Passo 1 — Selecionar os PDFs baixados do eCAC</div>
+        <div style="font-size:13px;color:var(--g2);margin-bottom:12px">Selecione todos os PDFs de uma vez. Você pode arrastar e soltar ou clicar no botão.</div>
         <input type="file" id="ecac-pdf-input" accept=".pdf" multiple style="display:none" onchange="ecacUploadPdfs(this.files)"/>
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
           <button class="btn btn-p" onclick="document.getElementById('ecac-pdf-input').click()">📁 Selecionar PDFs</button>
+          <button class="btn btn-g btn-sm" onclick="ecacLimparPasta();document.getElementById('ecac-pdf-status').textContent='Fila limpa.';document.getElementById('ecac-pdf-lista').innerHTML='';document.getElementById('btn-ecac-analisar-pdf').disabled=true" style="color:#FCA5A5">🗑 Limpar fila</button>
           <span id="ecac-pdf-status" style="font-size:12px;color:var(--g3)"></span>
         </div>
-        <div id="ecac-pdf-lista" style="margin-top:10px;display:flex;flex-direction:column;gap:3px"></div>
-        <div class="btn-row" style="margin-top:12px">
-          <button class="btn btn-p" id="btn-ecac-analisar-pdf" disabled onclick="ecacAnalisarPasta()">🔍 Analisar PDFs carregados</button>
-          <button class="btn btn-g btn-sm" onclick="ecacLimparPasta();document.getElementById('ecac-pdf-status').textContent='';document.getElementById('ecac-pdf-lista').innerHTML='';document.getElementById('btn-ecac-analisar-pdf').disabled=true" style="color:#FCA5A5">🗑 Limpar</button>
+        <div id="ecac-pdf-lista" style="margin-top:10px;display:flex;flex-direction:column;gap:3px;max-height:200px;overflow-y:auto"></div>
+      </div>
+
+      <!-- Passo 2: Analisar -->
+      <div class="card">
+        <div class="card-title">🔍 Passo 2 — Analisar</div>
+        <div style="font-size:13px;color:var(--g2);margin-bottom:14px">Clique para extrair os dados dos PDFs e rodar a análise de compliance.</div>
+        <div class="btn-row" style="margin-top:0">
+          <button class="btn btn-p" id="btn-ecac-analisar-pdf" disabled onclick="ecacAnalisarPasta()">🔍 Analisar PDFs</button>
         </div>
         <div id="ecac-analisar-err" style="display:none;margin-top:8px;padding:8px 12px;background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.2);border-radius:var(--r);font-size:12px;color:#FCA5A5"></div>
       </div>
 
-      <!-- Pasta de PDFs (avançado) -->
-      <div style="margin-top:16px;border-top:1px solid rgba(255,255,255,.05);padding-top:14px">
-        <div style="font-size:11px;font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--g4);margin-bottom:10px">Avançado — pasta de entrada</div>
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-          <code id="ecac-pasta-path" style="font-family:var(--mono);font-size:11px;color:var(--g3);background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);padding:8px 12px;border-radius:var(--r);flex:1">Carregando...</code>
-          <button class="btn btn-g btn-sm" onclick="ecacCopiarPasta()">📋</button>
-          <button class="btn btn-g btn-sm" onclick="ecacAbrirExplorer()">📂 Abrir</button>
-          <button class="btn btn-g btn-sm" onclick="ecacAtualizarPasta()">🔄</button>
+      <!-- Avançado: script de console -->
+      <details style="margin-top:20px">
+        <summary style="font-size:11px;font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--g4);cursor:pointer;user-select:none">Avançado — captura via console do Chrome</summary>
+        <div style="padding-top:14px;display:flex;flex-direction:column;gap:12px">
+          <div class="card" style="border-color:rgba(255,255,255,.06)">
+            <div class="card-title" style="font-size:13px">⚡ Script de captura automática</div>
+            <div style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--g3);margin-bottom:12px;line-height:1.7">
+              <div>1. No eCAC: <strong style="color:var(--g2)">Restituição e Compensação → PERDCOMP Web → Visualizar Documentos → Documentos Entregues</strong></div>
+              <div>2. <kbd style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);padding:1px 6px;border-radius:4px;font-family:var(--mono)">F12</kbd> → Console → mude o contexto para <kbd style="background:rgba(249,115,22,.12);border:1px solid rgba(249,115,22,.2);padding:1px 6px;border-radius:4px;font-family:var(--mono);color:var(--orange)">frmApp</kbd></div>
+              <div>3. Digite <kbd style="background:rgba(255,255,255,.08);padding:1px 6px;border-radius:4px;font-family:var(--mono)">allow pasting</kbd>, cole o script e Enter</div>
+            </div>
+            <button class="btn btn-g btn-sm" onclick="ecacCopiarScript()">📋 Copiar script</button>
+          </div>
+          <div class="card" style="border-color:rgba(255,255,255,.06)">
+            <div class="card-title" style="font-size:13px">📥 Importar JSON gerado pelo script</div>
+            <input type="file" id="ecac-json-input" accept=".json" style="display:none" onchange="ecacImportarJson(this.files[0])"/>
+            <div style="display:flex;align-items:center;gap:10px">
+              <button class="btn btn-g btn-sm" onclick="document.getElementById('ecac-json-input').click()">📥 Selecionar JSON</button>
+              <span id="ecac-json-status" style="font-size:12px;color:var(--g3)"></span>
+            </div>
+          </div>
+          <div class="card" style="border-color:rgba(255,255,255,.06)">
+            <div class="card-title" style="font-size:13px">📊 Status capturas via JSON</div>
+            <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+              <div>
+                <div style="font-family:var(--display);font-size:24px;font-weight:800;color:var(--orange)" id="ecac-cap-count">0</div>
+                <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--g3)">capturadas</div>
+              </div>
+              <div style="flex:1;font-size:12px;color:var(--g3)" id="ecac-cap-list">Nenhuma captura.</div>
+              <div class="btn-row" style="margin:0">
+                <button class="btn btn-g btn-sm" onclick="ecacAtualizarCapturas()">🔄</button>
+                <button class="btn btn-g btn-sm" onclick="ecacLimparCapturas()" style="color:#FCA5A5">🗑</button>
+                <button class="btn btn-g btn-sm" id="btn-ecac-analisar-cap" onclick="ecacAnalisarCapturas()">🔍 Analisar</button>
+              </div>
+            </div>
+            <div id="ecac-cap-err" style="display:none;margin-top:8px;padding:8px 12px;background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.2);border-radius:var(--r);font-size:12px;color:#FCA5A5"></div>
+          </div>
+          <div style="border-top:1px solid rgba(255,255,255,.05);padding-top:12px">
+            <div style="font-size:11px;color:var(--g4);margin-bottom:8px">Pasta de entrada local</div>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <code id="ecac-pasta-path" style="font-family:var(--mono);font-size:11px;color:var(--g3);background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);padding:6px 10px;border-radius:var(--r);flex:1">Carregando...</code>
+              <button class="btn btn-g btn-sm" onclick="ecacCopiarPasta()">📋</button>
+              <button class="btn btn-g btn-sm" onclick="ecacAbrirExplorer()">📂</button>
+              <button class="btn btn-g btn-sm" onclick="ecacAtualizarPasta()">🔄</button>
+            </div>
+            <div style="margin-top:6px;font-size:11px;color:var(--g4)" id="ecac-pasta-count"></div>
+            <div id="ecac-pasta-lista" style="margin-top:4px;display:flex;flex-direction:column;gap:3px"></div>
+          </div>
         </div>
-        <div style="margin-top:8px;font-size:11px;color:var(--g4)" id="ecac-pasta-count"></div>
-        <div id="ecac-pasta-lista" style="margin-top:6px;display:flex;flex-direction:column;gap:4px"></div>
-      </div>
+      </details>
     </div>
 
     <!-- ANÁLISE POR PER -->
