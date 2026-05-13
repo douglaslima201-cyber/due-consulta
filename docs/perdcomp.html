@@ -970,8 +970,6 @@ function renderRelatorio(){
 
 // ─── ECAC SCRIPT DE CAPTURA ──────────────────────────────────────────────────
 const ECAC_SCRIPT = `(async function(){
-  const API='http://localhost:5000/api/perdcomp';
-  await fetch(API+'/ecac/limpar-capturas',{method:'POST'});
   const getBotoes=()=>{
     const icons=[...document.querySelectorAll('i.icon-print,i[class*="icon-print"]')];
     if(icons.length>0) return icons.map(i=>i.parentElement||i);
@@ -988,7 +986,8 @@ const ECAC_SCRIPT = `(async function(){
   if(!botoes.length){alert('Nenhum botão de impressão encontrado. Verifique se está na lista de Documentos Entregues.');return;}
   console.log('[Analyzer] '+botoes.length+' declarações encontradas.');
   const origOpen=window.open;
-  let capturados=0,erros=0;
+  const capturas=[];
+  let erros=0;
   for(let i=0;i<botoes.length;i++){
     console.log('[Analyzer] Capturando '+(i+1)+'/'+botoes.length+'...');
     const janelas=[];
@@ -1001,14 +1000,18 @@ const ECAC_SCRIPT = `(async function(){
     for(let t=0;t<25;t++){await new Promise(r=>setTimeout(r,200));if(jn.document&&jn.document.readyState==='complete')break;}
     try{
       const html=jn.document.documentElement.outerHTML;
-      const r=await fetch(API+'/ecac/capturar-html',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({html,indice:i})});
-      if(r.ok){capturados++;console.log('[Analyzer] ✓ Doc '+(i+1)+' capturado');}
-      else{erros++;console.error('[Analyzer] Erro HTTP doc '+(i+1));}
+      capturas.push({html,indice:i});
+      console.log('[Analyzer] ✓ Doc '+(i+1)+' capturado');
     }catch(ex){erros++;console.error('[Analyzer] Erro doc '+(i+1),ex);}
     try{jn.close();}catch(e){}
     await new Promise(r=>setTimeout(r,500));
   }
-  alert('[PER/DCOMP Analyzer] '+capturados+' de '+botoes.length+' declarações capturadas. Acesse o painel e clique em Analisar.');
+  const blob=new Blob([JSON.stringify(capturas)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download='perdcomp_capturas_'+new Date().toISOString().slice(0,10)+'.json';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+  alert('[PER/DCOMP Analyzer] '+capturas.length+' de '+botoes.length+' declarações capturadas.\\n\\nArquivo JSON baixado! Importe-o na aba eCAC → Captura Manual.');
 })();`;
 
 function ecacMontarScript(){
