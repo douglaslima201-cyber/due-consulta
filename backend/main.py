@@ -21,12 +21,22 @@ from flask_cors import CORS
 from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeout
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/*": {"origins": "*"}})
+
+@app.before_request
+def handle_options_preflight():
+    if request.method == "OPTIONS":
+        resp = app.make_response("")
+        resp.headers["Access-Control-Allow-Origin"] = "*"
+        resp.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+        resp.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+        resp.headers["Access-Control-Allow-Private-Network"] = "true"
+        resp.status_code = 204
+        return resp
 
 @app.after_request
-def allow_private_network(response):
-    if request.method == "OPTIONS":
-        response.headers["Access-Control-Allow-Private-Network"] = "true"
+def add_private_network_header(response):
+    response.headers["Access-Control-Allow-Private-Network"] = "true"
     return response
 
 _BASE_DIR = Path(__file__).parent
