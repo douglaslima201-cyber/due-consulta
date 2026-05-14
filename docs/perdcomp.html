@@ -390,13 +390,15 @@ select option{background:#1E293B;color:#F8FAFC;}
         </div>
         <div class="tw">
           <table>
-            <thead><tr>
-              <th style="min-width:200px">Número</th>
-              <th>Tipo</th><th>Tributo</th><th>Competência</th>
-              <th style="text-align:right">Créd. Original</th>
-              <th style="text-align:right">Créd. Transmissão</th>
-              <th style="text-align:right">Compensado</th>
-              <th style="text-align:right">Saldo</th>
+            <thead><tr id="reg-thead-row">
+              <th style="min-width:200px;cursor:pointer" onclick="sortTabela('numero')">Número <span class="sort-ic" data-col="numero"></span></th>
+              <th style="cursor:pointer" onclick="sortTabela('tipo')">Tipo <span class="sort-ic" data-col="tipo"></span></th>
+              <th style="cursor:pointer" onclick="sortTabela('tributo')">Tributo <span class="sort-ic" data-col="tributo"></span></th>
+              <th style="cursor:pointer" onclick="sortTabela('competencia')">Competência <span class="sort-ic" data-col="competencia"></span></th>
+              <th style="text-align:right;cursor:pointer" onclick="sortTabela('valor_credito')">Créd. Original <span class="sort-ic" data-col="valor_credito"></span></th>
+              <th style="text-align:right;cursor:pointer" onclick="sortTabela('credito_na_transmissao')">Créd. Tx. <span class="sort-ic" data-col="credito_na_transmissao"></span></th>
+              <th style="text-align:right;cursor:pointer" onclick="sortTabela('valor_compensado')">Compensado <span class="sort-ic" data-col="valor_compensado"></span></th>
+              <th style="text-align:right;cursor:pointer" onclick="sortTabela('saldo_remanescente')">Saldo <span class="sort-ic" data-col="saldo_remanescente"></span></th>
               <th>PER Origem</th><th>Compliance</th><th>Status</th>
             </tr></thead>
             <tbody id="reg-tbody"></tbody>
@@ -1093,6 +1095,27 @@ function renderDash(){
 }
 
 // ─── REGISTROS TABLE ─────────────────────────────────────────────────────────
+// ─── SORT REGISTROS ──────────────────────────────────────────────────────────
+let _sortCol='', _sortDir=1; // 1=asc, -1=desc
+
+function sortTabela(col){
+  if(_sortCol===col) _sortDir*=-1; else{_sortCol=col;_sortDir=1;}
+  // Atualiza indicadores visuais
+  document.querySelectorAll('.sort-ic').forEach(el=>{
+    el.textContent=el.dataset.col===_sortCol?(_sortDir===1?' ↑':' ↓'):'';
+  });
+  filtrarTabela();
+}
+
+// Converte competência para código curto: "3º Trimestre de 2025" → "3T2025"
+// "01/2025" → "01/2025" (mensal, mantém)
+function fmtComp(c){
+  if(!c) return '—';
+  const m=c.match(/(\d)[°º]?\s*[Tt]rimestre\s+de\s+(\d{4})/);
+  if(m) return m[1]+'T'+m[2];
+  return c;
+}
+
 function filtrarTabela(){
   if(!DADOS) return;
   const busca=(document.getElementById('f-busca').value||'').toLowerCase();
@@ -1117,6 +1140,17 @@ function filtrarTabela(){
     if(fCompliance==='fora'&&!temAlertaCritico) return false;
     return true;
   });
+  // Ordenação
+  if(_sortCol){
+    const numCols=['valor_credito','credito_na_transmissao','valor_compensado','saldo_remanescente'];
+    rows.sort((a,b)=>{
+      let va=a[_sortCol]??'', vb=b[_sortCol]??'';
+      if(numCols.includes(_sortCol)){va=Number(va)||0;vb=Number(vb)||0;}
+      else{va=String(va).toLowerCase();vb=String(vb).toLowerCase();}
+      return va<vb?-_sortDir:va>vb?_sortDir:0;
+    });
+  }
+
   const ativos=DADOS.registros.filter(r=>r._efetivo!==false).length;
   const subs=DADOS.registros.filter(r=>r._efetivo===false).length;
   document.getElementById('reg-count').textContent=`${rows.length} de ${DADOS.registros.length} registro(s) — ${ativos} ativos${subs?' · '+subs+' substituído(s)':''}`;
@@ -1192,7 +1226,7 @@ function filtrarTabela(){
       </td>
       <td><span class="pill ${pillCls}" style="font-size:10px">${isComp?'DCOMP':e(r.tipo).toUpperCase()}</span></td>
       <td style="font-size:12px">${e(r.tributo||'—')}</td>
-      <td style="font-size:12px;white-space:nowrap">${e(r.competencia||'—')}</td>
+      <td style="font-size:12px;white-space:nowrap" title="${e(r.competencia||'')}">${e(fmtComp(r.competencia))}</td>
       <td style="text-align:right;font-family:var(--mono);font-size:12px">${isComp?dash:brl(r.valor_credito)}</td>
       <td style="text-align:right;font-family:var(--mono);font-size:12px">${r.credito_na_transmissao?brl(r.credito_na_transmissao):dash}</td>
       <td style="text-align:right;font-family:var(--mono);font-size:12px">${r.valor_compensado?brl(r.valor_compensado):dash}</td>
