@@ -245,7 +245,7 @@ select option{background:#1E293B;color:#F8FAFC;}
 
     <!-- UPLOAD -->
     <!-- PROJETOS -->
-    <div class="panel" id="p-projetos">
+    <div class="panel act" id="p-projetos">
       <div class="sec-label">Histórico</div>
       <h2 class="sec-title">Projetos Salvos</h2>
       <p class="sec-sub">Cada análise importada pode ser salva como projeto — recarregue sem precisar enviar os arquivos novamente.</p>
@@ -253,7 +253,7 @@ select option{background:#1E293B;color:#F8FAFC;}
       <div id="proj-empty" class="empty" style="display:none"><div class="empty-ic">🗂</div><div class="empty-t">Nenhum projeto salvo</div><div style="font-size:12px">Importe um JSON na aba Download eCAC e salve como projeto.</div></div>
     </div>
 
-    <div class="panel act" id="p-upload">
+    <div class="panel" id="p-upload">
       <div class="sec-label">Compliance PER/DCOMP</div>
       <h2 class="sec-title">Upload de Documentos</h2>
       <p class="sec-sub">Envie os PDFs de PER/DCOMP para extração automática de dados e análise de compliance.</p>
@@ -591,6 +591,8 @@ let CHS = {};
 // ─── MODAL ────────────────────────────────────────────────────────────────────
 (function(){
   if(sessionStorage.getItem('pdcp_ok')) document.getElementById('modal').style.display='none';
+  // Inicializa aba Projetos
+  document.addEventListener('DOMContentLoaded', ()=>{ renderProjetos(); });
 })();
 function fecharModal(){
   if(document.getElementById('modal-remember').checked) sessionStorage.setItem('pdcp_ok','1');
@@ -601,7 +603,7 @@ function fecharModal(){
 function sp(id){
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('act'));
   document.getElementById(id).classList.add('act');
-  const m={'p-upload':0,'p-dash':1,'p-registros':2,'p-alertas':3,'p-per':4,'p-ecac':5,'p-relatorio':6};
+  const m={'p-projetos':0,'p-upload':1,'p-dash':2,'p-registros':3,'p-alertas':4,'p-per':5,'p-ecac':6,'p-relatorio':7};
   document.querySelectorAll('.s-item').forEach(n=>n.classList.remove('act'));
   if(m[id]!==undefined) document.querySelectorAll('.s-item')[m[id]]?.classList.add('act');
 }
