@@ -342,7 +342,7 @@ td.name{font-family:var(--body);font-size:12px;color:var(--g2);max-width:180px;o
             <thead><tr>
               <th>Arquivo</th><th>Número</th><th>Tipo</th><th>Tributo</th>
               <th>Competência</th><th>Valor Crédito</th><th>Créd. Transmissão</th>
-              <th>Compensado</th><th>Saldo</th><th>Situação</th><th>Status</th>
+              <th>Compensado</th><th>Saldo</th><th>PER Origem</th><th>Situação</th><th>Status</th>
             </tr></thead>
             <tbody id="reg-tbody"></tbody>
           </table>
@@ -1003,6 +1003,13 @@ function filtrarTabela(){
     return true;
   });
   document.getElementById('reg-count').textContent=`${rows.length} de ${DADOS.registros.length} registro(s) — ${DADOS.registros.filter(r=>r._efetivo!==false).length} ativos, ${DADOS.registros.filter(r=>r._efetivo===false).length} substituídos`;
+
+  // Mapa arquivo_dcomp → per_numero a partir dos vínculos (fallback quando referencia_per está vazio)
+  const dcompParaPer={};
+  (DADOS.vinculos||[]).forEach(v=>{
+    (v.dcomps||[]).forEach(d=>{ if(d.arquivo) dcompParaPer[d.arquivo]=v.per_numero; });
+  });
+
   document.getElementById('reg-tbody').innerHTML=rows.map(r=>{
     const pillCls={Compensação:'pill-comp',Ressarcimento:'pill-res',Restituição:'pill-rest'}[r.tipo]||'pill-comp';
     const substituido=r._efetivo===false;
@@ -1016,6 +1023,13 @@ function filtrarTabela(){
     } else {
       statusCol='<span style="font-size:11px;color:var(--g3)">—</span>';
     }
+    // PER de origem: usa referencia_per do doc ou fallback do vínculo
+    const perOrigem = r.tipo==='Compensação'
+      ? (r.referencia_per || dcompParaPer[r.arquivo] || null)
+      : null;
+    const perOrigemCell = perOrigem
+      ? `<span style="font-family:var(--mono);font-size:10px;color:var(--orange)" title="${e(perOrigem)}">${e(perOrigem)}</span>`
+      : `<span style="color:var(--g4)">—</span>`;
     return `<tr style="${rowStyle}">
       <td class="name" title="${e(r.arquivo)}">${e(r.arquivo)}</td>
       <td style="font-family:var(--mono);font-size:11px">${e(r.numero||'—')}</td>
@@ -1026,6 +1040,7 @@ function filtrarTabela(){
       <td>${r.credito_na_transmissao?brl(r.credito_na_transmissao):'<span style="color:var(--g4)">—</span>'}</td>
       <td>${brl(r.valor_compensado)}</td>
       <td style="color:${r.saldo_remanescente<0?'var(--red)':''}">${brl(r.saldo_remanescente)}</td>
+      <td>${perOrigemCell}</td>
       <td>${e(r.situacao||'—')}</td>
       <td>${statusCol}</td>
     </tr>`;

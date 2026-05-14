@@ -444,6 +444,8 @@ def extrair_referencia_per(texto: str) -> str | None:
     # Formato longo Receita Federal: XXXXX.XXXXX.XXXXXX.X.X.XX-XXXX
     pat_num = r'(\d{5}\.\d{5}\.\d{6}\.\d+\.\d+\.\d{2}-\d{4})'
     return primeiro_match(texto, [
+        # PERDCOMP 8.3+: "N° do PER/DCOMP Inicial XXXXX..." (° vira ? no encoding)
+        r'N[.°?º]\s*do PER/DCOMP Inicial\s+' + pat_num,
         r'N[úu]mero do Processo[:\s]+' + pat_num,
         r'(?:N[úu]mero do )?PER[:\s]+' + pat_num,
         r'Pedido de Ressarcimento[:\s]+' + pat_num,
