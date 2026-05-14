@@ -560,6 +560,7 @@ td.name{font-family:var(--body);font-size:12px;color:var(--g2);max-width:180px;o
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 <script>
 const API = 'http://localhost:5000/api/perdcomp';
 let DADOS = null;
@@ -851,40 +852,138 @@ function renderDash(){
 
   // Charts
   Object.values(CHS).forEach(c=>c.destroy()); CHS={};
-  const CO={responsive:true,maintainAspectRatio:false,animation:{duration:500},
-    plugins:{legend:{labels:{color:'#A8B8CC',font:{family:'DM Sans',size:11}}}},
-    scales:{x:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#6B7D94',font:{family:'DM Mono',size:10}}},
-            y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#6B7D94',font:{family:'DM Mono',size:10}}}}};
-  const mk=(id,type,data,extra={})=>{
-    CHS[id]=new Chart(document.getElementById(id).getContext('2d'),{type,data,options:{...CO,...extra}});
+  Chart.register(ChartDataLabels);
+
+  const fontMono={family:'DM Mono',size:10};
+  const fontSans={family:'DM Sans',size:11};
+  const gridOpts={color:'rgba(255,255,255,.04)'};
+  const tickBase={color:'#6B7D94',font:fontMono};
+
+  // Helper: formata valor em K/M para rótulos
+  const fmtK=v=>{
+    if(v==null||v===0) return '';
+    if(Math.abs(v)>=1e6) return 'R$'+(v/1e6).toFixed(1)+'M';
+    if(Math.abs(v)>=1e3) return 'R$'+(v/1e3).toFixed(0)+'K';
+    return 'R$'+v.toFixed(0);
   };
 
-  // Tributos (doughnut)
+  // Rótulo para doughnut: "Label\nN%" apenas se fatia > 5%
+  const doughnutLabel={
+    formatter:(val,ctx)=>{
+      const total=ctx.dataset.data.reduce((a,b)=>a+b,0);
+      if(!total||val/total<0.05) return '';
+      return ctx.chart.data.labels[ctx.dataIndex]+'\n'+(val/total*100).toFixed(0)+'%';
+    },
+    color:'#fff',font:{family:'DM Sans',size:10,weight:'bold'},
+    textAlign:'center',
+  };
+
+  // Rótulo para barras: valor acima da barra
+  const barLabel={
+    anchor:'end',align:'end',offset:4,
+    color:'#CBD5E1',font:{family:'DM Mono',size:10},
+  };
+
+  const mk=(id,type,data,extra={})=>{
+    CHS[id]=new Chart(document.getElementById(id).getContext('2d'),{type,data,
+      options:{responsive:true,maintainAspectRatio:false,animation:{duration:500},
+        plugins:{legend:{labels:{color:'#A8B8CC',font:fontSans}},datalabels:{display:false}},
+        scales:{x:{grid:gridOpts,ticks:tickBase},y:{grid:gridOpts,ticks:tickBase}},
+        ...extra}});
+  };
+
+  // ── Tributos (doughnut) ──────────────────────────────────────────────────
   const trib=s.dist_tributos;
-  mk('ch-tributo','doughnut',{
-    labels:Object.keys(trib),
-    datasets:[{data:Object.values(trib).map(v=>Math.round(v)),backgroundColor:['#F97316','#3B82F6','#22C55E','#FACC15','#A78BFA','#EF4444','#6B7D94'],borderWidth:0}]
-  },{scales:{},plugins:{legend:{position:'right',labels:{color:'#A8B8CC',font:{family:'DM Sans',size:11}}}}});
+  const tribTotal=Object.values(trib).reduce((a,b)=>a+b,0);
+  CHS['ch-tributo']=new Chart(document.getElementById('ch-tributo').getContext('2d'),{
+    type:'doughnut',
+    data:{labels:Object.keys(trib),datasets:[{
+      data:Object.values(trib).map(v=>Math.round(v)),
+      backgroundColor:['#F97316','#3B82F6','#22C55E','#FACC15','#A78BFA','#EF4444','#6B7D94'],
+      borderWidth:2,borderColor:'#0F172A'
+    }]},
+    options:{responsive:true,maintainAspectRatio:false,animation:{duration:500},
+      plugins:{
+        legend:{position:'right',labels:{color:'#A8B8CC',font:fontSans,padding:10}},
+        datalabels:{
+          formatter:(val,ctx)=>{
+            if(!tribTotal||val/tribTotal<0.04) return '';
+            return (val/tribTotal*100).toFixed(0)+'%\n'+fmtK(val);
+          },
+          color:'#fff',font:{family:'DM Mono',size:10,weight:'bold'},textAlign:'center',
+        }
+      }
+    }
+  });
 
-  // Tipos (bar)
+  // ── Tipos (bar) ──────────────────────────────────────────────────────────
   const tipos=s.dist_tipos;
-  mk('ch-tipo','bar',{
-    labels:Object.keys(tipos),
-    datasets:[{label:'Qtd',data:Object.values(tipos),backgroundColor:'rgba(249,115,22,.7)',borderRadius:6}]
-  },{scales:{...CO.scales,y:{...CO.scales.y,ticks:{...CO.scales.y.ticks,stepSize:1}}}});
+  CHS['ch-tipo']=new Chart(document.getElementById('ch-tipo').getContext('2d'),{
+    type:'bar',
+    data:{labels:Object.keys(tipos),datasets:[{
+      label:'Qtd',data:Object.values(tipos),
+      backgroundColor:'rgba(249,115,22,.7)',borderRadius:6
+    }]},
+    options:{responsive:true,maintainAspectRatio:false,animation:{duration:500},
+      plugins:{
+        legend:{display:false},
+        datalabels:{...barLabel,formatter:v=>v>0?v:''}
+      },
+      scales:{
+        x:{grid:gridOpts,ticks:{color:'#6B7D94',font:fontSans}},
+        y:{grid:gridOpts,ticks:{...tickBase,stepSize:1},beginAtZero:true}
+      }
+    }
+  });
 
-  // Valores (bar)
-  mk('ch-vals','bar',{
-    labels:['Crédito Total','Compensado','Ressarcido','Saldo'],
-    datasets:[{data:[s.total_credito,s.total_compensado,s.total_ressarcido,s.saldo_disponivel].map(v=>Math.round(v)),
-      backgroundColor:['rgba(249,115,22,.7)','rgba(59,130,246,.7)','rgba(34,197,94,.7)','rgba(250,204,21,.7)'],borderRadius:6}]
-  },{plugins:{legend:{display:false}},scales:{...CO.scales,y:{...CO.scales.y,ticks:{...CO.scales.y.ticks,callback:v=>'R$'+(v/1e3).toFixed(0)+'K'}}}});
+  // ── Valores (bar) ────────────────────────────────────────────────────────
+  const valsData=[s.total_credito,s.total_compensado,s.total_ressarcido,s.saldo_disponivel].map(v=>Math.round(v));
+  CHS['ch-vals']=new Chart(document.getElementById('ch-vals').getContext('2d'),{
+    type:'bar',
+    data:{
+      labels:['Crédito\nOriginal','Compensado','Ressarcido','Saldo\nDisponível'],
+      datasets:[{data:valsData,
+        backgroundColor:['rgba(249,115,22,.7)','rgba(59,130,246,.7)','rgba(34,197,94,.7)','rgba(250,204,21,.7)'],
+        borderRadius:6
+      }]
+    },
+    options:{responsive:true,maintainAspectRatio:false,animation:{duration:500},
+      plugins:{
+        legend:{display:false},
+        datalabels:{...barLabel,formatter:v=>v>0?fmtK(v):''}
+      },
+      scales:{
+        x:{grid:gridOpts,ticks:{color:'#6B7D94',font:{family:'DM Sans',size:10}}},
+        y:{grid:gridOpts,ticks:{...tickBase,callback:v=>'R$'+(v/1e3).toFixed(0)+'K'},beginAtZero:true}
+      }
+    }
+  });
 
-  // Alertas (doughnut)
-  mk('ch-alertas','doughnut',{
-    labels:['Alto Risco','Médio Risco','Informativos'],
-    datasets:[{data:[s.alertas_alto,s.alertas_medio,s.alertas_info],backgroundColor:['rgba(239,68,68,.7)','rgba(250,204,21,.7)','rgba(249,115,22,.7)'],borderWidth:0}]
-  },{scales:{},plugins:{legend:{position:'right',labels:{color:'#A8B8CC',font:{family:'DM Sans',size:11}}}}});
+  // ── Alertas (doughnut) ───────────────────────────────────────────────────
+  const altData=[s.alertas_alto,s.alertas_medio,s.alertas_info];
+  const altTotal=altData.reduce((a,b)=>a+b,0);
+  CHS['ch-alertas']=new Chart(document.getElementById('ch-alertas').getContext('2d'),{
+    type:'doughnut',
+    data:{
+      labels:['Alto Risco','Médio Risco','Informativos'],
+      datasets:[{data:altData,
+        backgroundColor:['rgba(239,68,68,.8)','rgba(250,204,21,.8)','rgba(249,115,22,.7)'],
+        borderWidth:2,borderColor:'#0F172A'
+      }]
+    },
+    options:{responsive:true,maintainAspectRatio:false,animation:{duration:500},
+      plugins:{
+        legend:{position:'right',labels:{color:'#A8B8CC',font:fontSans,padding:10}},
+        datalabels:{
+          formatter:(val,ctx)=>{
+            if(!altTotal||val===0) return '';
+            return val+'\n('+(val/altTotal*100).toFixed(0)+'%)';
+          },
+          color:'#fff',font:{family:'DM Mono',size:11,weight:'bold'},textAlign:'center',
+        }
+      }
+    }
+  });
 }
 
 // ─── REGISTROS TABLE ─────────────────────────────────────────────────────────
