@@ -1548,19 +1548,30 @@ async function renderProjetos(){
       </div>`;
     }).join('');
     // Bind events via data-id para evitar problemas com aspas no onclick
-    box.querySelectorAll('.proj-load').forEach(btn=>
-      btn.addEventListener('click', ()=>carregarProjeto(btn.dataset.id)));
+    box.querySelectorAll('.proj-load').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const id=btn.dataset.id;
+        btn.textContent='⏳ Carregando...'; btn.disabled=true;
+        try{ await carregarProjeto(id); }
+        catch(err){ alert('Erro: '+err.message); }
+        finally{ btn.textContent='▶ Carregar'; btn.disabled=false; }
+      });
+    });
     box.querySelectorAll('.proj-del').forEach(btn=>
       btn.addEventListener('click', ()=>deletarProjeto(btn.dataset.id)));
   }catch(err){document.getElementById('proj-list').innerHTML='<div style="color:var(--red);font-size:13px">Erro: '+err.message+'</div>';}
 }
 
 async function carregarProjeto(id){
-  try{
-    const r=await fetch(`${API.replace('/ecac','')}/projetos/${id}/analisar`,{method:'POST'});
-    const d=await r.json(); if(!r.ok) throw new Error(d.error);
-    DADOS=d; renderTudo(); sp('p-dash');
-  }catch(err){alert('Erro ao carregar projeto: '+err.message);}
+  const url=`${API.replace('/ecac','')}/projetos/${id}/analisar`;
+  const r=await fetch(url,{method:'POST'});
+  const ct=r.headers.get('content-type')||'';
+  if(!ct.includes('application/json')) throw new Error('Servidor retornou HTTP '+r.status+' (não JSON)');
+  const d=await r.json();
+  if(!r.ok) throw new Error(d.error||'Erro desconhecido');
+  DADOS=d;
+  renderTudo();
+  sp('p-dash');
 }
 
 async function deletarProjeto(id){
