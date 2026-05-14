@@ -1096,10 +1096,13 @@ const ECAC_SCRIPT = `(async function(){
     if(!mudou){console.log('[Analyzer] Última página (sem mudança de paginador).');break;}
     pag++;await new Promise(r=>setTimeout(r,1500));
   }
+  // Restaura os originais antes do download do JSON para não ser interceptado
+  URL.createObjectURL=origCOU;
+  document.createElement=origCreate;
   if(!capturas.length){alert('[Analyzer] Nenhum PDF capturado. Verifique se a janela de impressão abre normalmente.');return;}
   const blob=new Blob([JSON.stringify(capturas)],{type:'application/json'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
+  const url=origCOU(blob);
+  const a=origCreate('a');
   a.href=url;a.download='perdcomp_pdfs_'+new Date().toISOString().slice(0,10)+'.json';
   document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
   alert('[PER/DCOMP Analyzer]\\n✓ '+total+' PDF(s) em '+pag+' página(s) capturados.\\n\\nArquivo JSON baixado! Importe na ferramenta → Captura Manual.');
