@@ -1037,35 +1037,54 @@ const ECAC_SCRIPT = `(async function(){
     const m=txt.match(/\d{5}[.\s]\d{5}[.\s]\d{6}[.\s]\d[.\s]\d+[.\s]\d{2}[-]\d{4}/);
     return m?m[0].replace(/\\s/g,'.'):'doc_'+(idx+1);
   };
-  const capturas=[];let total=0,pag=1;const origOpen=window.open;
+  // Intercepta URL.createObjectURL para capturar blobs gerados pelo Angular
+  const blobMap=new Map();
+  const origCOU=URL.createObjectURL.bind(URL);
+  URL.createObjectURL=function(b){const u=origCOU(b);blobMap.set(u,b);return u;};
+  // Intercepta createElement para bloquear <a download> e capturar o blob sem diálogo
+  const origCreate=document.createElement.bind(document);
+  const pendentes=[];
+  document.createElement=function(tag){
+    const el=origCreate(tag);
+    if(tag.toLowerCase()==='a'){
+      const oDispatch=el.dispatchEvent.bind(el);
+      el.dispatchEvent=function(ev){
+        if(ev.type==='click'&&el.download&&el.href){
+          const blob=blobMap.get(el.href);
+          if(blob){pendentes.push({blob,nome:el.download});return true;}
+        }
+        return oDispatch(ev);
+      };
+      const oClick=el.click.bind(el);
+      el.click=function(){
+        if(el.download&&el.href){
+          const blob=blobMap.get(el.href);
+          if(blob){pendentes.push({blob,nome:el.download});return;}
+        }
+        return oClick();
+      };
+    }
+    return el;
+  };
+  const capturas=[];let total=0,pag=1;
   while(true){
     const botoes=getBotoes();
     if(!botoes.length&&pag===1){alert('Nenhum botão de impressão encontrado.\\nVá para Documentos Entregues, filtre o período e tente novamente.');return;}
     console.log('[Analyzer] Pág.'+pag+': '+botoes.length+' documento(s)');
     for(let i=0;i<botoes.length;i++){
       console.log('[Analyzer] Capturando '+(i+1)+'/'+botoes.length+' (pág.'+pag+')...');
-      const numero=extrairNumero(botoes[i],total);
-      const urlsCapturadas=[];
-      // Intercepta window.open: abre about:blank para não disparar diálogo de download
-      // e guarda a URL original para buscar o PDF via fetch sem interação do usuário
-      window.open=function(url,...a){
-        if(url&&url!=='about:blank') urlsCapturadas.push(String(url));
-        return origOpen.apply(window,['about:blank',...a]);
-      };
+      pendentes.length=0;
       botoes[i].click();
-      await new Promise(r=>setTimeout(r,1500));
-      window.open=origOpen;
-      if(!urlsCapturadas.length){console.warn('[Analyzer] Sem URL capturada doc '+(i+1));continue;}
-      try{
-        const pdfUrl=urlsCapturadas[0];
-        console.log('[Analyzer] Buscando: '+pdfUrl.slice(0,80));
-        const resp=await fetch(pdfUrl,{credentials:'include'});
-        if(!resp.ok){console.error('[Analyzer] HTTP '+resp.status+' para doc '+(i+1));continue;}
-        const blob=await resp.blob();
-        const b64=await blobToB64(blob);
-        capturas.push({pdf_b64:b64,indice:total,numero,contentType:blob.type});
-        total++;console.log('[Analyzer] ✓ PDF '+total+' ('+numero+') — '+Math.round(blob.size/1024)+' KB');
-      }catch(ex){console.error('[Analyzer] Erro doc '+(i+1)+':',ex.message);}
+      await new Promise(r=>setTimeout(r,4000));
+      if(!pendentes.length){console.warn('[Analyzer] Sem blob capturado doc '+(i+1));continue;}
+      for(const {blob,nome} of pendentes){
+        try{
+          const b64=await blobToB64(blob);
+          const numero=nome.replace(/\.pdf$/i,'').replace(/[()\\s]+/g,'').trim()||'doc_'+(total+1);
+          capturas.push({pdf_b64:b64,indice:total,numero,contentType:'application/pdf'});
+          total++;console.log('[Analyzer] ✓ PDF '+total+' ('+numero+') — '+Math.round(blob.size/1024)+' KB');
+        }catch(ex){console.error('[Analyzer] Erro blob doc '+(i+1)+':',ex.message);}
+      }
       await new Promise(r=>setTimeout(r,500));
     }
     const prox=getProxPag();
