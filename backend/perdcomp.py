@@ -771,7 +771,9 @@ def vincular_pers_dcomps(registros: list) -> tuple[list, list]:
         linked = dcomps_por_per.get(id(per), [])
 
         credito      = per["valor_credito"]
-        total_comp   = round(sum(d["valor_compensado"] for d in linked), 2)
+        # Considera apenas DCOMPs efetivas (não substituídas por retificadoras)
+        linked_ativos = [d for d in linked if d.get("_efetivo", True)]
+        total_comp   = round(sum(d["valor_compensado"] for d in linked_ativos), 2)
         saldo_calc   = round(credito - total_comp, 2)
         saldo_decl   = per.get("saldo_remanescente", 0.0)
 
@@ -782,7 +784,7 @@ def vincular_pers_dcomps(registros: list) -> tuple[list, list]:
             status = "SEM_VALOR"
         elif total_comp > credito * 1.005:
             status = "EXCEDIDO"
-        elif not linked:
+        elif not linked_ativos:
             status = "SEM_DCOMPS"
         else:
             status = "OK"
@@ -810,9 +812,11 @@ def vincular_pers_dcomps(registros: list) -> tuple[list, list]:
                     "arquivo":          d["arquivo"],
                     "numero":           d.get("numero"),
                     "valor_compensado": d["valor_compensado"],
+                    "credito_na_transmissao": d.get("credito_na_transmissao", 0),
                     "data_transmissao": d.get("data_transmissao"),
                     "situacao":         d.get("situacao"),
                     "referencia_per":   d.get("referencia_per"),
+                    "substituida":      not d.get("_efetivo", True),
                 }
                 for d in sorted(linked, key=lambda x: x.get("data_transmissao") or "")
             ],
@@ -847,14 +851,15 @@ def analisar_compliance(registros: list, vinculos: list) -> list:
         else:
             numeros_vistos[base] = r
 
-    # R2 — Saldo excedido por vinculação
+    # R2 — Saldo excedido por vinculação (considera apenas DCOMPs ativas)
     for v in vinculos:
         if v["status_validacao"] == "EXCEDIDO":
+            dcomps_ativas = [d for d in v["dcomps"] if not d.get("substituida")]
             alertas.append({
                 "nivel": "alto", "tipo": "Crédito do PER Excedido",
                 "descricao": (f"PER '{v['per_arquivo']}': total compensado R$ {v['total_compensado']:,.2f} "
                               f"supera o crédito disponível R$ {v['valor_credito']:,.2f}."),
-                "arquivos": [v["per_arquivo"]] + [d["arquivo"] for d in v["dcomps"]],
+                "arquivos": [v["per_arquivo"]] + [d["arquivo"] for d in dcomps_ativas],
             })
 
     # R3 — Divergência de saldo
