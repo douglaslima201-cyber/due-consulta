@@ -526,7 +526,10 @@ def extrair_per_ressarcimento(texto: str, tl: str) -> dict:
         r'Valor Ressarcido', r'Valor Pago', r'Valor Deferido',
         r'Valor Creditado',
     ])
-    saldo = _val(texto, [
+    # Busca case-sensitive no totalizador em maiúsculas (resume todas as parcelas do PER)
+    _VAL_PAT = r'([0-9]{1,3}(?:\.[0-9]{3})*,[0-9]{2})'
+    m_s = re.search(r'SALDO DO CR.DITO\s+' + _VAL_PAT, texto)
+    saldo = parse_valor(m_s.group(1)) if m_s else _val(texto, [
         r'Saldo Remanescente', r'Saldo a Ressarcir',
         r'Saldo do Cr[eé]dito', r'Saldo Dispon[íi]vel',
     ])
