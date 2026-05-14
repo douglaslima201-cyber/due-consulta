@@ -603,6 +603,12 @@ def extrair_situacao(tl: str) -> str | None:
             return s
     return None
 
+def extrair_empresa(texto: str) -> tuple[str | None, str | None]:
+    """Retorna (nome_empresa, cnpj) extraídos do PDF."""
+    empresa = primeiro_match(texto, [r'Nome Empresarial\s+([^\n]+)', r'Raz[aã]o Social\s+([^\n]+)'])
+    cnpj    = primeiro_match(texto, [r'CNPJ\s+([\d]{2}\.[\d]{3}\.[\d]{3}/[\d]{4}-[\d]{2})'])
+    return (empresa.strip() if empresa else None, cnpj)
+
 # ─── MONTAGEM DO REGISTRO ─────────────────────────────────────────────────────
 
 def extrair_registro(texto: str, nome: str) -> dict:
@@ -644,6 +650,8 @@ def extrair_registro(texto: str, nome: str) -> dict:
         "situacao":         extrair_situacao(tl),
         "retificador":      retificador,
         "referencia_per":   referencia_per,
+        "empresa":          extrair_empresa(texto)[0],
+        "cnpj":             extrair_empresa(texto)[1],
         **vals,
     }
 
@@ -1204,12 +1212,122 @@ def ecac_importar_json():
         _ecac_capturas.clear()
         _ecac_capturas.extend(novos)
         total = len(_ecac_capturas)
+
+    # Metadados para projeto: empresa, CNPJ e range de competências
+    empresa = next((r.get("empresa") for r in novos if r.get("empresa")), None)
+    cnpj    = next((r.get("cnpj")    for r in novos if r.get("cnpj")),    None)
+    comps   = sorted([r["competencia"] for r in novos if r.get("competencia")])
+    comp_ini = comps[0]  if comps else None
+    comp_fim = comps[-1] if comps else None
+
     return jsonify({
-        "ok": True,
-        "total": total,
-        "erros": erros,
-        "pasta_pdfs": str(pasta_pdfs.resolve()),
-        "pdfs_salvos": pdfs_salvos,
+        "ok": True, "total": total, "erros": erros,
+        "pasta_pdfs": str(pasta_pdfs.resolve()), "pdfs_salvos": pdfs_salvos,
+        "empresa": empresa, "cnpj": cnpj,
+        "competencia_ini": comp_ini, "competencia_fim": comp_fim,
+        "total_pers":  sum(1 for r in novos if r["tipo"] in ("Ressarcimento","Restituição")),
+        "total_dcomps": sum(1 for r in novos if r["tipo"] == "Compensação"),
+    })
+
+@bp.route('/api/perdcomp/projetos', methods=['GET'])
+def listar_projetos():
+    import sqlite3 as _sq
+    from main import DB_PATH as _DB
+    conn = _sq.connect(_DB)
+    rows = conn.execute(
+        "SELECT id,nome,empresa,cnpj,competencia_ini,competencia_fim,pasta_pdfs,total_docs,total_pers,total_dcomps,criado_em "
+        "FROM perdcomp_projetos ORDER BY criado_em DESC"
+    ).fetchall()
+    conn.close()
+    cols = ["id","nome","empresa","cnpj","competencia_ini","competencia_fim","pasta_pdfs","total_docs","total_pers","total_dcomps","criado_em"]
+    return jsonify([dict(zip(cols, r)) for r in rows])
+
+@bp.route('/api/perdcomp/projetos', methods=['POST'])
+def salvar_projeto():
+    import sqlite3 as _sq
+    from main import DB_PATH as _DB
+    d = request.get_json()
+    if not d or not d.get("pasta_pdfs"):
+        return jsonify({"error": "Dados insuficientes"}), 400
+    pid = str(uuid.uuid4())[:8]
+    conn = _sq.connect(_DB)
+    conn.execute(
+        "INSERT OR REPLACE INTO perdcomp_projetos VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+        (pid, d.get("nome","Sem nome"), d.get("empresa",""), d.get("cnpj",""),
+         d.get("competencia_ini",""), d.get("competencia_fim",""),
+         d.get("pasta_pdfs",""), d.get("total_docs",0),
+         d.get("total_pers",0), d.get("total_dcomps",0),
+         d.get("criado_em",""))
+    )
+    conn.commit(); conn.close()
+    return jsonify({"ok": True, "id": pid})
+
+@bp.route('/api/perdcomp/projetos/<pid>', methods=['DELETE'])
+def deletar_projeto(pid):
+    import sqlite3 as _sq
+    from main import DB_PATH as _DB
+    conn = _sq.connect(_DB)
+    conn.execute("DELETE FROM perdcomp_projetos WHERE id=?", (pid,))
+    conn.commit(); conn.close()
+    return jsonify({"ok": True})
+
+@bp.route('/api/perdcomp/projetos/<pid>/analisar', methods=['POST'])
+def analisar_projeto(pid):
+    import sqlite3 as _sq
+    from main import DB_PATH as _DB
+    conn = _sq.connect(_DB)
+    row = conn.execute("SELECT pasta_pdfs FROM perdcomp_projetos WHERE id=?", (pid,)).fetchone()
+    conn.close()
+    if not row:
+        return jsonify({"error": "Projeto não encontrado"}), 404
+    pasta = Path(row[0])
+    if not pasta.exists():
+        return jsonify({"error": f"Pasta não encontrada: {pasta}"}), 404
+    pdfs = list(pasta.glob("*.pdf"))
+    if not pdfs:
+        return jsonify({"error": "Nenhum PDF na pasta do projeto"}), 400
+    registros, erros = [], []
+    for pdf in pdfs:
+        try:
+            texto = extrair_texto(pdf.read_bytes())
+            if not texto.strip(): continue
+            reg = extrair_registro(texto, pdf.name)
+            if reg["tipo"] != "Cancelamento":
+                registros.append(reg)
+        except Exception as exc:
+            erros.append({"arquivo": pdf.name, "erro": str(exc)[:200]})
+    vinculos, dnv = vincular_pers_dcomps(registros)
+    _marcar_retificadoras_dcomp(registros)
+    alertas = analisar_compliance(registros, vinculos)
+    ativos = [r for r in registros if r.get("_efetivo", True)]
+    total_credito    = sum(r["valor_credito"] for r in ativos if r["tipo"] in ("Ressarcimento","Restituição"))
+    total_compensado = sum(r["valor_compensado"] for r in ativos)
+    total_ressarcido = sum(r["valor_ressarcido"] for r in ativos)
+    saldo_total      = round(total_credito - total_compensado - total_ressarcido, 2)
+    dist_tributos: dict = {}; dist_tipos: dict = {}
+    for r in ativos:
+        t = r["tributo"] or "Não identificado"; tp = r["tipo"] or "Não identificado"
+        val = r["valor_compensado"] if r["tipo"] == "Compensação" else r["valor_credito"]
+        dist_tributos[t] = round(dist_tributos.get(t, 0) + val, 2)
+        dist_tipos[tp]   = dist_tipos.get(tp, 0) + 1
+    return jsonify({
+        "registros": registros, "vinculos": vinculos,
+        "dcomps_nao_vinculadas": [d["arquivo"] for d in dnv],
+        "alertas": alertas, "erros": erros,
+        "sumario": {
+            "total_arquivos": len(ativos),
+            "total_pers":  sum(1 for r in ativos if r["tipo"] in ("Ressarcimento","Restituição")),
+            "total_dcomps":sum(1 for r in ativos if r["tipo"] == "Compensação"),
+            "total_credito": round(total_credito,2), "total_compensado": round(total_compensado,2),
+            "total_ressarcido": round(total_ressarcido,2), "saldo_disponivel": round(saldo_total,2),
+            "alertas_alto":  sum(1 for a in alertas if a["nivel"]=="alto"),
+            "alertas_medio": sum(1 for a in alertas if a["nivel"]=="medio"),
+            "alertas_info":  sum(1 for a in alertas if a["nivel"]=="info"),
+            "dist_tributos": dist_tributos, "dist_tipos": dist_tipos,
+            "vinculos_ok":        sum(1 for v in vinculos if v["status_validacao"]=="OK"),
+            "vinculos_excedidos": sum(1 for v in vinculos if v["status_validacao"]=="EXCEDIDO"),
+            "vinculos_diverg":    sum(1 for v in vinculos if v["status_validacao"]=="DIVERGENCIA"),
+        }
     })
 
 @bp.route('/api/perdcomp/ecac/abrir-pasta')

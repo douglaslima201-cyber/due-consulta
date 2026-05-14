@@ -229,7 +229,8 @@ select option{background:#1E293B;color:#F8FAFC;}
 <div class="layout">
   <aside class="sidebar">
     <div class="s-sec">Análise</div>
-    <div class="s-item act" onclick="sp('p-upload')"><span>📂</span>Upload</div>
+    <div class="s-item act" onclick="sp('p-projetos');renderProjetos()"><span>🗂</span>Projetos</div>
+    <div class="s-item" onclick="sp('p-upload')"><span>📂</span>Upload</div>
     <div class="s-item" onclick="sp('p-dash')"><span>📊</span>Dashboard</div>
     <div class="s-item" onclick="sp('p-registros')"><span>📋</span>Registros <span class="s-badge sb-ok" id="sb-reg" style="display:none">0</span></div>
     <div class="s-item" onclick="sp('p-alertas')"><span>🚨</span>Alertas <span class="s-badge sb-red" id="sb-alt" style="display:none">0</span></div>
@@ -242,6 +243,15 @@ select option{background:#1E293B;color:#F8FAFC;}
   <main class="content">
 
     <!-- UPLOAD -->
+    <!-- PROJETOS -->
+    <div class="panel" id="p-projetos">
+      <div class="sec-label">Histórico</div>
+      <h2 class="sec-title">Projetos Salvos</h2>
+      <p class="sec-sub">Cada análise importada pode ser salva como projeto — recarregue sem precisar enviar os arquivos novamente.</p>
+      <div id="proj-list" style="display:flex;flex-direction:column;gap:12px;margin-top:8px"></div>
+      <div id="proj-empty" class="empty" style="display:none"><div class="empty-ic">🗂</div><div class="empty-t">Nenhum projeto salvo</div><div style="font-size:12px">Importe um JSON na aba Download eCAC e salve como projeto.</div></div>
+    </div>
+
     <div class="panel act" id="p-upload">
       <div class="sec-label">Compliance PER/DCOMP</div>
       <h2 class="sec-title">Upload de Documentos</h2>
@@ -424,6 +434,15 @@ select option{background:#1E293B;color:#F8FAFC;}
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
           <button class="btn btn-p" onclick="document.getElementById('ecac-json-input').click()">📥 Selecionar JSON</button>
           <span id="ecac-json-status" style="font-size:12px;color:var(--g3)"></span>
+        </div>
+        <!-- Salvar como projeto -->
+        <div id="proj-save-box" style="display:none;margin-top:14px;padding:14px;background:rgba(249,115,22,.06);border:1px solid rgba(249,115,22,.2);border-radius:var(--r)">
+          <div style="font-size:12px;color:var(--orange);font-weight:600;margin-bottom:8px">💾 Salvar como projeto para reutilizar depois</div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <input id="proj-save-nome" type="text" placeholder="Nome do projeto..." style="flex:1;min-width:200px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:var(--r);padding:8px 12px;color:var(--white);font-family:var(--body);font-size:13px"/>
+            <button class="btn btn-p btn-sm" onclick="salvarProjeto()">💾 Salvar</button>
+            <button class="btn btn-g btn-sm" onclick="document.getElementById('proj-save-box').style.display='none'">✕</button>
+          </div>
         </div>
       </div>
 
@@ -1285,7 +1304,83 @@ async function ecacImportarJson(file){
     st.innerHTML=`<span style="color:var(--green)">✅ ${d.total} declaração(ões) importadas</span>`
       +(pasta?`<div style="font-size:11px;font-family:var(--mono);color:var(--g3);margin-top:6px;word-break:break-all">📁 ${e(pasta)}<br><span style="color:var(--g4)">${salvos} PDF(s) salvos nesta pasta</span></div>`:'');
     ecacAtualizarCapturas();
+    if(pasta&&d.total>0){
+      _ultimoImport={pasta,total:d.total,empresa:d.empresa||'',cnpj:d.cnpj||'',
+        comp_ini:d.competencia_ini||'',comp_fim:d.competencia_fim||'',
+        total_pers:d.total_pers||0,total_dcomps:d.total_dcomps||0};
+      document.getElementById('proj-save-box').style.display='block';
+      document.getElementById('proj-save-nome').value=
+        (d.empresa?d.empresa.split(' ').slice(0,3).join(' '):'')+
+        (d.competencia_ini?' — '+d.competencia_ini:'');
+    }
   }catch(err){st.textContent='❌ '+err.message; st.style.color='var(--red)';}
+}
+
+let _ultimoImport=null;
+
+async function salvarProjeto(){
+  if(!_ultimoImport) return;
+  const nome=document.getElementById('proj-save-nome').value.trim()||'Projeto sem nome';
+  const r=await fetch(`${API.replace('/ecac','')}/projetos`,{method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({nome,pasta_pdfs:_ultimoImport.pasta,empresa:_ultimoImport.empresa,
+      cnpj:_ultimoImport.cnpj,competencia_ini:_ultimoImport.comp_ini,
+      competencia_fim:_ultimoImport.comp_fim,total_docs:_ultimoImport.total,
+      total_pers:_ultimoImport.total_pers,total_dcomps:_ultimoImport.total_dcomps,
+      criado_em:new Date().toISOString()})});
+  const d=await r.json();
+  if(d.ok){
+    document.getElementById('proj-save-box').style.display='none';
+    st_extra('ecac-json-status',`✅ Projeto "${e(nome)}" salvo.`);
+    _ultimoImport=null;
+  }
+}
+function st_extra(id,msg){
+  const el=document.getElementById(id);
+  if(el) el.innerHTML+='<br><span style="color:var(--green);font-size:11px">'+msg+'</span>';
+}
+
+async function renderProjetos(){
+  try{
+    const r=await fetch(`${API.replace('/ecac','')}/projetos`);
+    const lista=await r.json();
+    const box=document.getElementById('proj-list');
+    const empty=document.getElementById('proj-empty');
+    if(!lista.length){box.innerHTML='';empty.style.display='block';return;}
+    empty.style.display='none';
+    box.innerHTML=lista.map(p=>`
+      <div class="card" style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap">
+        <div style="flex:1;min-width:200px">
+          <div style="font-size:15px;font-weight:700;color:var(--white);margin-bottom:4px">${e(p.nome)}</div>
+          <div style="font-size:12px;color:var(--g3);margin-bottom:8px">${e(p.empresa||'—')}${p.cnpj?' · <span style="font-family:var(--mono)">'+e(p.cnpj)+'</span>':''}</div>
+          <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--g4)">
+            ${p.competencia_ini?`<span>📅 ${e(p.competencia_ini)}${p.competencia_fim&&p.competencia_fim!==p.competencia_ini?' → '+e(p.competencia_fim):''}</span>`:''}
+            <span>📄 ${p.total_docs} doc(s) · ${p.total_pers} PER · ${p.total_dcomps} DCOMP</span>
+            <span>🕒 ${new Date(p.criado_em).toLocaleString('pt-BR')}</span>
+          </div>
+        </div>
+        <div class="btn-row" style="margin:0;align-self:center">
+          <button class="btn btn-p btn-sm" onclick="carregarProjeto('${p.id}','${e(p.nome).replace(/'/g,'\\'+'\\'')}')">▶ Carregar</button>
+          <button class="btn btn-g btn-sm" onclick="deletarProjeto('${p.id}')" style="color:#FCA5A5">🗑</button>
+        </div>
+      </div>`).join('');
+  }catch(err){document.getElementById('proj-list').innerHTML='<div style="color:var(--red);font-size:13px">Erro: '+err.message+'</div>';}
+}
+
+async function carregarProjeto(id,nome){
+  const btn=event.target; btn.textContent='⏳'; btn.disabled=true;
+  try{
+    const r=await fetch(`${API.replace('/ecac','')}/projetos/${id}/analisar`,{method:'POST'});
+    const d=await r.json(); if(!r.ok) throw new Error(d.error);
+    DADOS=d; renderTudo(); sp('p-dash');
+  }catch(err){alert('Erro ao carregar "'+nome+'": '+err.message);}
+  finally{btn.textContent='▶ Carregar'; btn.disabled=false;}
+}
+
+async function deletarProjeto(id){
+  if(!confirm('Excluir este projeto? Os PDFs não serão removidos do disco.')) return;
+  await fetch(`${API.replace('/ecac','')}/projetos/${id}`,{method:'DELETE'});
+  renderProjetos();
 }
 async function ecacUploadPdfs(files){
   if(!files||!files.length) return;

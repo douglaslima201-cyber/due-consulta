@@ -81,6 +81,21 @@ def init_db():
             criado_em TEXT
         )
     """)
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS perdcomp_projetos (
+            id TEXT PRIMARY KEY,
+            nome TEXT,
+            empresa TEXT,
+            cnpj TEXT,
+            competencia_ini TEXT,
+            competencia_fim TEXT,
+            pasta_pdfs TEXT,
+            total_docs INTEGER,
+            total_pers INTEGER,
+            total_dcomps INTEGER,
+            criado_em TEXT
+        )
+    """)
     conn.commit()
     conn.close()
 
