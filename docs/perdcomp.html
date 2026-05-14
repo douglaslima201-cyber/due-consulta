@@ -399,7 +399,8 @@ select option{background:#1E293B;color:#F8FAFC;}
               <th style="text-align:right;cursor:pointer" onclick="sortTabela('credito_na_transmissao')">Créd. Tx. <span class="sort-ic" data-col="credito_na_transmissao"></span></th>
               <th style="text-align:right;cursor:pointer" onclick="sortTabela('valor_compensado')">Compensado <span class="sort-ic" data-col="valor_compensado"></span></th>
               <th style="text-align:right;cursor:pointer" onclick="sortTabela('saldo_remanescente')">Saldo <span class="sort-ic" data-col="saldo_remanescente"></span></th>
-              <th>PER Origem</th><th>Compliance</th><th>Status</th>
+              <th style="cursor:pointer" onclick="sortTabela('_per_origem')">PER Origem <span class="sort-ic" data-col="_per_origem"></span></th>
+              <th>Compliance</th><th>Status</th>
             </tr></thead>
             <tbody id="reg-tbody"></tbody>
           </table>
@@ -1158,6 +1159,11 @@ function filtrarTabela(){
   const dcompParaPer={};
   (DADOS.vinculos||[]).forEach(v=>{
     (v.dcomps||[]).forEach(d=>{ if(d.arquivo) dcompParaPer[d.arquivo]=v.per_numero; });
+  });
+
+  // Injeta _per_origem em cada row para permitir ordenação por essa coluna
+  rows.forEach(r=>{
+    r._per_origem = r.tipo==='Compensação'?(r.referencia_per||dcompParaPer[r.arquivo]||''):'';
   });
 
   // Mapa arquivo → alertas para coluna Compliance
