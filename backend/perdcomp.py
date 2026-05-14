@@ -467,6 +467,9 @@ def extrair_competencia_credito(texto: str) -> str | None:
 
 def extrair_dcomp(texto: str, tl: str) -> dict:
     valor_credito = _val(texto, [
+        # PERDCOMP 8.31+
+        r'Valor Original do Cr[eé?]dito Inicial',
+        # versões anteriores
         r'Valor do Cr[eé]dito Dispon[íi]vel',
         r'Valor do Cr[eé]dito Original',
         r'Valor Total do Cr[eé]dito',
@@ -475,9 +478,16 @@ def extrair_dcomp(texto: str, tl: str) -> dict:
         r'Total do Cr[eé]dito',
     ])
     credito_na_transmissao = _val(texto, [
+        # PERDCOMP 8.31+
+        r'Cr[eé?]dito Atualizado',
+        r'Cr[eé?]dito Original na Data de Entrega',
+        # versões anteriores
         r'Cr[eé?]dito na Data de Transmiss[aã?]o',
     ])
     valor_compensado = _val(texto, [
+        # PERDCOMP 8.31+
+        r'Total do Cr[eé?]dito Original Utilizado neste Documento',
+        # versões anteriores
         r'Valor Utilizado nesta DCOMP',
         r'Valor da Declara[çc?][aã?]o de Compensa[çc?][aã?]o',
         r'Valor Compensado',
@@ -487,6 +497,9 @@ def extrair_dcomp(texto: str, tl: str) -> dict:
         r'Valor do D[eé?]bito',
     ])
     saldo = _val(texto, [
+        # PERDCOMP 8.31+
+        r'Saldo do Cr[eé?]dito Original',
+        # versões anteriores
         r'Saldo do Cr[eé?]dito ap[oó?]s',
         r'Saldo do Cr[eé?]dito',
         r'Saldo Remanescente',
