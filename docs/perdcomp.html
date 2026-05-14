@@ -1161,17 +1161,18 @@ function filtrarTabela(){
     const alertasDoc=alertasPorArquivo[r.arquivo]||[];
     const altosDoc=alertasDoc.filter(a=>a.nivel==='alto');
     const mediosDoc=alertasDoc.filter(a=>a.nivel==='medio');
+    const infoDoc=alertasDoc.filter(a=>a.nivel==='info');
     let complianceCell;
     if(!alertasDoc.length){
       complianceCell=`<span style="color:var(--green);font-size:12px;font-weight:600">✓ OK</span>`;
     } else {
-      const cor=altosDoc.length?'var(--red)':'var(--yellow)';
-      const ic=altosDoc.length?'🔴':'🟡';
-      const pior=altosDoc.length?altosDoc[0]:mediosDoc[0];
-      const justificativas=alertasDoc.map(a=>`${a.tipo}: ${a.descricao}`).join('\n');
+      const pior=altosDoc[0]||mediosDoc[0]||infoDoc[0];
+      const cor=altosDoc.length?'var(--red)':mediosDoc.length?'var(--yellow)':'var(--orange)';
+      const ic=altosDoc.length?'🔴':mediosDoc.length?'🟡':'🟠';
+      const justificativas=alertasDoc.map(a=>`[${a.nivel.toUpperCase()}] ${a.tipo}: ${a.descricao}`).join('\n');
       complianceCell=`<div style="display:flex;flex-direction:column;gap:3px">
         <span style="color:${cor};font-size:11px;font-weight:600;white-space:nowrap">${ic} Fora</span>
-        <span style="font-size:10px;color:var(--g3);line-height:1.4;max-width:240px" title="${e(justificativas)}">${e(pior.tipo)}</span>
+        <span style="font-size:10px;color:var(--g3);line-height:1.4;max-width:240px;cursor:help" title="${e(justificativas)}">${e(pior?.tipo||'Ver alertas')}</span>
         ${alertasDoc.length>1?`<span style="font-size:10px;color:var(--g4)">+${alertasDoc.length-1} alerta(s)</span>`:''}
       </div>`;
     }
