@@ -1099,29 +1099,16 @@ const ECAC_SCRIPT = `(async function(){
   // Restaura os originais antes de qualquer download
   URL.createObjectURL=origCOU;
   document.createElement=origCreate;
-  if(!capturas.length){alert('[Analyzer] Nenhum PDF capturado. Verifique se a janela de impressão abre normalmente.');return;}
-  // Baixa cada PDF individualmente para a pasta Downloads
-  function b64ToBlob(b64){
-    const bin=atob(b64);const arr=new Uint8Array(bin.length);
-    for(let i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);
-    return new Blob([arr],{type:'application/pdf'});
-  }
-  for(const c of capturas){
-    const pdfBlob=b64ToBlob(c.pdf_b64);
-    const pdfUrl=origCOU(pdfBlob);
-    const link=origCreate('a');
-    link.href=pdfUrl;link.download=c.numero+'.pdf';
-    document.body.appendChild(link);link.click();document.body.removeChild(link);
-    URL.revokeObjectURL(pdfUrl);
-    await new Promise(r=>setTimeout(r,300));
-  }
-  // Baixa também o JSON para importar na ferramenta
+  console.log('[Analyzer] Total capturado: '+capturas.length+' documentos');
+  capturas.forEach((c,i)=>console.log('  ['+i+'] numero='+c.numero+' tamanho='+Math.round((c.pdf_b64||'').length*0.75/1024)+'KB'));
+  if(!capturas.length){alert('[Analyzer] Nenhum PDF capturado.\\n\\nVerifique:\\n• Está na aba Documentos Entregues?\\n• Os botões de impressão aparecem na lista?');return;}
+  // Baixa o JSON — ao importar na ferramenta os PDFs são salvos automaticamente em disco
   const blob=new Blob([JSON.stringify(capturas)],{type:'application/json'});
   const url=origCOU(blob);
   const a=origCreate('a');
   a.href=url;a.download='perdcomp_pdfs_'+new Date().toISOString().slice(0,10)+'.json';
   document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
-  alert('[PER/DCOMP Analyzer]\\n✓ '+total+' PDF(s) em '+pag+' página(s).\\n\\n📁 PDFs salvos individualmente na pasta Downloads\\n📋 JSON gerado para importar na ferramenta');
+  alert('[PER/DCOMP Analyzer]\\n✓ '+total+' PDF(s) capturados em '+pag+' página(s)\\n\\nArquivo JSON baixado para sua pasta Downloads.\\nImporte na ferramenta → os PDFs serão salvos automaticamente na pasta de entrada do servidor.');
 })();`;
 
 function ecacMontarScript(){

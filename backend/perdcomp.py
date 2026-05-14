@@ -1153,6 +1153,10 @@ def ecac_importar_json():
         if pdf_b64:
             try:
                 pdf_bytes = _b64.b64decode(pdf_b64)
+                # Salva PDF individual em disco na pasta de entrada
+                pasta_entrada = _ECAC_DIR / "entrada"
+                pasta_entrada.mkdir(exist_ok=True)
+                (pasta_entrada / nome).write_bytes(pdf_bytes)
                 texto = extrair_texto(pdf_bytes)
                 if texto.strip() and not texto.startswith("ERRO"):
                     novos.append(extrair_registro(texto, nome))
