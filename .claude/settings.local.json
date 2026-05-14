@@ -119,7 +119,15 @@
       "Bash(powershell -Command \"Stop-Process -Name python -Force -ErrorAction SilentlyContinue; Start-Sleep -Seconds 2; Write-Host 'Done'\")",
       "Bash(curl -s \"http://localhost:5000/api/perdcomp/ecac/analisar\" -X POST)",
       "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); regs=d.get\\('registros',[]\\); [print\\(r['arquivo'][:30], '|', r['tipo'], '|', r['competencia'], '|', 'ret:', r['retificador']\\) for r in regs[:5]]\")",
-      "Bash(curl -s -X POST http://localhost:5000/api/perdcomp/ecac/analisar)"
+      "Bash(curl -s -X POST http://localhost:5000/api/perdcomp/ecac/analisar)",
+      "Bash(py -3.13 main.py)",
+      "Bash(ping -n 3 localhost)",
+      "Bash(py -3.13 -c \"import urllib.request; urllib.request.urlopen\\('http://localhost:5000'\\)\")",
+      "Bash(py -3.13 -m pip install aiohttp)",
+      "Bash(ping -n 4 localhost > nul)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\Douglas Lima\\Desktop\\Demandas\\PeD\\Claude Code\\Averbações\\due-consulta\\due-consulta"
     ]
   },
   "hooks": {
