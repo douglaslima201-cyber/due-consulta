@@ -1007,9 +1007,10 @@ function renderRelatorio(){
 
 // ─── ECAC SCRIPT DE CAPTURA ──────────────────────────────────────────────────
 const ECAC_SCRIPT = `(async function(){
+  /* ── helpers ─────────────────────────────────────────────────────────── */
   const getBotoes=()=>{
     const icons=[...document.querySelectorAll('i.icon-print,i[class*="icon-print"]')];
-    if(icons.length>0) return icons.map(i=>i.parentElement||i);
+    if(icons.length) return icons.map(i=>i.parentElement||i);
     const ths=[...document.querySelectorAll('th,td.headerRow')];
     const th=ths.find(h=>['imprimir','print'].some(k=>h.textContent.trim().toLowerCase().startsWith(k)));
     if(th){const idx=th.cellIndex,tab=th.closest('table');if(tab&&idx>=0){const b=[];[...tab.querySelectorAll('tr td:nth-child('+(idx+1)+')')].forEach(td=>{const el=td.querySelector('a,button,img,input[type=button]');if(el)b.push(el);});if(b.length)return b;}}
@@ -1028,81 +1029,86 @@ const ECAC_SCRIPT = `(async function(){
     });
   };
   const getPagAtual=()=>{const a=document.querySelector('li.page-item.active .page-link');return a?a.textContent.trim():'?';};
-  const blobToB64=blob=>new Promise((res,rej)=>{
-    const r=new FileReader();r.onloadend=()=>res(r.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(blob);
-  });
-  const extrairNumero=(el,idx)=>{
-    const tr=el.closest('tr');
-    const txt=tr?tr.innerText:el.title||'';
-    const m=txt.match(/\d{5}[.\s]\d{5}[.\s]\d{6}[.\s]\d[.\s]\d+[.\s]\d{2}[-]\d{4}/);
-    return m?m[0].replace(/\\s/g,'.'):'doc_'+(idx+1);
-  };
-  // Intercepta URL.createObjectURL para capturar blobs gerados pelo Angular
+  const blobToB64=b=>new Promise((res,rej)=>{const r=new FileReader();r.onloadend=()=>res(r.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(b);});
+
+  /* ── 1. Verificar contexto e botões ANTES de qualquer override ────────── */
+  console.log('[Analyzer] URL: '+window.location.href);
+  if(!getBotoes().length){
+    alert('[Analyzer] Nenhum botão de impressão encontrado.\\n\\n• Está na aba Documentos Entregues?\\n• Período filtrado e documentos listados?\\n• Contexto correto no console (www3.cav)?\\n\\nURL: '+window.location.href);
+    return;
+  }
+
+  /* ── 2. Setup — só URL.createObjectURL (não toca no DOM/prototype) ───── */
   const blobMap=new Map();
   const origCOU=URL.createObjectURL.bind(URL);
   URL.createObjectURL=function(b){const u=origCOU(b);blobMap.set(u,b);return u;};
-  // Intercepta PROTOTYPE de HTMLAnchorElement — captura <a> criados antes ou depois do script
+
+  /* ── 3. Funções de intercept/restore do prototype ─────────────────────── */
+  const origDisp=HTMLAnchorElement.prototype.dispatchEvent;
+  const origClk=HTMLAnchorElement.prototype.click;
   const pendentes=[];
-  const origProtoDispatch=HTMLAnchorElement.prototype.dispatchEvent;
-  const origProtoClick=HTMLAnchorElement.prototype.click;
-  HTMLAnchorElement.prototype.dispatchEvent=function(ev){
-    if(ev.type==='click'&&this.download&&this.href){
-      const blob=blobMap.get(this.href);
-      if(blob){pendentes.push({blob,nome:this.download});return true;}
-    }
-    return origProtoDispatch.call(this,ev);
+  const ligar=()=>{
+    HTMLAnchorElement.prototype.dispatchEvent=function(ev){
+      if(ev.type==='click'&&this.download&&blobMap.has(this.href)){
+        pendentes.push({blob:blobMap.get(this.href),nome:this.download});return true;
+      }
+      return origDisp.call(this,ev);
+    };
+    HTMLAnchorElement.prototype.click=function(){
+      if(this.download&&blobMap.has(this.href)){
+        pendentes.push({blob:blobMap.get(this.href),nome:this.download});return;
+      }
+      return origClk.call(this);
+    };
   };
-  HTMLAnchorElement.prototype.click=function(){
-    if(this.download&&this.href){
-      const blob=blobMap.get(this.href);
-      if(blob){pendentes.push({blob,nome:this.download});return;}
-    }
-    return origProtoClick.call(this);
+  const desligar=()=>{
+    HTMLAnchorElement.prototype.dispatchEvent=origDisp;
+    HTMLAnchorElement.prototype.click=origClk;
   };
+
+  /* ── 4. Loop principal ────────────────────────────────────────────────── */
   const capturas=[];let total=0,pag=1;
   while(true){
     const botoes=getBotoes();
-    if(!botoes.length&&pag===1){alert('Nenhum botão de impressão encontrado.\\nVá para Documentos Entregues, filtre o período e tente novamente.');return;}
+    if(!botoes.length){console.log('[Analyzer] Sem botões na pág.'+pag+' — encerrando.');break;}
     console.log('[Analyzer] Pág.'+pag+': '+botoes.length+' documento(s)');
     for(let i=0;i<botoes.length;i++){
-      console.log('[Analyzer] Capturando '+(i+1)+'/'+botoes.length+' (pág.'+pag+')...');
+      console.log('[Analyzer] '+(i+1)+'/'+botoes.length+' pág.'+pag+'...');
       pendentes.length=0;
+      ligar();                                   // intercept ativo
       botoes[i].click();
       await new Promise(r=>setTimeout(r,4000));
-      if(!pendentes.length){console.warn('[Analyzer] ⚠ Sem blob capturado doc '+(i+1)+' — Chrome ainda abriu diálogo?');continue;}
+      desligar();                                // intercept desativado imediatamente
+      if(!pendentes.length){console.warn('[Analyzer] ⚠ Nada capturado doc '+(i+1));continue;}
       for(const {blob,nome} of pendentes){
-        try{
-          const b64=await blobToB64(blob);
-          const numero=nome.replace(/\.pdf$/i,'').replace(/[()\\s]+/g,'').trim()||'doc_'+(total+1);
-          capturas.push({pdf_b64:b64,indice:total,numero,contentType:'application/pdf'});
-          total++;console.log('[Analyzer] ✓ PDF '+total+' ('+numero+') '+Math.round(blob.size/1024)+'KB');
-        }catch(ex){console.error('[Analyzer] Erro blob doc '+(i+1)+':',ex.message);}
+        const b64=await blobToB64(blob);
+        const num=nome.replace(/\\.pdf$/i,'').replace(/\\s+/g,'').trim()||'doc_'+(total+1);
+        capturas.push({pdf_b64:b64,indice:total,numero:num});
+        total++;console.log('[Analyzer] ✓ '+total+' '+num+' '+Math.round(blob.size/1024)+'KB');
       }
       await new Promise(r=>setTimeout(r,400));
     }
     const prox=getProxPag();
-    if(!prox){console.log('[Analyzer] Última página ('+pag+').');break;}
-    const pagAntes=getPagAtual();
-    prox.click();
-    let mudou=false;
-    for(let t=0;t<60;t++){await new Promise(r=>setTimeout(r,300));if(getPagAtual()!==pagAntes){mudou=true;break;}}
-    if(!mudou){console.log('[Analyzer] Última página.');break;}
+    if(!prox){console.log('[Analyzer] Última página.');break;}
+    const pAntes=getPagAtual();
+    prox.click();                                // navega SEM intercept ativo
+    let ok=false;
+    for(let t=0;t<60;t++){await new Promise(r=>setTimeout(r,300));if(getPagAtual()!==pAntes){ok=true;break;}}
+    if(!ok) break;
     pag++;await new Promise(r=>setTimeout(r,1500));
   }
-  // Restaura prototypes e originals
-  HTMLAnchorElement.prototype.dispatchEvent=origProtoDispatch;
-  HTMLAnchorElement.prototype.click=origProtoClick;
+
+  /* ── 5. Restore e download do JSON ───────────────────────────────────── */
+  desligar();
   URL.createObjectURL=origCOU;
-  console.log('[Analyzer] Capturados: '+capturas.length+' PDFs');
-  capturas.forEach((c,i)=>console.log('  '+i+' | '+c.numero+' | '+Math.round((c.pdf_b64||'').length*0.75/1024)+'KB'));
-  if(!capturas.length){alert('[Analyzer] Nenhum PDF capturado.\\n\\nVerifique:\\n• Está na aba Documentos Entregues com período filtrado?\\n• Os botões de impressão aparecem?\\n\\nConsole mostra detalhes.');return;}
-  // Baixa o JSON — ao importar na ferramenta os PDFs são salvos automaticamente em disco
-  const blob=new Blob([JSON.stringify(capturas)],{type:'application/json'});
-  const url=origCOU(blob);
-  const a=origCreate('a');
-  a.href=url;a.download='perdcomp_pdfs_'+new Date().toISOString().slice(0,10)+'.json';
-  document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
-  alert('[PER/DCOMP Analyzer]\\n✓ '+total+' PDF(s) capturados em '+pag+' página(s)\\n\\nArquivo JSON baixado para sua pasta Downloads.\\nImporte na ferramenta → os PDFs serão salvos automaticamente na pasta de entrada do servidor.');
+  console.log('[Analyzer] Total: '+capturas.length+' PDFs capturados');
+  if(!capturas.length){alert('[Analyzer] Nenhum PDF capturado. Verifique o console para detalhes.');return;}
+  const jBlob=new Blob([JSON.stringify(capturas)],{type:'application/json'});
+  const jUrl=origCOU(jBlob);
+  const dl=document.createElement('a');
+  dl.href=jUrl;dl.download='perdcomp_'+new Date().toISOString().slice(0,10)+'.json';
+  document.body.appendChild(dl);dl.click();document.body.removeChild(dl);URL.revokeObjectURL(jUrl);
+  alert('[PER/DCOMP Analyzer]\\n✓ '+total+' PDF(s) em '+pag+' página(s)\\n\\nJSON salvo em Downloads.\\nImporte na ferramenta — PDFs salvos automaticamente no servidor.');
 })();`;
 
 function ecacMontarScript(){
