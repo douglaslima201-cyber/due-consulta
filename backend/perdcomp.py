@@ -776,12 +776,12 @@ def vincular_pers_dcomps(registros: list) -> tuple[list, list]:
         saldo_decl   = per.get("saldo_remanescente", 0.0)
 
         # Validação de status
+        # Nota: saldo_decl é o crédito original do PER (estático na data de entrega).
+        # A comparação saldo_calc vs saldo_decl sempre diverge quando há DCOMPs — não usar para validação.
         if credito == 0:
             status = "SEM_VALOR"
         elif total_comp > credito * 1.005:
             status = "EXCEDIDO"
-        elif saldo_decl > 0 and abs(saldo_calc - saldo_decl) > max(credito * 0.02, 1.0):
-            status = "DIVERGENCIA"
         elif not linked:
             status = "SEM_DCOMPS"
         else:
@@ -789,9 +789,8 @@ def vincular_pers_dcomps(registros: list) -> tuple[list, list]:
 
         alertas_vinc = []
         if status == "EXCEDIDO":
-            alertas_vinc.append(f"Total compensado (R$ {total_comp:,.2f}) supera o crédito do PER (R$ {credito:,.2f}).")
-        if status == "DIVERGENCIA":
-            alertas_vinc.append(f"Saldo calculado (R$ {saldo_calc:,.2f}) diverge do saldo declarado no PER (R$ {saldo_decl:,.2f}).")
+            excesso = total_comp - credito
+            alertas_vinc.append(f"Total compensado (R$ {total_comp:,.2f}) supera o crédito do PER (R$ {credito:,.2f}) em R$ {excesso:,.2f}.")
         if g["substituidos"]:
             nomes = ", ".join(s["arquivo"] for s in g["substituidos"])
             alertas_vinc.append(f"Documento(s) substituído(s) por retificadora: {nomes}.")

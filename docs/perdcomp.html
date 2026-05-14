@@ -780,7 +780,7 @@ function renderPerSelector(){
 const STATUS_CONFIG = {
   OK:          {cls:'sb-ok',  lbl:'✅ Saldo OK',         desc:'Valores dentro do esperado.'},
   EXCEDIDO:    {cls:'sb-red', lbl:'🔴 Crédito Excedido',  desc:'Total compensado supera o crédito disponível.'},
-  DIVERGENCIA: {cls:'sb-red', lbl:'🟡 Divergência de Saldo', desc:'Saldo atual diverge do esperado.'},
+  DIVERGENCIA: {cls:'sb-yellow', lbl:'🟡 Verificar Saldo', desc:'Saldo merece revisão manual.'},
   SEM_DCOMPS:  {cls:'',       lbl:'⚪ Sem Compensações',  desc:'Nenhuma DCOMP vinculada a este PER.'},
   SEM_VALOR:   {cls:'',       lbl:'⚠ Valor Não Extraído', desc:'Valor do crédito não identificado no PDF.'},
 };
