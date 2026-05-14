@@ -1007,7 +1007,7 @@ def ecac_analisar_capturas():
     _marcar_retificadoras_dcomp(registros)
     alertas = analisar_compliance(registros, vinculos)
     ativos = [r for r in registros if r.get("_efetivo", True)]
-    total_credito    = sum(r["valor_credito"]      for r in ativos)
+    total_credito    = sum(r["valor_credito"] for r in ativos if r["tipo"] in ("Ressarcimento","Restituição"))
     total_compensado = sum(r["valor_compensado"]   for r in ativos)
     total_ressarcido = sum(r["valor_ressarcido"]   for r in ativos)
     saldo_total      = sum(r["saldo_remanescente"] for r in ativos)
@@ -1275,7 +1275,7 @@ def ecac_analisar():
     alertas = analisar_compliance(registros, vinculos)
 
     ativos = [r for r in registros if r.get("_efetivo", True)]
-    total_credito    = sum(r["valor_credito"]      for r in ativos)
+    total_credito    = sum(r["valor_credito"] for r in ativos if r["tipo"] in ("Ressarcimento","Restituição"))
     total_compensado = sum(r["valor_compensado"]   for r in ativos)
     total_ressarcido = sum(r["valor_ressarcido"]   for r in ativos)
     saldo_total      = sum(r["saldo_remanescente"] for r in ativos)
@@ -1382,7 +1382,7 @@ def upload():
     vinculos, dcomps_nao_vinculadas = vincular_pers_dcomps(registros)
     alertas = analisar_compliance(registros, vinculos)
 
-    total_credito    = sum(r["valor_credito"]      for r in registros)
+    total_credito    = sum(r["valor_credito"] for r in registros if r["tipo"] in ("Ressarcimento","Restituição"))
     total_compensado = sum(r["valor_compensado"]   for r in registros)
     total_ressarcido = sum(r["valor_ressarcido"]   for r in registros)
     saldo_total      = sum(r["saldo_remanescente"] for r in registros)

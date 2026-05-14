@@ -124,7 +124,8 @@
       "Bash(ping -n 3 localhost)",
       "Bash(py -3.13 -c \"import urllib.request; urllib.request.urlopen\\('http://localhost:5000'\\)\")",
       "Bash(py -3.13 -m pip install aiohttp)",
-      "Bash(ping -n 4 localhost > nul)"
+      "Bash(ping -n 4 localhost > nul)",
+      "Bash(powershell -Command \"Stop-Process -Name python -Force -ErrorAction SilentlyContinue; Start-Sleep -Seconds 2; Write-Host 'Processos Python encerrados'\")"
     ],
     "additionalDirectories": [
       "C:\\Users\\Douglas Lima\\Desktop\\Demandas\\PeD\\Claude Code\\Averbações\\due-consulta\\due-consulta"

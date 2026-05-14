@@ -909,7 +909,7 @@ function filtrarTabela(){
       <td><span class="pill ${pillCls}">${e(r.tipo)}</span></td>
       <td>${e(r.tributo||'—')}</td>
       <td>${e(r.competencia||'—')}</td>
-      <td>${brl(r.valor_credito)}</td>
+      <td>${r.tipo==='Compensação'?'<span style="color:var(--g4)">—</span>':brl(r.valor_credito)}</td>
       <td>${r.credito_na_transmissao?brl(r.credito_na_transmissao):'<span style="color:var(--g4)">—</span>'}</td>
       <td>${brl(r.valor_compensado)}</td>
       <td style="color:${r.saldo_remanescente<0?'var(--red)':''}">${brl(r.saldo_remanescente)}</td>
