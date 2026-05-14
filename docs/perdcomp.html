@@ -300,6 +300,39 @@ select option{background:#1E293B;color:#F8FAFC;}
       <div id="dash-empty" class="empty"><div class="empty-ic">📊</div><div class="empty-t">Nenhuma análise disponível</div><div style="font-size:12px">Importe o JSON gerado pelo script e clique em Analisar.</div></div>
 
       <div id="dash-body" style="display:none">
+
+        <!-- Filtro PER -->
+        <div class="card" style="margin-bottom:16px;padding:14px 18px">
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <span style="font-size:12px;color:var(--g3);white-space:nowrap">Filtrar por PER:</span>
+            <select id="dash-per-filter" onchange="filtrarDashPer(this.value)"
+              style="flex:1;min-width:260px;background:#1E293B;border:1px solid rgba(255,255,255,.1);border-radius:var(--r);padding:8px 12px;color:#F8FAFC;font-family:var(--body);font-size:12px;">
+              <option value="">Visão geral (todos os PERs)</option>
+            </select>
+            <div id="dash-per-badge" style="display:none;font-size:11px;color:var(--g4)"></div>
+          </div>
+        </div>
+
+        <!-- PER detail card (visível só quando um PER é selecionado) -->
+        <div id="dash-per-detail" style="display:none;margin-bottom:16px">
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:12px" id="dash-per-stats"></div>
+          <div class="card" style="padding:0;overflow:hidden">
+            <div style="padding:12px 16px;font-size:12px;font-weight:600;color:var(--g2);border-bottom:1px solid rgba(255,255,255,.06)">DCOMPs vinculadas a este PER</div>
+            <div class="tw" style="margin:0">
+              <table style="font-size:12px">
+                <thead><tr>
+                  <th>Número</th><th>Competência</th>
+                  <th style="text-align:right">Créd. Transmissão</th>
+                  <th style="text-align:right">Compensado</th>
+                  <th style="text-align:right">Saldo após DCOMP</th>
+                  <th>Situação</th>
+                </tr></thead>
+                <tbody id="dash-per-dcomps"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
         <!-- Risk score -->
         <div class="card" style="margin-bottom:20px">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
@@ -340,28 +373,32 @@ select option{background:#1E293B;color:#F8FAFC;}
 
       <div id="reg-body" style="display:none">
         <div class="filter-row">
-          <input type="text" id="f-busca" placeholder="Buscar arquivo ou número..." oninput="filtrarTabela()"/>
+          <input type="text" id="f-busca" placeholder="Buscar número ou tributo..." oninput="filtrarTabela()" style="flex:1;min-width:180px"/>
           <select id="f-tipo" onchange="filtrarTabela()"><option value="">Todos os tipos</option><option>Compensação</option><option>Ressarcimento</option><option>Restituição</option></select>
           <select id="f-tributo" onchange="filtrarTabela()"><option value="">Todos os tributos</option><option>PIS</option><option>COFINS</option><option>IRPJ</option><option>CSLL</option><option>IPI</option><option>INSS</option></select>
           <select id="f-efetivo" onchange="filtrarTabela()">
-            <option value="">Todos os documentos</option>
-            <option value="ativos">Somente ativos</option>
-            <option value="substituidos">Somente substituídos</option>
+            <option value="">Todos</option>
+            <option value="ativos">Ativos</option>
+            <option value="substituidos">Substituídos</option>
           </select>
+          <button class="btn btn-g btn-sm" onclick="exportarExcel()" id="btn-export-excel" style="display:none">⬇ Excel</button>
         </div>
         <div class="tw">
           <table>
             <thead><tr>
-              <th>Arquivo</th><th>Número</th><th>Tipo</th><th>Tributo</th>
-              <th>Competência</th><th>Valor Crédito</th><th>Créd. Transmissão</th>
-              <th>Compensado</th><th>Saldo</th><th>PER Origem</th><th>Situação</th><th>Status</th>
+              <th style="min-width:200px">Número</th>
+              <th>Tipo</th><th>Tributo</th><th>Competência</th>
+              <th style="text-align:right">Créd. Original</th>
+              <th style="text-align:right">Créd. Transmissão</th>
+              <th style="text-align:right">Compensado</th>
+              <th style="text-align:right">Saldo</th>
+              <th>PER Origem</th><th>Status</th>
             </tr></thead>
             <tbody id="reg-tbody"></tbody>
           </table>
         </div>
-        <div style="margin-top:10px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <div style="margin-top:10px">
           <div style="font-size:11px;color:var(--g3);font-family:var(--mono)" id="reg-count"></div>
-          <button class="btn btn-g btn-sm" onclick="exportarExcel()" id="btn-export-excel" style="display:none">⬇ Exportar Excel</button>
         </div>
       </div>
     </div>
@@ -837,12 +874,53 @@ function renderPer(idx){
   }
 }
 
+// ─── FILTRO PER DO DASHBOARD ─────────────────────────────────────────────────
+function filtrarDashPer(pid){
+  const detail=document.getElementById('dash-per-detail');
+  if(!pid){detail.style.display='none'; return;}
+  const v=(DADOS.vinculos||[]).find(v=>v.per_numero===pid);
+  if(!v){detail.style.display='none'; return;}
+  detail.style.display='block';
+  const saldo=v.valor_credito-v.total_compensado;
+  document.getElementById('dash-per-stats').innerHTML=[
+    {l:'Crédito Original',v:brl(v.valor_credito),c:'c-o'},
+    {l:'Total Compensado',v:brl(v.total_compensado),c:'c-b'},
+    {l:'Saldo Atual',v:brl(saldo),c:saldo<0?'c-r':'c-g'},
+  ].map(x=>`<div class="stat ${x.c}"><div class="stat-n">${x.v}</div><div class="stat-l">${x.l}</div></div>`).join('');
+  let saldoAcum=v.valor_credito;
+  document.getElementById('dash-per-dcomps').innerHTML=(v.dcomps||[]).length
+    ?(v.dcomps.map(d=>{
+        saldoAcum-=d.valor_compensado;
+        return `<tr>
+          <td style="font-family:var(--mono);font-size:11px" title="${e(d.numero||'')}">${e(d.numero?.replace(/(\d{5})\.(\d{5})\.(\d{6})\./,'$1.$2.$3.…')||'—')}</td>
+          <td>${e(d.data_transmissao||'—')}</td>
+          <td style="text-align:right;font-family:var(--mono)">${d.credito_na_transmissao?brl(d.credito_na_transmissao):'—'}</td>
+          <td style="text-align:right;font-family:var(--mono)">${brl(d.valor_compensado)}</td>
+          <td style="text-align:right;font-family:var(--mono);color:${saldoAcum<0?'var(--red)':'var(--green)'}">${brl(saldoAcum)}</td>
+          <td>${e(d.situacao||'—')}</td>
+        </tr>`;
+      }).join(''))
+    :'<tr><td colspan="6" style="text-align:center;color:var(--g4);padding:12px">Nenhuma DCOMP vinculada</td></tr>';
+}
+
 // ─── DASHBOARD ────────────────────────────────────────────────────────────────
 function renderDash(){
   const s=DADOS.sumario;
   document.getElementById('dash-empty').style.display='none';
   document.getElementById('dash-body').style.display='block';
   document.getElementById('dash-sub').textContent=`${s.total_arquivos} documento(s) analisado(s)`;
+
+  // Popula filtro de PERs
+  const sel=document.getElementById('dash-per-filter');
+  sel.innerHTML='<option value="">Visão geral (todos os PERs)</option>';
+  (DADOS.vinculos||[]).forEach(v=>{
+    const opt=document.createElement('option');
+    opt.value=v.per_numero||'';
+    opt.textContent=`${v.per_numero||'—'} | ${v.per_tributo||''} | ${v.per_competencia||''}`;
+    sel.appendChild(opt);
+  });
+  sel.value='';
+  document.getElementById('dash-per-detail').style.display='none';
 
   // Risk score
   const totalAlerts=s.alertas_alto*3+s.alertas_medio*1.5+s.alertas_info*0.5;
@@ -1025,46 +1103,50 @@ function filtrarTabela(){
     if(efetivo==='substituidos'&&ativo) return false;
     return true;
   });
-  document.getElementById('reg-count').textContent=`${rows.length} de ${DADOS.registros.length} registro(s) — ${DADOS.registros.filter(r=>r._efetivo!==false).length} ativos, ${DADOS.registros.filter(r=>r._efetivo===false).length} substituídos`;
+  const ativos=DADOS.registros.filter(r=>r._efetivo!==false).length;
+  const subs=DADOS.registros.filter(r=>r._efetivo===false).length;
+  document.getElementById('reg-count').textContent=`${rows.length} de ${DADOS.registros.length} registro(s) — ${ativos} ativos${subs?' · '+subs+' substituído(s)':''}`;
 
-  // Mapa arquivo_dcomp → per_numero a partir dos vínculos (fallback quando referencia_per está vazio)
   const dcompParaPer={};
   (DADOS.vinculos||[]).forEach(v=>{
     (v.dcomps||[]).forEach(d=>{ if(d.arquivo) dcompParaPer[d.arquivo]=v.per_numero; });
   });
 
+  // Formata número abreviado para exibição (mantém completo no title)
+  const fmtNum=n=>n?n.replace(/(\d{5})\.(\d{5})\.(\d{6})\./,'$1.$2.$3.…'):'—';
+
   document.getElementById('reg-tbody').innerHTML=rows.map(r=>{
     const pillCls={Compensação:'pill-comp',Ressarcimento:'pill-res',Restituição:'pill-rest'}[r.tipo]||'pill-comp';
     const substituido=r._efetivo===false;
-    const rowStyle=substituido?'opacity:0.45;':'';
+    const rowStyle=substituido?'opacity:0.4;background:rgba(255,255,255,.01);':'';
     let statusCol;
     if(substituido){
-      statusCol=`<span class="pill" style="background:rgba(107,114,128,.2);color:var(--g3);font-size:10px" title="Substituído por: ${e(r._substituido_por||'?')}">⚠ Substituído</span>`;
+      statusCol=`<span class="pill" style="background:rgba(107,114,128,.18);color:var(--g4);font-size:10px" title="Substituído por: ${e(r._substituido_por||'?')}">⚠ Subst.</span>`;
     } else if(r.retificador){
       const subs=(r._substitui||[]).join(', ');
-      statusCol=`<span class="pill pill-ret" title="Retificadora${subs?' — substitui: '+subs:''}">✓ Retificadora</span>`;
+      statusCol=`<span class="pill pill-ret" title="Retificadora${subs?' — substitui: '+subs:''}">✓ Retif.</span>`;
     } else {
-      statusCol='<span style="font-size:11px;color:var(--g3)">—</span>';
+      statusCol='';
     }
-    // PER de origem: usa referencia_per do doc ou fallback do vínculo
-    const perOrigem = r.tipo==='Compensação'
-      ? (r.referencia_per || dcompParaPer[r.arquivo] || null)
-      : null;
-    const perOrigemCell = perOrigem
-      ? `<span style="font-family:var(--mono);font-size:10px;color:var(--orange)" title="${e(perOrigem)}">${e(perOrigem)}</span>`
-      : `<span style="color:var(--g4)">—</span>`;
-    return `<tr style="${rowStyle}">
-      <td class="name" title="${e(r.arquivo)}">${e(r.arquivo)}</td>
-      <td style="font-family:var(--mono);font-size:11px">${e(r.numero||'—')}</td>
-      <td><span class="pill ${pillCls}">${e(r.tipo)}</span></td>
-      <td>${e(r.tributo||'—')}</td>
-      <td>${e(r.competencia||'—')}</td>
-      <td>${r.tipo==='Compensação'?'<span style="color:var(--g4)">—</span>':brl(r.valor_credito)}</td>
-      <td>${r.credito_na_transmissao?brl(r.credito_na_transmissao):'<span style="color:var(--g4)">—</span>'}</td>
-      <td>${brl(r.valor_compensado)}</td>
-      <td style="color:${r.saldo_remanescente<0?'var(--red)':''}">${brl(r.saldo_remanescente)}</td>
+    const perOrigem=r.tipo==='Compensação'?(r.referencia_per||dcompParaPer[r.arquivo]||null):null;
+    const perOrigemCell=perOrigem
+      ?`<span style="font-family:var(--mono);font-size:10px;color:var(--orange);cursor:default" title="${e(perOrigem)}">${fmtNum(perOrigem)}</span>`
+      :`<span style="color:var(--g4)">—</span>`;
+    const isComp=r.tipo==='Compensação';
+    const dash='<span style="color:var(--g4)">—</span>';
+    return `<tr style="${rowStyle}" title="Arquivo: ${e(r.arquivo)}">
+      <td style="font-family:var(--mono);font-size:11px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${e(r.numero||'')}">
+        ${e(fmtNum(r.numero))||dash}
+        <div style="font-size:10px;color:var(--g4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${e(r.arquivo)}">${e(r.arquivo)}</div>
+      </td>
+      <td><span class="pill ${pillCls}" style="font-size:10px">${isComp?'DCOMP':e(r.tipo).toUpperCase()}</span></td>
+      <td style="font-size:12px">${e(r.tributo||'—')}</td>
+      <td style="font-size:12px;white-space:nowrap">${e(r.competencia||'—')}</td>
+      <td style="text-align:right;font-family:var(--mono);font-size:12px">${isComp?dash:brl(r.valor_credito)}</td>
+      <td style="text-align:right;font-family:var(--mono);font-size:12px">${r.credito_na_transmissao?brl(r.credito_na_transmissao):dash}</td>
+      <td style="text-align:right;font-family:var(--mono);font-size:12px">${r.valor_compensado?brl(r.valor_compensado):dash}</td>
+      <td style="text-align:right;font-family:var(--mono);font-size:12px;color:${r.saldo_remanescente<0?'var(--red)':r.saldo_remanescente>0?'var(--green)':''}">${brl(r.saldo_remanescente)}</td>
       <td>${perOrigemCell}</td>
-      <td>${e(r.situacao||'—')}</td>
       <td>${statusCol}</td>
     </tr>`;
   }).join('');
