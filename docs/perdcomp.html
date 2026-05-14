@@ -1041,30 +1041,23 @@ const ECAC_SCRIPT = `(async function(){
   const blobMap=new Map();
   const origCOU=URL.createObjectURL.bind(URL);
   URL.createObjectURL=function(b){const u=origCOU(b);blobMap.set(u,b);return u;};
-  // Intercepta createElement para bloquear <a download> e capturar o blob sem diálogo
-  const origCreate=document.createElement.bind(document);
+  // Intercepta PROTOTYPE de HTMLAnchorElement — captura <a> criados antes ou depois do script
   const pendentes=[];
-  document.createElement=function(tag){
-    const el=origCreate(tag);
-    if(tag.toLowerCase()==='a'){
-      const oDispatch=el.dispatchEvent.bind(el);
-      el.dispatchEvent=function(ev){
-        if(ev.type==='click'&&el.download&&el.href){
-          const blob=blobMap.get(el.href);
-          if(blob){pendentes.push({blob,nome:el.download});return true;}
-        }
-        return oDispatch(ev);
-      };
-      const oClick=el.click.bind(el);
-      el.click=function(){
-        if(el.download&&el.href){
-          const blob=blobMap.get(el.href);
-          if(blob){pendentes.push({blob,nome:el.download});return;}
-        }
-        return oClick();
-      };
+  const origProtoDispatch=HTMLAnchorElement.prototype.dispatchEvent;
+  const origProtoClick=HTMLAnchorElement.prototype.click;
+  HTMLAnchorElement.prototype.dispatchEvent=function(ev){
+    if(ev.type==='click'&&this.download&&this.href){
+      const blob=blobMap.get(this.href);
+      if(blob){pendentes.push({blob,nome:this.download});return true;}
     }
-    return el;
+    return origProtoDispatch.call(this,ev);
+  };
+  HTMLAnchorElement.prototype.click=function(){
+    if(this.download&&this.href){
+      const blob=blobMap.get(this.href);
+      if(blob){pendentes.push({blob,nome:this.download});return;}
+    }
+    return origProtoClick.call(this);
   };
   const capturas=[];let total=0,pag=1;
   while(true){
@@ -1076,16 +1069,16 @@ const ECAC_SCRIPT = `(async function(){
       pendentes.length=0;
       botoes[i].click();
       await new Promise(r=>setTimeout(r,4000));
-      if(!pendentes.length){console.warn('[Analyzer] Sem blob capturado doc '+(i+1));continue;}
+      if(!pendentes.length){console.warn('[Analyzer] ⚠ Sem blob capturado doc '+(i+1)+' — Chrome ainda abriu diálogo?');continue;}
       for(const {blob,nome} of pendentes){
         try{
           const b64=await blobToB64(blob);
           const numero=nome.replace(/\.pdf$/i,'').replace(/[()\\s]+/g,'').trim()||'doc_'+(total+1);
           capturas.push({pdf_b64:b64,indice:total,numero,contentType:'application/pdf'});
-          total++;console.log('[Analyzer] ✓ PDF '+total+' ('+numero+') — '+Math.round(blob.size/1024)+' KB');
+          total++;console.log('[Analyzer] ✓ PDF '+total+' ('+numero+') '+Math.round(blob.size/1024)+'KB');
         }catch(ex){console.error('[Analyzer] Erro blob doc '+(i+1)+':',ex.message);}
       }
-      await new Promise(r=>setTimeout(r,500));
+      await new Promise(r=>setTimeout(r,400));
     }
     const prox=getProxPag();
     if(!prox){console.log('[Analyzer] Última página ('+pag+').');break;}
@@ -1093,15 +1086,16 @@ const ECAC_SCRIPT = `(async function(){
     prox.click();
     let mudou=false;
     for(let t=0;t<60;t++){await new Promise(r=>setTimeout(r,300));if(getPagAtual()!==pagAntes){mudou=true;break;}}
-    if(!mudou){console.log('[Analyzer] Última página (sem mudança de paginador).');break;}
+    if(!mudou){console.log('[Analyzer] Última página.');break;}
     pag++;await new Promise(r=>setTimeout(r,1500));
   }
-  // Restaura os originais antes de qualquer download
+  // Restaura prototypes e originals
+  HTMLAnchorElement.prototype.dispatchEvent=origProtoDispatch;
+  HTMLAnchorElement.prototype.click=origProtoClick;
   URL.createObjectURL=origCOU;
-  document.createElement=origCreate;
-  console.log('[Analyzer] Total capturado: '+capturas.length+' documentos');
-  capturas.forEach((c,i)=>console.log('  ['+i+'] numero='+c.numero+' tamanho='+Math.round((c.pdf_b64||'').length*0.75/1024)+'KB'));
-  if(!capturas.length){alert('[Analyzer] Nenhum PDF capturado.\\n\\nVerifique:\\n• Está na aba Documentos Entregues?\\n• Os botões de impressão aparecem na lista?');return;}
+  console.log('[Analyzer] Capturados: '+capturas.length+' PDFs');
+  capturas.forEach((c,i)=>console.log('  '+i+' | '+c.numero+' | '+Math.round((c.pdf_b64||'').length*0.75/1024)+'KB'));
+  if(!capturas.length){alert('[Analyzer] Nenhum PDF capturado.\\n\\nVerifique:\\n• Está na aba Documentos Entregues com período filtrado?\\n• Os botões de impressão aparecem?\\n\\nConsole mostra detalhes.');return;}
   // Baixa o JSON — ao importar na ferramenta os PDFs são salvos automaticamente em disco
   const blob=new Blob([JSON.stringify(capturas)],{type:'application/json'});
   const url=origCOU(blob);
