@@ -1033,8 +1033,8 @@ def ecac_analisar_capturas():
         registros = [r for r in _ecac_capturas if r.get("tipo") != "Cancelamento"]
     if not registros:
         return jsonify({"error": "Nenhuma declaração capturada ainda."}), 400
-    vinculos, nv = vincular_pers_dcomps(registros)
     _marcar_retificadoras_dcomp(registros)
+    vinculos, nv = vincular_pers_dcomps(registros)
     alertas = analisar_compliance(registros, vinculos)
     ativos = [r for r in registros if r.get("_efetivo", True)]
     total_credito    = sum(r["valor_credito"] for r in ativos if r["tipo"] in ("Ressarcimento","Restituição"))
@@ -1300,8 +1300,8 @@ def analisar_projeto(pid):
                 registros.append(reg)
         except Exception as exc:
             erros.append({"arquivo": pdf.name, "erro": str(exc)[:200]})
-    vinculos, dnv = vincular_pers_dcomps(registros)
     _marcar_retificadoras_dcomp(registros)
+    vinculos, dnv = vincular_pers_dcomps(registros)
     alertas = analisar_compliance(registros, vinculos)
     ativos = [r for r in registros if r.get("_efetivo", True)]
     total_credito    = sum(r["valor_credito"] for r in ativos if r["tipo"] in ("Ressarcimento","Restituição"))
@@ -1410,8 +1410,8 @@ def ecac_analisar():
         except Exception as exc:
             erros.append({"arquivo": pdf.name, "erro": str(exc)[:200]})
 
-    vinculos, dcomps_nao_vinculadas = vincular_pers_dcomps(registros)
     _marcar_retificadoras_dcomp(registros)
+    vinculos, dcomps_nao_vinculadas = vincular_pers_dcomps(registros)
     alertas = analisar_compliance(registros, vinculos)
 
     ativos = [r for r in registros if r.get("_efetivo", True)]
@@ -1519,6 +1519,7 @@ def upload():
     if not registros and erros:
         return jsonify({"error": "Nenhum arquivo processado", "detalhes": erros}), 400
 
+    _marcar_retificadoras_dcomp(registros)
     vinculos, dcomps_nao_vinculadas = vincular_pers_dcomps(registros)
     alertas = analisar_compliance(registros, vinculos)
 
