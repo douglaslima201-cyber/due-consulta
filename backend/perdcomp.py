@@ -1436,3 +1436,157 @@ def upload():
             "vinculos_diverg":   sum(1 for v in vinculos if v["status_validacao"] == "DIVERGENCIA"),
         }
     })
+
+@bp.route('/api/perdcomp/ecac/exportar-excel', methods=['POST'])
+def ecac_exportar_excel():
+    """Gera planilha Excel com registros, alertas e análise PER/DCOMP."""
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+    from datetime import datetime as _dt
+    import io as _io
+
+    dados = request.get_json()
+    if not dados:
+        return jsonify({"error": "Dados não enviados"}), 400
+
+    registros = dados.get("registros", [])
+    alertas   = dados.get("alertas", [])
+    vinculos  = dados.get("vinculos", [])
+    sumario   = dados.get("sumario", {})
+
+    wb = openpyxl.Workbook()
+
+    # ── Estilos ──────────────────────────────────────────────────────────────
+    def hdr(ws, row, cols, bg="1E293B", fg="F97316", bold=True):
+        for c, v in enumerate(cols, 1):
+            cell = ws.cell(row=row, column=c, value=v)
+            cell.font = Font(bold=bold, color=fg, name="Calibri", size=10)
+            cell.fill = PatternFill("solid", fgColor=bg)
+            cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+            cell.border = Border(bottom=Side(style="thin", color="334155"))
+        ws.row_dimensions[row].height = 28
+
+    def brl_fmt(v):
+        return round(float(v or 0), 2)
+
+    fmt_brl  = '#.##0,00'
+    fmt_date = 'DD/MM/AAAA'
+
+    # ── Aba 1: Registros ─────────────────────────────────────────────────────
+    ws1 = wb.active
+    ws1.title = "Registros"
+    ws1.sheet_view.showGridLines = False
+    ws1.freeze_panes = "A2"
+
+    colunas = ["Número","Arquivo","Tipo","Tributo","Competência",
+               "Valor Crédito","Créd. Transmissão","Compensado","Ressarcido",
+               "Saldo","Situação","Retificador","Status"]
+    hdr(ws1, 1, colunas)
+
+    for r in registros:
+        ef = r.get("_efetivo", True)
+        tipo = r.get("tipo","")
+        row = [
+            r.get("numero",""),
+            r.get("arquivo",""),
+            tipo,
+            r.get("tributo",""),
+            r.get("competencia",""),
+            brl_fmt(r.get("valor_credito",0)) if tipo != "Compensação" else None,
+            brl_fmt(r.get("credito_na_transmissao",0)) or None,
+            brl_fmt(r.get("valor_compensado",0)) or None,
+            brl_fmt(r.get("valor_ressarcido",0)) or None,
+            brl_fmt(r.get("saldo_remanescente",0)),
+            r.get("situacao",""),
+            "Sim" if r.get("retificador") else "Não",
+            "Substituído" if not ef else ("Retificadora" if r.get("retificador") else "Ativo"),
+        ]
+        ws1.append(row)
+        ri = ws1.max_row
+        for ci in [6,7,8,9,10]:
+            cell = ws1.cell(ri, ci)
+            if cell.value is not None:
+                cell.number_format = fmt_brl
+        if not ef:
+            for ci in range(1, 14):
+                ws1.cell(ri, ci).font = Font(color="94A3B8", italic=True, name="Calibri", size=9)
+
+    widths = [32,36,15,8,22,16,18,14,12,14,14,12,12]
+    for i, w in enumerate(widths, 1):
+        ws1.column_dimensions[get_column_letter(i)].width = w
+
+    # ── Aba 2: Alertas ───────────────────────────────────────────────────────
+    ws2 = wb.create_sheet("Alertas")
+    ws2.sheet_view.showGridLines = False
+    ws2.freeze_panes = "A2"
+    hdr(ws2, 1, ["Nível","Tipo","Descrição","Documentos Relacionados"])
+    cores = {"alto":"EF4444","medio":"F59E0B","info":"F97316"}
+    for a in sorted(alertas, key=lambda x: {"alto":0,"medio":1,"info":2}.get(x.get("nivel",""),3)):
+        arqs = ", ".join(a.get("arquivos",[]))
+        ws2.append([a.get("nivel","").upper(), a.get("tipo",""), a.get("descricao",""), arqs])
+        ri = ws2.max_row
+        cor = cores.get(a.get("nivel",""), "94A3B8")
+        ws2.cell(ri, 1).font = Font(bold=True, color=cor, name="Calibri", size=9)
+    ws2.column_dimensions["A"].width = 10
+    ws2.column_dimensions["B"].width = 28
+    ws2.column_dimensions["C"].width = 60
+    ws2.column_dimensions["D"].width = 50
+
+    # ── Aba 3: Análise PER/DCOMP ─────────────────────────────────────────────
+    ws3 = wb.create_sheet("Análise PER-DCOMP")
+    ws3.sheet_view.showGridLines = False
+    ws3.freeze_panes = "A2"
+    hdr(ws3, 1, ["PER Número","Tributo","Competência","Crédito Original",
+                  "Total Compensado","Saldo Atual","% Utilizado","Status"])
+    for v in vinculos:
+        ws3.append([
+            v.get("per_numero",""), v.get("per_tributo",""), v.get("per_competencia",""),
+            brl_fmt(v.get("valor_credito",0)),
+            brl_fmt(v.get("total_compensado",0)),
+            brl_fmt(v.get("valor_credito",0)) - brl_fmt(v.get("total_compensado",0)),
+            f"{v.get('percentual_utilizado',0):.1f}%",
+            v.get("status_validacao",""),
+        ])
+        ri = ws3.max_row
+        for ci in [4,5,6]:
+            ws3.cell(ri, ci).number_format = fmt_brl
+    for w, col in zip([32,10,22,16,16,14,12,14], range(1,9)):
+        ws3.column_dimensions[get_column_letter(col)].width = w
+
+    # ── Aba 4: Resumo ────────────────────────────────────────────────────────
+    ws4 = wb.create_sheet("Resumo")
+    ws4.sheet_view.showGridLines = False
+    ws4.column_dimensions["A"].width = 36
+    ws4.column_dimensions["B"].width = 22
+
+    def row4(label, value, bold=False):
+        r = ws4.max_row + 1
+        ws4.cell(r, 1, label).font = Font(bold=bold, name="Calibri", size=10, color="CBD5E1")
+        cell = ws4.cell(r, 2, value)
+        cell.font = Font(bold=True, name="Calibri", size=10, color="F97316" if bold else "F8FAFC")
+        if isinstance(value, float):
+            cell.number_format = fmt_brl
+
+    ws4.cell(1, 1, "PER/DCOMP Analyzer — Resumo Executivo").font = Font(bold=True, size=13, color="F97316", name="Calibri")
+    ws4.cell(2, 1, f"Gerado em {_dt.now().strftime('%d/%m/%Y %H:%M')}").font = Font(size=9, color="64748B", name="Calibri", italic=True)
+    ws4.append([])
+    row4("Total de documentos analisados", sumario.get("total_arquivos",0))
+    row4("Pedidos de Ressarcimento/Restituição (PER)", sumario.get("total_pers",0))
+    row4("Declarações de Compensação (DCOMP)", sumario.get("total_dcomps",0))
+    ws4.append([])
+    row4("Crédito original (PERs)", brl_fmt(sumario.get("total_credito",0)), bold=True)
+    row4("Total compensado", brl_fmt(sumario.get("total_compensado",0)))
+    row4("Total ressarcido", brl_fmt(sumario.get("total_ressarcido",0)))
+    row4("Saldo disponível", brl_fmt(sumario.get("saldo_disponivel",0)), bold=True)
+    ws4.append([])
+    row4("Alertas de alto risco", sumario.get("alertas_alto",0))
+    row4("Alertas de médio risco", sumario.get("alertas_medio",0))
+    row4("Informativos", sumario.get("alertas_info",0))
+
+    out = _io.BytesIO()
+    wb.save(out)
+    out.seek(0)
+    nome = f"perdcomp_{_dt.now().strftime('%Y%m%d_%H%M')}.xlsx"
+    return send_file(out, mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                     as_attachment=True, download_name=nome)

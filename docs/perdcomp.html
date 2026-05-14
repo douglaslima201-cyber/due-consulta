@@ -347,7 +347,10 @@ td.name{font-family:var(--body);font-size:12px;color:var(--g2);max-width:180px;o
             <tbody id="reg-tbody"></tbody>
           </table>
         </div>
-        <div style="margin-top:10px;font-size:11px;color:var(--g3);font-family:var(--mono)" id="reg-count"></div>
+        <div style="margin-top:10px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+          <div style="font-size:11px;color:var(--g3);font-family:var(--mono)" id="reg-count"></div>
+          <button class="btn btn-g btn-sm" onclick="exportarExcel()" id="btn-export-excel" style="display:none">⬇ Exportar Excel</button>
+        </div>
       </div>
     </div>
 
@@ -359,8 +362,22 @@ td.name{font-family:var(--body);font-size:12px;color:var(--g2);max-width:180px;o
 
       <div id="alt-empty" class="empty"><div class="empty-ic">✅</div><div class="empty-t">Nenhum alerta</div><div style="font-size:12px">Analise os documentos para ver o relatório de compliance.</div></div>
       <div id="alt-body" style="display:none">
-        <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap" id="alt-summary"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:20px">
+          <div style="display:flex;gap:10px;flex-wrap:wrap" id="alt-summary"></div>
+          <button class="btn btn-p btn-sm" onclick="gerarParecer()">📝 Gerar Parecer</button>
+        </div>
         <div id="alt-list"></div>
+        <!-- Parecer -->
+        <div id="parecer-box" style="display:none;margin-top:24px;border-top:1px solid rgba(255,255,255,.08);padding-top:20px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+            <div style="font-size:13px;font-weight:700;color:var(--white)">📋 Parecer de Compliance — PER/DCOMP</div>
+            <div class="btn-row" style="margin:0">
+              <button class="btn btn-g btn-sm" onclick="copiarParecer()">📋 Copiar</button>
+              <button class="btn btn-g btn-sm" onclick="imprimirParecer()">🖨 Imprimir</button>
+            </div>
+          </div>
+          <div id="parecer-content" style="background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.07);border-radius:var(--r);padding:24px;font-size:13px;color:var(--g2);line-height:1.8;white-space:pre-wrap;font-family:var(--body)"></div>
+        </div>
       </div>
     </div>
 
@@ -871,12 +888,6 @@ function renderDash(){
 }
 
 // ─── REGISTROS TABLE ─────────────────────────────────────────────────────────
-function renderRegistros(){
-  if(!DADOS||!DADOS.registros.length) return;
-  document.getElementById('reg-empty').style.display='none';
-  document.getElementById('reg-body').style.display='block';
-  filtrarTabela();
-}
 function filtrarTabela(){
   if(!DADOS) return;
   const busca=(document.getElementById('f-busca').value||'').toLowerCase();
@@ -1304,6 +1315,149 @@ async function ecacAnalisarPasta(){
 }
 
 // ─── EXPORT CSV ───────────────────────────────────────────────────────────────
+async function exportarExcel(){
+  if(!DADOS) return;
+  const btn=document.getElementById('btn-export-excel');
+  btn.textContent='⏳ Gerando...'; btn.disabled=true;
+  try{
+    const r=await fetch(`${API}/ecac/exportar-excel`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({registros:DADOS.registros,alertas:DADOS.alertas,vinculos:DADOS.vinculos,sumario:DADOS.sumario})
+    });
+    if(!r.ok){const d=await r.json();throw new Error(d.error||'Erro ao gerar Excel');}
+    const blob=await r.blob();
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;a.download=`perdcomp_${new Date().toISOString().slice(0,10)}.xlsx`;
+    document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+  }catch(err){alert('Erro ao exportar Excel: '+err.message);}
+  finally{btn.textContent='⬇ Exportar Excel';btn.disabled=false;}
+}
+
+function gerarParecer(){
+  if(!DADOS) return;
+  const s=DADOS.sumario;
+  const al=DADOS.alertas||[];
+  const alto=al.filter(a=>a.nivel==='alto');
+  const medio=al.filter(a=>a.nivel==='medio');
+  const info=al.filter(a=>a.nivel==='info');
+  const vinculos=DADOS.vinculos||[];
+  const hoje=new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'});
+  const brl=v=>v!=null?Number(v).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}):'—';
+
+  const risco=s.alertas_alto===0?'BAIXO':s.alertas_alto<=2?'MÉDIO':'ALTO';
+  const riscoDesc=s.alertas_alto===0
+    ?'Não foram identificadas inconsistências críticas nos documentos analisados.'
+    :`Foram identificadas ${s.alertas_alto} ocorrência(s) de alto risco que requerem atenção imediata.`;
+
+  let parecer=`PARECER DE COMPLIANCE — PER/DCOMP
+${'─'.repeat(60)}
+Data de emissão: ${hoje}
+Caráter: Auxiliar — não substitui análise especializada
+
+${'═'.repeat(60)}
+I. RESUMO EXECUTIVO
+${'═'.repeat(60)}
+
+Foram analisados ${s.total_arquivos} documentos PER/DCOMP, sendo ${s.total_pers} Pedido(s) de Ressarcimento/Restituição (PER) e ${s.total_dcomps} Declaração(ões) de Compensação (DCOMP).
+
+NÍVEL DE RISCO GERAL: ${risco}
+${riscoDesc}
+
+Síntese financeira:
+  • Crédito original (PERs):   ${brl(s.total_credito)}
+  • Total compensado (DCOMPs): ${brl(s.total_compensado)}
+  • Total ressarcido:           ${brl(s.total_ressarcido)}
+  • Saldo disponível:           ${brl(s.saldo_disponivel)}
+
+${'═'.repeat(60)}
+II. ANÁLISE DE COMPLIANCE
+${'═'.repeat(60)}
+`;
+
+  if(alto.length){
+    parecer+=`\n⚠ PONTOS DE ALTO RISCO (${alto.length})\n${'─'.repeat(40)}\n`;
+    alto.forEach((a,i)=>{
+      parecer+=`\n${i+1}. ${a.tipo||'Alerta'}\n   ${a.descricao||''}\n`;
+      if(a.arquivos?.length) parecer+=`   Documentos: ${a.arquivos.join(', ')}\n`;
+    });
+  }
+
+  if(medio.length){
+    parecer+=`\n⚡ PONTOS DE MÉDIO RISCO (${medio.length})\n${'─'.repeat(40)}\n`;
+    medio.forEach((a,i)=>{
+      parecer+=`\n${i+1}. ${a.tipo||'Alerta'}\n   ${a.descricao||''}\n`;
+      if(a.arquivos?.length) parecer+=`   Documentos: ${a.arquivos.join(', ')}\n`;
+    });
+  }
+
+  if(info.length){
+    parecer+=`\nℹ INFORMATIVOS (${info.length})\n${'─'.repeat(40)}\n`;
+    info.forEach((a,i)=>{
+      parecer+=`\n${i+1}. ${a.tipo||'Info'}\n   ${a.descricao||''}\n`;
+    });
+  }
+
+  if(!al.length) parecer+=`\n✅ Nenhuma inconsistência identificada na análise.\n`;
+
+  parecer+=`\n${'═'.repeat(60)}\nIII. ANÁLISE PER ↔ DCOMP\n${'═'.repeat(60)}\n`;
+  if(vinculos.length){
+    vinculos.forEach(v=>{
+      const saldoAtual=v.valor_credito-v.total_compensado;
+      const status=v.status_validacao==='OK'?'✅ OK':v.status_validacao==='EXCEDIDO'?'🔴 EXCEDIDO':'🟡 DIVERGÊNCIA';
+      parecer+=`\nPER: ${v.per_numero||'—'} | ${v.per_tributo||'—'} | ${v.per_competencia||'—'}\n`;
+      parecer+=`  Crédito original:  ${brl(v.valor_credito)}\n`;
+      parecer+=`  Total compensado:  ${brl(v.total_compensado)} (${v.percentual_utilizado}%)\n`;
+      parecer+=`  Saldo atual:       ${brl(saldoAtual)}\n`;
+      parecer+=`  DCOMPs vinculadas: ${v.dcomps?.length||0} | Status: ${status}\n`;
+      if(v.alertas_vinculo?.length) v.alertas_vinculo.forEach(a=>{ parecer+=`  ⚠ ${a}\n`; });
+    });
+  } else { parecer+=`\nNenhuma vinculação PER/DCOMP identificada.\n`; }
+
+  parecer+=`\n${'═'.repeat(60)}\nIV. CONCLUSÃO\n${'═'.repeat(60)}\n\n`;
+  if(s.alertas_alto===0 && s.alertas_medio===0){
+    parecer+=`A análise dos documentos não identificou inconsistências relevantes. Os saldos e compensações estão dentro dos parâmetros esperados. Recomenda-se manter o monitoramento periódico.`;
+  } else if(s.alertas_alto===0){
+    parecer+=`A análise identificou ${s.alertas_medio} ponto(s) de atenção de médio risco. Recomenda-se revisão dos itens apontados antes da entrega ou utilização dos créditos.`;
+  } else {
+    parecer+=`A análise identificou ${s.alertas_alto} ocorrência(s) de alto risco. Recomenda-se análise especializada imediata antes de prosseguir com compensações ou ressarcimentos.`;
+  }
+
+  parecer+=`\n\n${'─'.repeat(60)}\nPER/DCOMP Analyzer — Rumo Brasil\nGerado automaticamente em ${hoje} | Uso interno`;
+
+  document.getElementById('parecer-content').textContent=parecer;
+  document.getElementById('parecer-box').style.display='block';
+  document.getElementById('parecer-box').scrollIntoView({behavior:'smooth'});
+}
+
+function copiarParecer(){
+  const txt=document.getElementById('parecer-content').textContent;
+  navigator.clipboard.writeText(txt).then(()=>alert('Parecer copiado para a área de transferência.'));
+}
+
+function imprimirParecer(){
+  const txt=document.getElementById('parecer-content').textContent;
+  const w=window.open('','_blank');
+  w.document.write(`<html><head><title>Parecer PER/DCOMP</title><style>
+    body{font-family:Calibri,Arial,sans-serif;font-size:12pt;line-height:1.8;margin:40px;color:#111}
+    pre{white-space:pre-wrap;font-family:Calibri,Arial,sans-serif;font-size:11pt}
+    @media print{body{margin:20px}}
+  </style></head><body><pre>${txt.replace(/</g,'&lt;')}</pre></body></html>`);
+  w.document.close();
+  w.focus();
+  w.print();
+}
+
+function renderRegistros(){
+  if(!DADOS||!DADOS.registros.length) return;
+  document.getElementById('reg-empty').style.display='none';
+  document.getElementById('reg-body').style.display='block';
+  const btn=document.getElementById('btn-export-excel');
+  if(btn) btn.style.display='block';
+  filtrarTabela();
+}
+
 function exportarCSV(){
   if(!DADOS) return;
   const rows=[
