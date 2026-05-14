@@ -1103,12 +1103,25 @@ const ECAC_SCRIPT = `(async function(){
   URL.createObjectURL=origCOU;
   console.log('[Analyzer] Total: '+capturas.length+' PDFs capturados');
   if(!capturas.length){alert('[Analyzer] Nenhum PDF capturado. Verifique o console para detalhes.');return;}
-  const jBlob=new Blob([JSON.stringify(capturas)],{type:'application/json'});
-  const jUrl=origCOU(jBlob);
-  const dl=document.createElement('a');
-  dl.href=jUrl;dl.download='perdcomp_'+new Date().toISOString().slice(0,10)+'.json';
-  document.body.appendChild(dl);dl.click();document.body.removeChild(dl);URL.revokeObjectURL(jUrl);
-  alert('[PER/DCOMP Analyzer]\\n✓ '+total+' PDF(s) em '+pag+' página(s)\\n\\nJSON salvo em Downloads.\\nImporte na ferramenta — PDFs salvos automaticamente no servidor.');
+  try{
+    const nome='perdcomp_'+new Date().toISOString().slice(0,10)+'_'+Date.now()+'.json';
+    const json=JSON.stringify(capturas);
+    console.log('[Analyzer] JSON: '+Math.round(json.length/1024)+'KB — gerando download...');
+    // data URL: funciona de forma confiável em contextos async sem user gesture
+    const dataUrl='data:application/json;charset=utf-8,'+encodeURIComponent(json);
+    const dl=document.createElement('a');
+    dl.setAttribute('href',dataUrl);
+    dl.setAttribute('download',nome);
+    dl.style.display='none';
+    document.body.appendChild(dl);
+    dl.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true,view:window}));
+    setTimeout(()=>{document.body.removeChild(dl);},1000);
+    console.log('[Analyzer] Download disparado: '+nome);
+    alert('[PER/DCOMP Analyzer]\\n✓ '+total+' PDF(s) em '+pag+' página(s)\\n\\nArquivo: '+nome+'\\nSalvo em Downloads.\\n\\nImporte na ferramenta — PDFs salvos em pasta datada no servidor.');
+  }catch(ex){
+    console.error('[Analyzer] ERRO ao gerar JSON:',ex);
+    alert('[Analyzer] Erro ao gerar JSON: '+ex.message+'\\nVeja o console para detalhes.');
+  }
 })();`;
 
 function ecacMontarScript(){
