@@ -1010,7 +1010,7 @@ def ecac_analisar_capturas():
     total_credito    = sum(r["valor_credito"] for r in ativos if r["tipo"] in ("Ressarcimento","Restituição"))
     total_compensado = sum(r["valor_compensado"]   for r in ativos)
     total_ressarcido = sum(r["valor_ressarcido"]   for r in ativos)
-    saldo_total      = sum(r["saldo_remanescente"] for r in ativos)
+    saldo_total      = round(total_credito - total_compensado - total_ressarcido, 2)
     dist_tributos: dict[str, float] = {}
     dist_tipos:    dict[str, int]   = {}
     for r in ativos:
@@ -1278,7 +1278,7 @@ def ecac_analisar():
     total_credito    = sum(r["valor_credito"] for r in ativos if r["tipo"] in ("Ressarcimento","Restituição"))
     total_compensado = sum(r["valor_compensado"]   for r in ativos)
     total_ressarcido = sum(r["valor_ressarcido"]   for r in ativos)
-    saldo_total      = sum(r["saldo_remanescente"] for r in ativos)
+    saldo_total      = round(total_credito - total_compensado - total_ressarcido, 2)
 
     dist_tributos: dict[str, float] = {}
     dist_tipos:    dict[str, int]   = {}
@@ -1385,7 +1385,7 @@ def upload():
     total_credito    = sum(r["valor_credito"] for r in registros if r["tipo"] in ("Ressarcimento","Restituição"))
     total_compensado = sum(r["valor_compensado"]   for r in registros)
     total_ressarcido = sum(r["valor_ressarcido"]   for r in registros)
-    saldo_total      = sum(r["saldo_remanescente"] for r in registros)
+    saldo_total      = round(total_credito - total_compensado - total_ressarcido, 2)
 
     dist_tributos: dict[str, float] = {}
     dist_tipos:    dict[str, int]   = {}

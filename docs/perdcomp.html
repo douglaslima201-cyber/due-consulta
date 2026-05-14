@@ -285,7 +285,7 @@ td.name{font-family:var(--body);font-size:12px;color:var(--g2);max-width:180px;o
       <h2 class="sec-title">Dashboard</h2>
       <p class="sec-sub" id="dash-sub">Processe documentos para ver o dashboard.</p>
 
-      <div id="dash-empty" class="empty"><div class="empty-ic">📊</div><div class="empty-t">Nenhuma análise disponível</div><div style="font-size:12px">Faça upload de PDFs para iniciar.</div></div>
+      <div id="dash-empty" class="empty"><div class="empty-ic">📊</div><div class="empty-t">Nenhuma análise disponível</div><div style="font-size:12px">Importe o JSON gerado pelo script e clique em Analisar.</div></div>
 
       <div id="dash-body" style="display:none">
         <!-- Risk score -->
@@ -308,11 +308,11 @@ td.name{font-family:var(--body);font-size:12px;color:var(--g2);max-width:180px;o
 
         <!-- Charts -->
         <div class="charts-g">
-          <div class="ch-box"><div class="ch-title">Distribuição por Tributo</div><div class="ch-sub">Volume de crédito por tipo (R$)</div><div class="ch-wrap"><canvas id="ch-tributo"></canvas></div></div>
-          <div class="ch-box"><div class="ch-title">Tipo de Pedido</div><div class="ch-sub">Quantidade por tipo de documento</div><div class="ch-wrap"><canvas id="ch-tipo"></canvas></div></div>
+          <div class="ch-box"><div class="ch-title">Distribuição por Tributo</div><div class="ch-sub">Crédito PER + valor compensado DCOMP por tributo (R$)</div><div class="ch-wrap"><canvas id="ch-tributo"></canvas></div></div>
+          <div class="ch-box"><div class="ch-title">Tipo de Documento</div><div class="ch-sub">Quantidade de docs ativos por tipo</div><div class="ch-wrap"><canvas id="ch-tipo"></canvas></div></div>
         </div>
         <div class="charts-g">
-          <div class="ch-box"><div class="ch-title">Crédito vs Utilização</div><div class="ch-sub">Total crédito, compensado, ressarcido e saldo (R$)</div><div class="ch-wrap"><canvas id="ch-vals"></canvas></div></div>
+          <div class="ch-box"><div class="ch-title">Crédito vs Utilização</div><div class="ch-sub">Crédito original (PERs), compensado, ressarcido e saldo disponível (R$)</div><div class="ch-wrap"><canvas id="ch-vals"></canvas></div></div>
           <div class="ch-box"><div class="ch-title">Alertas por Severidade</div><div class="ch-sub">Distribuição dos pontos de atenção</div><div class="ch-wrap"><canvas id="ch-alertas"></canvas></div></div>
         </div>
       </div>
@@ -817,12 +817,12 @@ function renderDash(){
 
   // Stats row 1 (valores)
   document.getElementById('dash-stats1').innerHTML=[
-    {n:brlK(s.total_credito),l:'Total Créditos',c:'c-o'},
+    {n:brlK(s.total_credito),l:'Crédito Original (PERs)',c:'c-o'},
     {n:brlK(s.total_compensado),l:'Total Compensado',c:'c-b'},
     {n:brlK(s.total_ressarcido),l:'Total Ressarcido',c:'c-g'},
     {n:brlK(s.saldo_disponivel),l:'Saldo Disponível',c:'c-y'},
-    {n:s.total_arquivos,l:'Documentos',c:'c-w'},
-    {n:Object.keys(s.dist_tributos).length,l:'Tributos',c:'c-w'},
+    {n:s.total_arquivos,l:'Docs Ativos',c:'c-w'},
+    {n:s.total_pers+' PER / '+s.total_dcomps+' DCOMP',l:'Distribuição',c:'c-w'},
   ].map(x=>`<div class="stat ${x.c}"><div class="stat-n">${x.n}</div><div class="stat-l">${x.l}</div></div>`).join('');
 
   // Stats row 2 (alertas)
