@@ -1143,20 +1143,24 @@ def ecac_importar_json():
     erros = []
     novos = []
 
+    # Subpasta datada para os PDFs desta importação
+    from datetime import datetime as _dt
+    ts = _dt.now().strftime("%Y-%m-%d_%H-%M-%S")
+    pasta_pdfs = _ECAC_DIR / "entrada" / ts
+    pasta_pdfs.mkdir(parents=True, exist_ok=True)
+
     for item in data:
         numero = item.get('numero', '')
         indice = item.get('indice', len(_ecac_capturas))
-        nome   = f"ecac_{re.sub(r'[^0-9]', '', numero) or str(indice+1)}.pdf"
+        nome   = f"{re.sub(r'[^0-9]', '', numero) or str(indice+1)}.pdf"
 
         # ── Formato atual: PDF em base64 ──────────────────────────────────
         pdf_b64 = item.get('pdf_b64') or item.get('pdf_base64')
         if pdf_b64:
             try:
                 pdf_bytes = _b64.b64decode(pdf_b64)
-                # Salva PDF individual em disco na pasta de entrada
-                pasta_entrada = _ECAC_DIR / "entrada"
-                pasta_entrada.mkdir(exist_ok=True)
-                (pasta_entrada / nome).write_bytes(pdf_bytes)
+                # Salva PDF individual em subpasta datada
+                (pasta_pdfs / nome).write_bytes(pdf_bytes)
                 texto = extrair_texto(pdf_bytes)
                 if texto.strip() and not texto.startswith("ERRO"):
                     novos.append(extrair_registro(texto, nome))
@@ -1177,11 +1181,18 @@ def ecac_importar_json():
             if texto:
                 novos.append(extrair_registro(texto, nome))
 
+    pdfs_salvos = len(list(pasta_pdfs.glob("*.pdf")))
     with _capturas_lock:
         _ecac_capturas.clear()
         _ecac_capturas.extend(novos)
         total = len(_ecac_capturas)
-    return jsonify({"ok": True, "total": total, "erros": erros})
+    return jsonify({
+        "ok": True,
+        "total": total,
+        "erros": erros,
+        "pasta_pdfs": str(pasta_pdfs.resolve()),
+        "pdfs_salvos": pdfs_salvos,
+    })
 
 @bp.route('/api/perdcomp/ecac/abrir-pasta')
 def ecac_abrir_pasta():

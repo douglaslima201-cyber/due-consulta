@@ -1138,8 +1138,10 @@ async function ecacImportarJson(file){
   try{
     const r=await fetch(`${API}/ecac/importar-json`,{method:'POST',body:fd});
     const d=await r.json(); if(!r.ok) throw new Error(d.error);
-    st.textContent=`✅ ${d.total} declaração(ões) importadas`;
-    st.style.color='var(--green)';
+    const pasta=d.pasta_pdfs||'';
+    const salvos=d.pdfs_salvos||0;
+    st.innerHTML=`<span style="color:var(--green)">✅ ${d.total} declaração(ões) importadas</span>`
+      +(pasta?`<div style="font-size:11px;font-family:var(--mono);color:var(--g3);margin-top:6px;word-break:break-all">📁 ${e(pasta)}<br><span style="color:var(--g4)">${salvos} PDF(s) salvos nesta pasta</span></div>`:'');
     ecacAtualizarCapturas();
   }catch(err){st.textContent='❌ '+err.message; st.style.color='var(--red)';}
 }
