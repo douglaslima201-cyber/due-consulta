@@ -1351,33 +1351,42 @@ async function renderProjetos(){
     const empty=document.getElementById('proj-empty');
     if(!lista.length){box.innerHTML='';empty.style.display='block';return;}
     empty.style.display='none';
-    box.innerHTML=lista.map(p=>`
-      <div class="card" style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap">
+    box.innerHTML=lista.map(p=>{
+      const compRange=p.competencia_ini
+        ?(p.competencia_fim&&p.competencia_fim!==p.competencia_ini
+            ?e(p.competencia_ini)+' → '+e(p.competencia_fim)
+            :e(p.competencia_ini))
+        :'';
+      return `<div class="card" style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap">
         <div style="flex:1;min-width:200px">
           <div style="font-size:15px;font-weight:700;color:var(--white);margin-bottom:4px">${e(p.nome)}</div>
           <div style="font-size:12px;color:var(--g3);margin-bottom:8px">${e(p.empresa||'—')}${p.cnpj?' · <span style="font-family:var(--mono)">'+e(p.cnpj)+'</span>':''}</div>
           <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--g4)">
-            ${p.competencia_ini?`<span>📅 ${e(p.competencia_ini)}${p.competencia_fim&&p.competencia_fim!==p.competencia_ini?' → '+e(p.competencia_fim):''}</span>`:''}
+            ${compRange?'<span>📅 '+compRange+'</span>':''}
             <span>📄 ${p.total_docs} doc(s) · ${p.total_pers} PER · ${p.total_dcomps} DCOMP</span>
             <span>🕒 ${new Date(p.criado_em).toLocaleString('pt-BR')}</span>
           </div>
         </div>
         <div class="btn-row" style="margin:0;align-self:center">
-          <button class="btn btn-p btn-sm" onclick="carregarProjeto('${p.id}','${e(p.nome).replace(/'/g,'\\'+'\\'')}')">▶ Carregar</button>
-          <button class="btn btn-g btn-sm" onclick="deletarProjeto('${p.id}')" style="color:#FCA5A5">🗑</button>
+          <button class="btn btn-p btn-sm proj-load" data-id="${e(p.id)}">▶ Carregar</button>
+          <button class="btn btn-g btn-sm proj-del" data-id="${e(p.id)}" style="color:#FCA5A5">🗑</button>
         </div>
-      </div>`).join('');
+      </div>`;
+    }).join('');
+    // Bind events via data-id para evitar problemas com aspas no onclick
+    box.querySelectorAll('.proj-load').forEach(btn=>
+      btn.addEventListener('click', ()=>carregarProjeto(btn.dataset.id)));
+    box.querySelectorAll('.proj-del').forEach(btn=>
+      btn.addEventListener('click', ()=>deletarProjeto(btn.dataset.id)));
   }catch(err){document.getElementById('proj-list').innerHTML='<div style="color:var(--red);font-size:13px">Erro: '+err.message+'</div>';}
 }
 
-async function carregarProjeto(id,nome){
-  const btn=event.target; btn.textContent='⏳'; btn.disabled=true;
+async function carregarProjeto(id){
   try{
     const r=await fetch(`${API.replace('/ecac','')}/projetos/${id}/analisar`,{method:'POST'});
     const d=await r.json(); if(!r.ok) throw new Error(d.error);
     DADOS=d; renderTudo(); sp('p-dash');
-  }catch(err){alert('Erro ao carregar "'+nome+'": '+err.message);}
-  finally{btn.textContent='▶ Carregar'; btn.disabled=false;}
+  }catch(err){alert('Erro ao carregar projeto: '+err.message);}
 }
 
 async function deletarProjeto(id){
