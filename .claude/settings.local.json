@@ -128,7 +128,9 @@
       "Bash(powershell -Command \"Stop-Process -Name python -Force -ErrorAction SilentlyContinue; Start-Sleep -Seconds 2; Write-Host 'Processos Python encerrados'\")",
       "Bash(git tag *)",
       "Bash(powershell -Command \"Stop-Process -Name python -Force -ErrorAction SilentlyContinue; Start-Sleep -Seconds 2; Write-Host 'Encerrado'\")",
-      "Bash(powershell -Command \"Stop-Process -Name python -Force -ErrorAction SilentlyContinue; Start-Sleep -Seconds 2; Write-Host 'OK'\")"
+      "Bash(powershell -Command \"Stop-Process -Name python -Force -ErrorAction SilentlyContinue; Start-Sleep -Seconds 2; Write-Host 'OK'\")",
+      "Bash(curl -s -X POST http://localhost:5000/api/perdcomp/ecac/exportar-excel -H \"Content-Type: application/json\" -d '{\"registros\":[],\"alertas\":[],\"vinculos\":[],\"sumario\":{}}' -o /dev/null -w \"%{http_code}\")",
+      "Bash(curl -s -X POST http://localhost:5000/api/perdcomp/ecac/exportar-excel -H \"Content-Type: application/json\" -d '{\"registros\":[],\"alertas\":[],\"vinculos\":[],\"sumario\":{\"total_arquivos\":0,\"total_pers\":0,\"total_dcomps\":0,\"total_credito\":0,\"total_compensado\":0,\"total_ressarcido\":0,\"saldo_disponivel\":0,\"alertas_alto\":0,\"alertas_medio\":0,\"alertas_info\":0}}' -o /tmp/test.xlsx -w \"%{http_code}\")"
     ],
     "additionalDirectories": [
       "C:\\Users\\Douglas Lima\\Desktop\\Demandas\\PeD\\Claude Code\\Averbações\\due-consulta\\due-consulta"

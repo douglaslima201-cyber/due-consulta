@@ -10,7 +10,7 @@ import threading
 import uuid
 from datetime import date
 from pathlib import Path
-from flask import Blueprint, request, jsonify, send_from_directory
+from flask import Blueprint, request, jsonify, send_from_directory, send_file
 
 try:
     import pdfplumber
