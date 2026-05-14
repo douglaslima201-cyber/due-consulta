@@ -1112,9 +1112,9 @@ function filtrarTabela(){
     const ativo=r._efetivo!==false;
     if(efetivo==='ativos'&&!ativo) return false;
     if(efetivo==='substituidos'&&ativo) return false;
-    const temAlerta=(_altPorArq[r.arquivo]||[]).length>0;
-    if(fCompliance==='ok'&&temAlerta) return false;
-    if(fCompliance==='fora'&&!temAlerta) return false;
+    const temAlertaCritico=(_altPorArq[r.arquivo]||[]).some(a=>a.nivel==='alto'||a.nivel==='medio');
+    if(fCompliance==='ok'&&temAlertaCritico) return false;
+    if(fCompliance==='fora'&&!temAlertaCritico) return false;
     return true;
   });
   const ativos=DADOS.registros.filter(r=>r._efetivo!==false).length;
@@ -1162,18 +1162,26 @@ function filtrarTabela(){
     const altosDoc=alertasDoc.filter(a=>a.nivel==='alto');
     const mediosDoc=alertasDoc.filter(a=>a.nivel==='medio');
     const infoDoc=alertasDoc.filter(a=>a.nivel==='info');
+    // Apenas alto e medio determinam "Fora do compliance" — info é somente informativo
+    const alertasCriticos=alertasDoc.filter(a=>a.nivel==='alto'||a.nivel==='medio');
     let complianceCell;
-    if(!alertasDoc.length){
-      complianceCell=`<span style="color:var(--green);font-size:12px;font-weight:600">✓ OK</span>`;
+    if(!alertasCriticos.length){
+      // Em compliance — pode ter info (ex: retificadora) mas isso não é não-conformidade
+      if(infoDoc.length){
+        const justInfo=infoDoc.map(a=>a.tipo).join(', ');
+        complianceCell=`<span style="color:var(--green);font-size:12px;font-weight:600" title="Em compliance. Info: ${e(justInfo)}">✓ OK</span>`;
+      } else {
+        complianceCell=`<span style="color:var(--green);font-size:12px;font-weight:600">✓ OK</span>`;
+      }
     } else {
-      const pior=altosDoc[0]||mediosDoc[0]||infoDoc[0];
-      const cor=altosDoc.length?'var(--red)':mediosDoc.length?'var(--yellow)':'var(--orange)';
-      const ic=altosDoc.length?'🔴':mediosDoc.length?'🟡':'🟠';
-      const justificativas=alertasDoc.map(a=>`[${a.nivel.toUpperCase()}] ${a.tipo}: ${a.descricao}`).join('\n');
+      const pior=altosDoc[0]||mediosDoc[0];
+      const cor=altosDoc.length?'var(--red)':'var(--yellow)';
+      const ic=altosDoc.length?'🔴':'🟡';
+      const justificativas=alertasCriticos.map(a=>`[${a.nivel.toUpperCase()}] ${a.tipo}: ${a.descricao}`).join('\n');
       complianceCell=`<div style="display:flex;flex-direction:column;gap:3px">
         <span style="color:${cor};font-size:11px;font-weight:600;white-space:nowrap">${ic} Fora</span>
         <span style="font-size:10px;color:var(--g3);line-height:1.4;max-width:240px;cursor:help" title="${e(justificativas)}">${e(pior?.tipo||'Ver alertas')}</span>
-        ${alertasDoc.length>1?`<span style="font-size:10px;color:var(--g4)">+${alertasDoc.length-1} alerta(s)</span>`:''}
+        ${alertasCriticos.length>1?`<span style="font-size:10px;color:var(--g4)">+${alertasCriticos.length-1} alerta(s)</span>`:''}
       </div>`;
     }
 
