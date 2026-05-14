@@ -381,6 +381,11 @@ select option{background:#1E293B;color:#F8FAFC;}
             <option value="ativos">Ativos</option>
             <option value="substituidos">Substituídos</option>
           </select>
+          <select id="f-compliance" onchange="filtrarTabela()">
+            <option value="">Compliance: todos</option>
+            <option value="ok">✓ Em compliance</option>
+            <option value="fora">⚠ Fora do compliance</option>
+          </select>
           <button class="btn btn-g btn-sm" onclick="exportarExcel()" id="btn-export-excel" style="display:none">⬇ Excel</button>
         </div>
         <div class="tw">
@@ -392,7 +397,7 @@ select option{background:#1E293B;color:#F8FAFC;}
               <th style="text-align:right">Créd. Transmissão</th>
               <th style="text-align:right">Compensado</th>
               <th style="text-align:right">Saldo</th>
-              <th>PER Origem</th><th>Status</th>
+              <th>PER Origem</th><th>Compliance</th><th>Status</th>
             </tr></thead>
             <tbody id="reg-tbody"></tbody>
           </table>
@@ -1094,13 +1099,22 @@ function filtrarTabela(){
   const tipo=document.getElementById('f-tipo').value;
   const tributo=document.getElementById('f-tributo').value;
   const efetivo=document.getElementById('f-efetivo')?.value||'';
+  const fCompliance=document.getElementById('f-compliance')?.value||'';
+
+  // Reconstrói mapa de alertas para filtro
+  const _altPorArq={};
+  (DADOS.alertas||[]).forEach(a=>{(a.arquivos||[]).forEach(arq=>{if(!_altPorArq[arq])_altPorArq[arq]=[];_altPorArq[arq].push(a);});});
+
   const rows=DADOS.registros.filter(r=>{
-    if(busca&&!r.arquivo.toLowerCase().includes(busca)&&!(r.numero||'').toLowerCase().includes(busca)) return false;
+    if(busca&&!r.arquivo.toLowerCase().includes(busca)&&!(r.numero||'').toLowerCase().includes(busca)&&!(r.tributo||'').toLowerCase().includes(busca)) return false;
     if(tipo&&r.tipo!==tipo) return false;
     if(tributo&&r.tributo!==tributo) return false;
     const ativo=r._efetivo!==false;
     if(efetivo==='ativos'&&!ativo) return false;
     if(efetivo==='substituidos'&&ativo) return false;
+    const temAlerta=(_altPorArq[r.arquivo]||[]).length>0;
+    if(fCompliance==='ok'&&temAlerta) return false;
+    if(fCompliance==='fora'&&!temAlerta) return false;
     return true;
   });
   const ativos=DADOS.registros.filter(r=>r._efetivo!==false).length;
@@ -1110,6 +1124,15 @@ function filtrarTabela(){
   const dcompParaPer={};
   (DADOS.vinculos||[]).forEach(v=>{
     (v.dcomps||[]).forEach(d=>{ if(d.arquivo) dcompParaPer[d.arquivo]=v.per_numero; });
+  });
+
+  // Mapa arquivo → alertas para coluna Compliance
+  const alertasPorArquivo={};
+  (DADOS.alertas||[]).forEach(a=>{
+    (a.arquivos||[]).forEach(arq=>{
+      if(!alertasPorArquivo[arq]) alertasPorArquivo[arq]=[];
+      alertasPorArquivo[arq].push(a);
+    });
   });
 
   // Formata número abreviado para exibição (mantém completo no title)
@@ -1134,6 +1157,25 @@ function filtrarTabela(){
       :`<span style="color:var(--g4)">—</span>`;
     const isComp=r.tipo==='Compensação';
     const dash='<span style="color:var(--g4)">—</span>';
+    // Coluna Compliance
+    const alertasDoc=alertasPorArquivo[r.arquivo]||[];
+    const altosDoc=alertasDoc.filter(a=>a.nivel==='alto');
+    const mediosDoc=alertasDoc.filter(a=>a.nivel==='medio');
+    let complianceCell;
+    if(!alertasDoc.length){
+      complianceCell=`<span style="color:var(--green);font-size:12px;font-weight:600">✓ OK</span>`;
+    } else {
+      const cor=altosDoc.length?'var(--red)':'var(--yellow)';
+      const ic=altosDoc.length?'🔴':'🟡';
+      const pior=altosDoc.length?altosDoc[0]:mediosDoc[0];
+      const justificativas=alertasDoc.map(a=>`${a.tipo}: ${a.descricao}`).join('\n');
+      complianceCell=`<div style="display:flex;flex-direction:column;gap:3px">
+        <span style="color:${cor};font-size:11px;font-weight:600;white-space:nowrap">${ic} Fora</span>
+        <span style="font-size:10px;color:var(--g3);line-height:1.4;max-width:240px" title="${e(justificativas)}">${e(pior.tipo)}</span>
+        ${alertasDoc.length>1?`<span style="font-size:10px;color:var(--g4)">+${alertasDoc.length-1} alerta(s)</span>`:''}
+      </div>`;
+    }
+
     return `<tr style="${rowStyle}" title="Arquivo: ${e(r.arquivo)}">
       <td style="font-family:var(--mono);font-size:11px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${e(r.numero||'')}">
         ${e(fmtNum(r.numero))||dash}
@@ -1147,6 +1189,7 @@ function filtrarTabela(){
       <td style="text-align:right;font-family:var(--mono);font-size:12px">${r.valor_compensado?brl(r.valor_compensado):dash}</td>
       <td style="text-align:right;font-family:var(--mono);font-size:12px;color:${r.saldo_remanescente<0?'var(--red)':r.saldo_remanescente>0?'var(--green)':''}">${brl(r.saldo_remanescente)}</td>
       <td>${perOrigemCell}</td>
+      <td style="min-width:160px">${complianceCell}</td>
       <td>${statusCol}</td>
     </tr>`;
   }).join('');
