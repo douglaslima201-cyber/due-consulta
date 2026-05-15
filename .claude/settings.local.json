@@ -170,7 +170,9 @@
       "Bash(curl -s http://localhost:5000/api/jobs)",
       "Bash(taskkill //PID 33840 //F)",
       "Bash(curl -s -X POST http://localhost:5000/api/iniciar/1954b63b-4438-4105-abe7-ae618e097174)",
-      "Bash(curl -s http://localhost:5000/api/status/1954b63b-4438-4105-abe7-ae618e097174)"
+      "Bash(curl -s http://localhost:5000/api/status/1954b63b-4438-4105-abe7-ae618e097174)",
+      "Bash(taskkill //PID 19988 //F)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(f'Ativos: {d[\\\\\"ativos\\\\\"]}/20 | Capacidade: {d[\\\\\"capacidade_hora\\\\\"]:,} req/hora'\\)\")"
     ],
     "additionalDirectories": [
       "C:\\Users\\Douglas Lima\\Desktop\\Demandas\\PeD\\Claude Code\\Averbações\\due-consulta\\due-consulta"

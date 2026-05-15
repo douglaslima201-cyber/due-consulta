@@ -811,10 +811,23 @@ async def obter_sessao_com_captcha(job_id: str, proxy: str | None = None) -> tup
 
             page.on("response", rastrear_resposta)
 
-            try:
-                await page.goto(PORTAL_URL, wait_until="networkidle", timeout=30000)
-            except Exception as nav_err:
-                log(job_id, "WARN", f"Falha ao navegar [{label}]: {nav_err} — pulando este proxy")
+            # "load" é menos restritivo que "networkidle" — aguarda o evento load
+            # sem exigir que TODAS as requisições terminem (proxies podem bloquear alguns recursos)
+            nav_ok = False
+            for _tentativa in range(2):
+                try:
+                    await page.goto(PORTAL_URL, wait_until="load", timeout=30000)
+                    nav_ok = True
+                    break
+                except Exception as nav_err:
+                    if _tentativa == 0:
+                        log(job_id, "WARN", f"Navegação [{label}] tentativa 1 falhou ({nav_err.__class__.__name__}) — retentando")
+                        await asyncio.sleep(2)
+                    else:
+                        log(job_id, "WARN", f"Falha ao navegar [{label}]: {nav_err} — pulando este proxy")
+                        await browser.close()
+                        return None
+            if not nav_ok:
                 await browser.close()
                 return None
 
@@ -843,19 +856,30 @@ async def obter_sessao_com_captcha(job_id: str, proxy: str | None = None) -> tup
 async def inicializar_sessoes(job_id: str, todos_proxies: list[str | None], necessarios: int) -> list[dict]:
     """
     Tenta proxies em ordem até obter 'necessarios' sessões funcionais ou esgotar todos.
-    Proxy que falha no browser é bloqueado imediatamente e o próximo é tentado.
+    Cada proxy recebe 2 tentativas antes de ser bloqueado.
+    Se todos falharem, tenta sem proxy (IP direto) como fallback.
     """
     sessoes = []
+    candidatos = list(todos_proxies)
 
-    for proxy in todos_proxies:
+    # Se IP direto não está na lista, adiciona como fallback ao final
+    if None not in candidatos:
+        candidatos.append(None)
+
+    for proxy in candidatos:
         if len(sessoes) >= necessarios:
             break
 
         label = proxy or "IP direto"
         posicao = len(sessoes) + 1
-        log(job_id, "INFO", f"Sessão {posicao}/{necessarios} — aguardando CAPTCHA [{label}]")
-        update_job(job_id, status=f"iniciando_sessoes:{posicao}/{necessarios}")
+        eh_fallback = proxy is None and proxy not in todos_proxies
 
+        if eh_fallback:
+            log(job_id, "INFO", f"Todos os proxies falharam — tentando sessão via IP direto")
+        else:
+            log(job_id, "INFO", f"Sessão {posicao}/{necessarios} — aguardando CAPTCHA [{label}]")
+
+        update_job(job_id, status=f"iniciando_sessoes:{posicao}/{necessarios}")
         resultado = await obter_sessao_com_captcha(job_id, proxy=proxy)
 
         if resultado:
@@ -870,24 +894,12 @@ async def inicializar_sessoes(job_id: str, todos_proxies: list[str | None], nece
             registrar_sucesso_proxy(proxy)
             log(job_id, "INFO", f"Sessão {posicao}/{necessarios} pronta [{label}]")
         else:
-            # Falha no browser = bloqueio imediato (proxy claramente inválido)
-            conn = sqlite3.connect(DB_PATH, timeout=15)
-            conn.execute(
-                """INSERT INTO proxy_limites (proxy, reset_em, ultimo_uso, falhas_consecutivas, bloqueado)
-                   VALUES (?, NULL, ?, ?, 1)
-                   ON CONFLICT(proxy) DO UPDATE SET
-                       falhas_consecutivas = ?,
-                       bloqueado = 1,
-                       ultimo_uso = excluded.ultimo_uso""",
-                (_proxy_key(proxy), datetime.now().isoformat(),
-                 FALHAS_PARA_BLOQUEAR, FALHAS_PARA_BLOQUEAR)
-            )
-            conn.commit()
-            conn.close()
-            log(job_id, "WARN", f"Proxy [{label}] bloqueado automaticamente — tentando proximo")
+            # Incrementa falhas; bloqueia após FALHAS_PARA_BLOQUEAR
+            registrar_timeout_proxy(proxy, job_id)
+            log(job_id, "WARN", f"Proxy [{label}] falhou — tentando proximo")
 
     if len(sessoes) < necessarios:
-        log(job_id, "WARN", f"Obtidas {len(sessoes)}/{necessarios} sessões — continuando com o que há")
+        log(job_id, "WARN", f"Obtidas {len(sessoes)}/{necessarios} sessoes — continuando com o que ha")
 
     return sessoes
 
