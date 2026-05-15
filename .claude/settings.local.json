@@ -150,7 +150,9 @@
       "Bash(curl -s -o - -w \"\\\\nHTTP:%{http_code}\" -F \"file=@c:/Users/Douglas Lima/Desktop/Demandas/PeD/Claude Code/Averbações/due-consulta/due-consulta/backend/test_upload.xlsx\" http://localhost:5000/api/upload)",
       "Bash(curl -s http://localhost:5000/api/rota-inexistente)",
       "Bash(curl -s -F \"file=@c:/Users/Douglas Lima/Desktop/Demandas/PeD/Claude Code/Averbações/due-consulta/due-consulta/backend/test_upload.xlsx\" http://localhost:5000/api/upload)",
-      "Bash(taskkill //PID 32292 //F)"
+      "Bash(taskkill //PID 32292 //F)",
+      "Bash(taskkill //PID 18936 //F)",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('main.py'\\).read\\(\\)\\); print\\('Sintaxe OK'\\)\")"
     ],
     "additionalDirectories": [
       "C:\\Users\\Douglas Lima\\Desktop\\Demandas\\PeD\\Claude Code\\Averbações\\due-consulta\\due-consulta"

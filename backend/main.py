@@ -650,66 +650,71 @@ async def obter_sessao_com_captcha(job_id: str, proxy: str | None = None) -> tup
     """
     Abre Chrome (roteado pelo proxy, se fornecido), aguarda resolução do hCaptcha.
     Retorna (cookies, csrf_token) prontos para chamadas HTTP diretas.
+    Retorna None em qualquer falha (proxy ruim, timeout, erro de navegação).
     """
     proxy_pw = _proxy_para_playwright(proxy)
     label = proxy or "IP direto"
-
     csrf_holder = {"token": None}
     captcha_ok = asyncio.Event()
 
-    async with async_playwright() as p:
-        try:
-            browser = await p.chromium.launch(channel="chrome", headless=False)
-            log(job_id, "INFO", f"Chrome aberto [{label}] — resolva o CAPTCHA para iniciar")
-        except Exception:
-            browser = await p.chromium.launch(headless=False, args=["--disable-blink-features=AutomationControlled"])
-            log(job_id, "INFO", f"Chromium aberto [{label}] — resolva o CAPTCHA para iniciar")
+    try:
+        async with async_playwright() as p:
+            try:
+                browser = await p.chromium.launch(channel="chrome", headless=False)
+                log(job_id, "INFO", f"Chrome aberto [{label}] — resolva o CAPTCHA para iniciar")
+            except Exception:
+                browser = await p.chromium.launch(headless=False, args=["--disable-blink-features=AutomationControlled"])
+                log(job_id, "INFO", f"Chromium aberto [{label}] — resolva o CAPTCHA para iniciar")
 
-        ctx_kwargs: dict = {
-            "viewport": {"width": 1280, "height": 800},
-            "user_agent": HEADERS_BASE["User-Agent"],
-        }
-        if proxy_pw:
-            ctx_kwargs["proxy"] = proxy_pw
+            ctx_kwargs: dict = {"viewport": {"width": 1280, "height": 800}, "user_agent": HEADERS_BASE["User-Agent"]}
+            if proxy_pw:
+                ctx_kwargs["proxy"] = proxy_pw
 
-        context = await browser.new_context(**ctx_kwargs)
-        page = await context.new_page()
-        await page.add_init_script("""
-            Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
-            Object.defineProperty(navigator, 'languages', { get: () => ['pt-BR', 'pt', 'en-US', 'en'] });
-            window.chrome = { runtime: {} };
-        """)
+            context = await browser.new_context(**ctx_kwargs)
+            page = await context.new_page()
+            await page.add_init_script("""
+                Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+                Object.defineProperty(navigator, 'languages', { get: () => ['pt-BR', 'pt', 'en-US', 'en'] });
+                window.chrome = { runtime: {} };
+            """)
 
-        async def rastrear_resposta(response):
-            token = response.headers.get("x-csrf-token")
-            if token:
-                csrf_holder["token"] = token
-            # Captcha validado quando portal/proxy/captcha retorna 200/204
-            if "portal/proxy/captcha" in response.url and response.status in (200, 204):
-                log(job_id, "INFO", "CAPTCHA validado! Iniciando consultas via API...")
-                captcha_ok.set()
+            async def rastrear_resposta(response):
+                token = response.headers.get("x-csrf-token")
+                if token:
+                    csrf_holder["token"] = token
+                if "portal/proxy/captcha" in response.url and response.status in (200, 204):
+                    log(job_id, "INFO", f"CAPTCHA validado! [{label}]")
+                    captcha_ok.set()
 
-        page.on("response", rastrear_resposta)
-        await page.goto(PORTAL_URL, wait_until="networkidle", timeout=30000)
+            page.on("response", rastrear_resposta)
 
-        log(job_id, "INFO", f"Aguardando resolução do CAPTCHA [{label}] (até 5 minutos)...")
-        try:
-            await asyncio.wait_for(captcha_ok.wait(), timeout=300)
-        except asyncio.TimeoutError:
-            log(job_id, "ERROR", f"Timeout: CAPTCHA não resolvido em 5 minutos [{label}]")
+            try:
+                await page.goto(PORTAL_URL, wait_until="networkidle", timeout=30000)
+            except Exception as nav_err:
+                log(job_id, "WARN", f"Falha ao navegar [{label}]: {nav_err} — pulando este proxy")
+                await browser.close()
+                return None
+
+            log(job_id, "INFO", f"Aguardando resolução do CAPTCHA [{label}] (até 5 minutos)...")
+            try:
+                await asyncio.wait_for(captcha_ok.wait(), timeout=300)
+            except asyncio.TimeoutError:
+                log(job_id, "ERROR", f"Timeout: CAPTCHA não resolvido em 5 minutos [{label}]")
+                await browser.close()
+                return None
+
+            cookies_list = await context.cookies()
+            cookies = {c["name"]: c["value"] for c in cookies_list}
+            csrf = csrf_holder["token"]
+
+            await asyncio.sleep(3)
             await browser.close()
-            return None
 
-        # Capturar cookies e CSRF token da sessão do browser
-        cookies_list = await context.cookies()
-        cookies = {c["name"]: c["value"] for c in cookies_list}
-        csrf = csrf_holder["token"]
+        return cookies, csrf
 
-        # Deixar o browser aberto por 3s para o portal registrar a sessão
-        await asyncio.sleep(3)
-        await browser.close()
-
-    return cookies, csrf
+    except Exception as ex:
+        log(job_id, "ERROR", f"Erro inesperado na sessão [{label}]: {ex}")
+        return None
 
 
 async def inicializar_sessoes(job_id: str, proxies: list[str | None]) -> list[dict]:
