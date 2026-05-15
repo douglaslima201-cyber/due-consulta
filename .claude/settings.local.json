@@ -139,7 +139,8 @@
       "Bash(git -C \"c:\\\\Users\\\\Douglas Lima\\\\Desktop\\\\Demandas\\\\PeD\\\\Claude Code\\\\Averbações\\\\due-consulta\\\\due-consulta\" log --oneline -15)",
       "Bash(taskkill /PID 26904 /F)",
       "Bash(taskkill //PID 26904 //F)",
-      "Bash(taskkill //PID 32548 //F)"
+      "Bash(taskkill //PID 32548 //F)",
+      "Bash(findstr /C:\"Rate\" /C:\"422\" /C:\"limite\" /C:\"CAPTCHA\" /C:\"Erro\" \"c:\\\\Users\\\\Douglas Lima\\\\Desktop\\\\Demandas\\\\PeD\\\\Claude Code\\\\Averbações\\\\due-consulta\\\\due-consulta\\\\backend\\\\backend_log.txt\")"
     ],
     "additionalDirectories": [
       "C:\\Users\\Douglas Lima\\Desktop\\Demandas\\PeD\\Claude Code\\Averbações\\due-consulta\\due-consulta"
