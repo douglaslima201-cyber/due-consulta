@@ -840,18 +840,24 @@ async def obter_sessao_com_captcha(job_id: str, proxy: str | None = None) -> tup
         return None
 
 
-async def inicializar_sessoes(job_id: str, proxies: list[str | None]) -> list[dict]:
+async def inicializar_sessoes(job_id: str, todos_proxies: list[str | None], necessarios: int) -> list[dict]:
     """
-    Abre uma sessão autenticada por proxy (um CAPTCHA por proxy), sequencialmente.
-    Retorna lista de dicts com proxy, cookies, csrf e limiter próprios.
+    Tenta proxies em ordem até obter 'necessarios' sessões funcionais ou esgotar todos.
+    Proxy que falha no browser é bloqueado imediatamente e o próximo é tentado.
     """
     sessoes = []
-    total = len(proxies)
-    for i, proxy in enumerate(proxies):
+
+    for proxy in todos_proxies:
+        if len(sessoes) >= necessarios:
+            break
+
         label = proxy or "IP direto"
-        log(job_id, "INFO", f"Sessão {i+1}/{total} — aguardando CAPTCHA [{label}]")
-        update_job(job_id, status=f"iniciando_sessoes:{i+1}/{total}")
+        posicao = len(sessoes) + 1
+        log(job_id, "INFO", f"Sessão {posicao}/{necessarios} — aguardando CAPTCHA [{label}]")
+        update_job(job_id, status=f"iniciando_sessoes:{posicao}/{necessarios}")
+
         resultado = await obter_sessao_com_captcha(job_id, proxy=proxy)
+
         if resultado:
             cookies, csrf = resultado
             sessoes.append({
@@ -862,10 +868,27 @@ async def inicializar_sessoes(job_id: str, proxies: list[str | None]) -> list[di
                 "label":   label,
             })
             registrar_sucesso_proxy(proxy)
-            log(job_id, "INFO", f"Sessão {i+1}/{total} pronta [{label}]")
+            log(job_id, "INFO", f"Sessão {posicao}/{necessarios} pronta [{label}]")
         else:
-            registrar_timeout_proxy(proxy, job_id)
-            log(job_id, "WARN", f"Sessão {i+1}/{total} falhou [{label}] — ignorando")
+            # Falha no browser = bloqueio imediato (proxy claramente inválido)
+            conn = sqlite3.connect(DB_PATH, timeout=15)
+            conn.execute(
+                """INSERT INTO proxy_limites (proxy, reset_em, ultimo_uso, falhas_consecutivas, bloqueado)
+                   VALUES (?, NULL, ?, ?, 1)
+                   ON CONFLICT(proxy) DO UPDATE SET
+                       falhas_consecutivas = ?,
+                       bloqueado = 1,
+                       ultimo_uso = excluded.ultimo_uso""",
+                (_proxy_key(proxy), datetime.now().isoformat(),
+                 FALHAS_PARA_BLOQUEAR, FALHAS_PARA_BLOQUEAR)
+            )
+            conn.commit()
+            conn.close()
+            log(job_id, "WARN", f"Proxy [{label}] bloqueado automaticamente — tentando proximo")
+
+    if len(sessoes) < necessarios:
+        log(job_id, "WARN", f"Obtidas {len(sessoes)}/{necessarios} sessões — continuando com o que há")
+
     return sessoes
 
 
@@ -1135,16 +1158,15 @@ async def processar_job_async(job_id: str, chaves: list[str]):
     # Proxies necessários = ceil(chaves / 1000), mínimo 1, máximo disponível
     necessarios = max(1, min(math.ceil(len(chaves_pendentes) / 1000), len(todos_proxies)))
 
-    # Ordenar pelos mais frescos (sem cooldown) e usar só os necessários
-    proxies = ordenar_proxies_por_disponibilidade(todos_proxies)[:necessarios]
+    # Ordenar todos os proxies pelos mais frescos — inicializar_sessoes tenta até ter o necessário
+    proxies_ordenados = ordenar_proxies_por_disponibilidade(todos_proxies)
 
-    n_proxies = len(proxies)
     log(job_id, "INFO",
-        f"{len(chaves_pendentes)} chaves → {necessarios} proxy(s) necessário(s) "
-        f"(de {len(todos_proxies)} disponíveis) — abrindo sessões pelos mais frescos")
-    update_job(job_id, status=f"iniciando_sessoes:0/{n_proxies}")
+        f"{len(chaves_pendentes)} chaves -> {necessarios} proxy(s) necessario(s) "
+        f"(de {len(proxies_ordenados)} disponiveis) — abrindo sessoes pelos mais frescos")
+    update_job(job_id, status=f"iniciando_sessoes:0/{necessarios}")
 
-    sessoes = await inicializar_sessoes(job_id, proxies)
+    sessoes = await inicializar_sessoes(job_id, proxies_ordenados, necessarios)
     if not sessoes:
         log(job_id, "ERROR", "Nenhuma sessão obtida — abortando")
         update_job(job_id, status="error", finished_at=datetime.now().isoformat())

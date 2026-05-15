@@ -167,7 +167,8 @@
       "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(f'Ativos: {d[\\\\\"ativos\\\\\"]}, Bloqueados: {d[\\\\\"bloqueados\\\\\"]}, Cap: {d[\\\\\"capacidade_hora\\\\\"]:,}/hora'\\)\")",
       "Bash(taskkill //PID 17276 //F)",
       "Bash(taskkill //PID 2256 //F)",
-      "Bash(curl -s http://localhost:5000/api/jobs)"
+      "Bash(curl -s http://localhost:5000/api/jobs)",
+      "Bash(taskkill //PID 33840 //F)"
     ],
     "additionalDirectories": [
       "C:\\Users\\Douglas Lima\\Desktop\\Demandas\\PeD\\Claude Code\\Averbações\\due-consulta\\due-consulta"
