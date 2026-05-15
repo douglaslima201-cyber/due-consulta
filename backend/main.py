@@ -817,6 +817,7 @@ class ProxyRotator:
         self.proxies: list[str | None] = self._load(proxy_file)
         self._blocked: dict[str, float] = {}  # chave -> timestamp de liberação
         self._idx = 0
+        self._limiters: dict = {}
 
     def _load(self, path: Path) -> list[str | None]:
         if not path.exists():
@@ -831,14 +832,14 @@ class ProxyRotator:
     def _key(self, proxy: str | None) -> str:
         return proxy or "direto"
 
-    def current(self) -> str | None | str:
-        """Retorna proxy disponível. Retorna sentinela 'TODOS_BLOQUEADOS' se nenhum disponível."""
+    def current(self) -> str | None:
+        """Retorna próximo proxy disponível (round-robin). Retorna 'TODOS_BLOQUEADOS' se nenhum disponível."""
         now = time.time()
         for _ in range(len(self.proxies)):
             p = self.proxies[self._idx % len(self.proxies)]
+            self._idx += 1  # avança sempre — garante round-robin real
             if self._blocked.get(self._key(p), 0) <= now:
                 return p
-            self._idx += 1
         return "TODOS_BLOQUEADOS"
 
     def mark_limited(self, proxy: str | None, reset_timestamp: float):
@@ -850,6 +851,18 @@ class ProxyRotator:
         if not self._blocked:
             return 0.0
         return max(0.0, min(self._blocked.values()) - now) + 5
+
+    def _limiter(self, proxy: str | None):
+        k = self._key(proxy)
+        if k not in self._limiters:
+            self._limiters[k] = RateLimiter()
+        return self._limiters[k]
+
+    def record(self, proxy: str | None):
+        self._limiter(proxy).record()
+
+    def near_limit(self, proxy: str | None) -> bool:
+        return self._limiter(proxy).near_limit()
 
     def status(self) -> list[dict]:
         now = time.time()
@@ -992,14 +1005,24 @@ async def processar_job_async(job_id: str, chaves: list[str]):
                 update_job(job_id, status="running")
                 proxy = rotator.current()
 
+            # Troca preventiva se perto do limite (antes de enviar a requisição)
+            if proxy != "TODOS_BLOQUEADOS" and rotator.near_limit(proxy):
+                rotator.mark_limited(proxy, time.time() + 3600)
+                proximo = rotator.current()
+                if proximo != "TODOS_BLOQUEADOS":
+                    log(job_id, "INFO", f"Limite próximo em {proxy or 'IP direto'} — trocando preventivamente para {proximo or 'IP direto'}")
+                    proxy = proximo
+
             total_global = base_processadas + idx + 1
             log(job_id, "INFO", f"Consultando {total_global}/{len(chaves)}: {chave[:10]}...{chave[-6:]}")
             resultado, csrf_token = await consultar_via_api(http, chave, csrf_token, job_id, proxy=proxy)
+            rotator.record(proxy)
 
             # Rate limit — trocar proxy ou aguardar
             if resultado["status_nfe"] == "Erro Rate Limit":
                 proxy, csrf_token = await handle_rate_limit(resultado, proxy)
                 resultado, csrf_token = await consultar_via_api(http, chave, csrf_token, job_id, proxy=proxy)
+                rotator.record(proxy)
 
             # Renovar sessão se CAPTCHA expirou (renovações ilimitadas)
             if resultado["status_nfe"] == "Erro CAPTCHA":
@@ -1008,6 +1031,7 @@ async def processar_job_async(job_id: str, chaves: list[str]):
                 if nova:
                     cookies, csrf_token = nova
                     resultado, csrf_token = await consultar_via_api(http, chave, csrf_token, job_id, proxy=proxy)
+                    rotator.record(proxy)
                 else:
                     break
 
