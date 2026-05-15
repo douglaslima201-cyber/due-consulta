@@ -595,11 +595,12 @@ async function poll(){
     document.getElementById('pfi').style.width=p+'%';
     document.getElementById('pct').textContent=p+'%';
     document.getElementById('ptxt').textContent=`${d.processed} de ${d.total} chaves consultadas`;
-    if(d.status==='done'||d.status==='cancelled'){
+    const terminal=['done','cancelled','error'].includes(d.status);
+    if(terminal){
       clearInterval(pollT);
       document.getElementById('bcan').style.display='none';
-      if(d.status==='done')document.getElementById('bdl').style.display='inline-flex';
     }
+    if(d.has_output)document.getElementById('bdl').style.display='inline-flex';
   }catch{}
 }
 

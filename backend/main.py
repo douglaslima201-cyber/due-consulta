@@ -1113,8 +1113,13 @@ async def processar_job_async(job_id: str, chaves: list[str]):
     )
 
     output_file = gerar_relatorio(job_id)
-    update_job(job_id, status="done", finished_at=datetime.now().isoformat(), output_file=str(output_file))
-    log(job_id, "INFO", f"Job concluído. Relatório: {output_file}")
+    # Marcar como done se todas as chaves foram processadas, independente de status intermediário
+    conn = sqlite3.connect(DB_PATH, timeout=15)
+    row = conn.execute("SELECT processed, total FROM jobs WHERE id=?", (job_id,)).fetchone()
+    conn.close()
+    status_final = "done" if (row and row[0] >= row[1]) else "cancelled"
+    update_job(job_id, status=status_final, finished_at=datetime.now().isoformat(), output_file=str(output_file))
+    log(job_id, "INFO", f"Job {status_final}. Relatório: {output_file}")
 
 
 def processar_job_thread(job_id: str, chaves: list[str]):
