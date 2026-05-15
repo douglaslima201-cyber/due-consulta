@@ -143,7 +143,9 @@
       "Bash(findstr /C:\"Rate\" /C:\"422\" /C:\"limite\" /C:\"CAPTCHA\" /C:\"Erro\" \"c:\\\\Users\\\\Douglas Lima\\\\Desktop\\\\Demandas\\\\PeD\\\\Claude Code\\\\Averbações\\\\due-consulta\\\\due-consulta\\\\backend\\\\backend_log.txt\")",
       "Bash(taskkill //PID 33264 //F)",
       "Bash(taskkill //PID 27332 //F)",
-      "Bash(taskkill //PID 20884 //F)"
+      "Bash(taskkill //PID 20884 //F)",
+      "Bash(taskkill //PID 32504 //F)",
+      "Bash(curl -s -X POST http://localhost:5000/api/pausar/795c9a5b-737b-4470-a2b3-caf8447365bf)"
     ],
     "additionalDirectories": [
       "C:\\Users\\Douglas Lima\\Desktop\\Demandas\\PeD\\Claude Code\\Averbações\\due-consulta\\due-consulta"

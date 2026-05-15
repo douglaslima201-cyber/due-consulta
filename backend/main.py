@@ -59,7 +59,9 @@ def _proxy_para_playwright(proxy_url: str | None) -> dict | None:
 # ─── Banco de dados ─────────────────────────────────────────────────────────
 
 def init_db():
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=15)
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA synchronous=NORMAL")
     c = conn.cursor()
     c.execute("""
         CREATE TABLE IF NOT EXISTS jobs (
@@ -114,7 +116,7 @@ def init_db():
     conn.close()
 
 def log(job_id, nivel, msg):
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=15)
     conn.execute(
         "INSERT INTO logs (job_id, nivel, mensagem, criado_em) VALUES (?, ?, ?, ?)",
         (job_id, nivel, msg, datetime.now().isoformat())
@@ -124,7 +126,7 @@ def log(job_id, nivel, msg):
     print(f"[{nivel}] [{job_id[:8]}] {msg}")
 
 def update_job(job_id, **kwargs):
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=15)
     sets = ", ".join(f"{k} = ?" for k in kwargs)
     vals = list(kwargs.values()) + [job_id]
     conn.execute(f"UPDATE jobs SET {sets} WHERE id = ?", vals)
@@ -132,7 +134,7 @@ def update_job(job_id, **kwargs):
     conn.close()
 
 def salvar_resultado(job_id, chave, status_nfe, numero_due="", data_due="", status_due="", obs=""):
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=15)
     conn.execute(
         """INSERT INTO resultados 
            (job_id, chave_nfe, status_nfe, numero_due, data_due, status_due, observacao, consultado_em)
@@ -967,7 +969,7 @@ async def processar_job_async(job_id: str, chaves: list[str]):
     import aiohttp
 
     # Filtrar chaves já processadas — suporte a retomada de onde parou
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=15)
     ja_processadas = {row[0] for row in conn.execute(
         "SELECT chave_nfe FROM resultados WHERE job_id=?", (job_id,)
     ).fetchall()}
@@ -1034,7 +1036,7 @@ async def processar_job_async(job_id: str, chaves: list[str]):
                     break
 
                 # Verificar cancelamento
-                conn = sqlite3.connect(DB_PATH)
+                conn = sqlite3.connect(DB_PATH, timeout=15)
                 row = conn.execute("SELECT status FROM jobs WHERE id=?", (job_id,)).fetchone()
                 conn.close()
                 if row and row[0] == "cancelled":
@@ -1104,7 +1106,7 @@ def processar_job_thread(job_id: str, chaves: list[str]):
 # ─── Geração de relatório Excel ───────────────────────────────────────────────
 
 def gerar_relatorio(job_id: str) -> Path:
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=15)
     rows = conn.execute(
         """SELECT chave_nfe, status_nfe, numero_due, data_due, status_due, observacao, consultado_em
            FROM resultados WHERE job_id=? ORDER BY id""",
@@ -1239,7 +1241,7 @@ def upload():
         return jsonify({"error": "Nenhuma chave NF-e válida encontrada"}), 400
 
     # Criar job no banco
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=15)
     conn.execute(
         "INSERT INTO jobs (id, status, total, processed, created_at, input_file) VALUES (?, ?, ?, ?, ?, ?)",
         (job_id, "pending", len(chaves_valid), 0, datetime.now().isoformat(), str(file_path))
@@ -1263,7 +1265,7 @@ def upload():
 
 @app.route("/api/iniciar/<job_id>", methods=["POST"])
 def iniciar(job_id):
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=15)
     row = conn.execute("SELECT status FROM jobs WHERE id=?", (job_id,)).fetchone()
     conn.close()
 
@@ -1285,7 +1287,7 @@ def iniciar(job_id):
 
 @app.route("/api/status/<job_id>")
 def status(job_id):
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=15)
     row = conn.execute(
         "SELECT status, total, processed, created_at, finished_at, output_file FROM jobs WHERE id=?",
         (job_id,)
@@ -1337,19 +1339,22 @@ def cancelar(job_id):
 
 @app.route("/api/pausar/<job_id>", methods=["POST"])
 def pausar(job_id):
-    conn = sqlite3.connect(DB_PATH)
-    row = conn.execute("SELECT status, processed FROM jobs WHERE id=?", (job_id,)).fetchone()
-    conn.close()
-    if not row:
-        return jsonify({"error": "Job não encontrado"}), 404
-    update_job(job_id, status="cancelled")
-    output_file = gerar_relatorio(job_id)
-    update_job(job_id, output_file=str(output_file), finished_at=datetime.now().isoformat())
-    return jsonify({"message": "Job pausado — relatório parcial gerado", "job_id": job_id})
+    try:
+        conn = sqlite3.connect(DB_PATH, timeout=15)
+        row = conn.execute("SELECT status, processed FROM jobs WHERE id=?", (job_id,)).fetchone()
+        conn.close()
+        if not row:
+            return jsonify({"error": "Job não encontrado"}), 404
+        update_job(job_id, status="cancelled")
+        output_file = gerar_relatorio(job_id)
+        update_job(job_id, output_file=str(output_file), finished_at=datetime.now().isoformat())
+        return jsonify({"message": "Job pausado — relatório parcial gerado", "job_id": job_id})
+    except Exception as ex:
+        return jsonify({"error": str(ex)}), 500
 
 @app.route("/api/retomar/<job_id>", methods=["POST"])
 def retomar(job_id):
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=15)
     row = conn.execute("SELECT status FROM jobs WHERE id=?", (job_id,)).fetchone()
     conn.close()
 
@@ -1372,7 +1377,7 @@ def retomar(job_id):
 
 @app.route("/api/download/<job_id>")
 def download(job_id):
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=15)
     row = conn.execute("SELECT output_file FROM jobs WHERE id=?", (job_id,)).fetchone()
     conn.close()
 
@@ -1392,7 +1397,7 @@ def download(job_id):
 
 @app.route("/api/jobs")
 def listar_jobs():
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=15)
     rows = conn.execute(
         "SELECT id, status, total, processed, created_at, finished_at FROM jobs ORDER BY created_at DESC LIMIT 20"
     ).fetchall()
