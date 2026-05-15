@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>PER/DCOMP Analyzer — Compliance Tributário | Rumo Brasil</title>
+<title>Compliance PERDCOMP — Compliance Tributário | Rumo Brasil</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -220,7 +220,7 @@ select option{background:#1E293B;color:#F8FAFC;}
 
 <!-- NAV -->
 <nav>
-  <div class="nav-logo"><div class="nav-dot"></div>PER/DCOMP <span style="color:var(--orange);margin-left:6px">· Analyzer</span></div>
+  <div class="nav-logo"><div class="nav-dot"></div>Compliance <span style="color:var(--orange);margin-left:6px">PERDCOMP</span></div>
   <div class="nav-right">
     <a class="nav-back" href="portal.html">← Portal</a>
     <span class="nav-tag">Compliance tributário</span>
@@ -1343,7 +1343,7 @@ function renderRelatorio(){
     </div>
     <div class="dvd"></div>
     <div style="font-size:11px;color:var(--g4);padding:12px 0">
-      Relatório gerado em ${new Date().toLocaleString('pt-BR')} · PER/DCOMP Analyzer — Rumo Brasil · Uso interno · Caráter auxiliar — não substitui análise especializada.
+      Relatório gerado em ${new Date().toLocaleString('pt-BR')} · Compliance PERDCOMP — Rumo Brasil · Uso interno · Caráter auxiliar — não substitui análise especializada.
     </div>`;
 }
 
@@ -1459,7 +1459,7 @@ const ECAC_SCRIPT = `(async function(){
     dl.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true,view:window}));
     setTimeout(()=>{document.body.removeChild(dl);},1000);
     console.log('[Analyzer] Download disparado: '+nome);
-    alert('[PER/DCOMP Analyzer]\\n✓ '+total+' PDF(s) em '+pag+' página(s)\\n\\nArquivo: '+nome+'\\nSalvo em Downloads.\\n\\nImporte na ferramenta — PDFs salvos em pasta datada no servidor.');
+    alert('[Compliance PERDCOMP]\\n✓ '+total+' PDF(s) em '+pag+' página(s)\\n\\nArquivo: '+nome+'\\nSalvo em Downloads.\\n\\nImporte na ferramenta — PDFs salvos em pasta datada no servidor.');
   }catch(ex){
     console.error('[Analyzer] ERRO ao gerar JSON:',ex);
     alert('[Analyzer] Erro ao gerar JSON: '+ex.message+'\\nVeja o console para detalhes.');
@@ -1897,7 +1897,7 @@ ${'═'.repeat(60)}
     parecer+=`A análise identificou ${s.alertas_alto} ocorrência(s) de alto risco. Recomenda-se análise especializada imediata antes de prosseguir com compensações ou ressarcimentos.`;
   }
 
-  parecer+=`\n\n${'─'.repeat(60)}\nPER/DCOMP Analyzer — Rumo Brasil\nGerado automaticamente em ${hoje} | Uso interno`;
+  parecer+=`\n\n${'─'.repeat(60)}\nCompliance PERDCOMP — Rumo Brasil\nGerado automaticamente em ${hoje} | Uso interno`;
 
   document.getElementById('parecer-content').textContent=parecer;
   document.getElementById('parecer-box').style.display='block';
@@ -1934,7 +1934,7 @@ function renderRegistros(){
 function exportarCSV(){
   if(!DADOS) return;
   const rows=[
-    ['PER/DCOMP Analyzer — Relatório de Compliance | Rumo Brasil'],
+    ['Compliance PERDCOMP — Relatório de Compliance | Rumo Brasil'],
     ['Gerado em',new Date().toLocaleString('pt-BR')],
     [],
     ['REGISTROS'],
