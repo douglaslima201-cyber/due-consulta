@@ -638,6 +638,22 @@ async function dcancel(){if(!jobId||!confirm('Cancelar?'))return;await fetch(`${
 function ddl(){if(jobId)window.open(`${API}/download/${jobId}`,'_blank');}
 
 // History
+function histBadge(s){
+  if(s&&s.startsWith('iniciando_sessoes:')){const p=s.split(':')[1]||'';return`<span class="bdg b-w pulse">🔐 Sessões ${p}</span>`;}
+  return({running:'<span class="bdg b-r pulse">● Em execução</span>',done:'<span class="bdg b-d">✓ Concluído</span>',pending:'<span class="bdg b-w">⏳ Pendente</span>',cancelled:'<span class="bdg b-e">✗ Cancelado</span>',aguardando_rate_limit:'<span class="bdg b-w pulse">⏸ Limite</span>',error:'<span class="bdg b-e">✗ Erro</span>'})[s]||`<span class="bdg b-w">${s}</span>`;
+}
+async function hcancel(id){
+  if(!confirm(`Cancelar job ${id.slice(0,8)}?`))return;
+  await fetch(`${API}/cancelar/${id}`,{method:'POST'});
+  loadHist();
+}
+async function hpausar(id){
+  if(!confirm(`Pausar job ${id.slice(0,8)} e baixar resultados parciais?`))return;
+  const r=await fetch(`${API}/pausar/${id}`,{method:'POST'});
+  if(r.ok){window.open(`${API}/download/${id}`,'_blank');}
+  else{const d=await r.json();alert('Erro: '+(d.error||'desconhecido'));}
+  loadHist();
+}
 async function loadHist(){
   const c=document.getElementById('hl');
   try{
@@ -645,9 +661,17 @@ async function loadHist(){
     if(!jobs.length){c.innerHTML='<div style="color:var(--g3);font-size:13px;text-align:center;padding:32px">Nenhum job encontrado.</div>';return;}
     c.innerHTML=jobs.map(j=>{
       const p=j.total?Math.round(j.processed/j.total*100):0;
-      const bdg={running:'<span class="bdg b-r pulse">● Em execução</span>',done:'<span class="bdg b-d">✓ Concluído</span>',pending:'<span class="bdg b-w">⏳ Pendente</span>',cancelled:'<span class="bdg b-e">✗ Cancelado</span>',error:'<span class="bdg b-e">✗ Erro</span>'}[j.status]||j.status;
+      const ativo=['running','aguardando_rate_limit'].includes(j.status)||j.status.startsWith('iniciando_sessoes');
       const podeRetomar=['done','cancelled','error'].includes(j.status)&&j.processed<j.total;
-      return`<div style="display:flex;align-items:center;gap:14px;padding:13px 0;border-bottom:1px solid rgba(255,255,255,.05)"><div style="flex:1"><div style="font-size:13px;font-weight:500">Job <code style="font-size:11px;color:var(--g3)">${j.id.slice(0,8)}</code></div><div style="font-size:11px;color:var(--g3);font-family:var(--mono)">${j.processed}/${j.total} · ${p}% · ${(j.created_at||'').slice(0,16).replace('T',' ')}</div></div>${bdg}${j.status==='done'?`<button class="btn btn-g" style="padding:5px 11px;font-size:11px" onclick="window.open('${API}/download/${j.id}','_blank')">⬇ Baixar</button>`:''}${podeRetomar?`<button class="btn btn-c" style="padding:5px 11px;font-size:11px" onclick="dretomar('${j.id}')">▶ Retomar</button>`:''}</div>`;
+      const temResultados=j.processed>0;
+      let btns='';
+      if(ativo){
+        btns+=`<button class="btn btn-g" style="padding:5px 11px;font-size:11px;background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.3);color:#ef4444" onclick="hcancel('${j.id}')">✕ Cancelar</button>`;
+        if(temResultados) btns+=`<button class="btn btn-g" style="padding:5px 11px;font-size:11px" onclick="hpausar('${j.id}')">⏸ Pausar + Baixar</button>`;
+      }
+      if(j.status==='done'||(!ativo&&temResultados)) btns+=`<button class="btn btn-g" style="padding:5px 11px;font-size:11px" onclick="window.open('${API}/download/${j.id}','_blank')">⬇ Baixar</button>`;
+      if(podeRetomar) btns+=`<button class="btn btn-c" style="padding:5px 11px;font-size:11px" onclick="dretomar('${j.id}')">▶ Retomar</button>`;
+      return`<div style="display:flex;align-items:center;gap:10px;padding:13px 0;border-bottom:1px solid rgba(255,255,255,.05)"><div style="flex:1"><div style="font-size:13px;font-weight:500">Job <code style="font-size:11px;color:var(--g3)">${j.id.slice(0,8)}</code></div><div style="font-size:11px;color:var(--g3);font-family:var(--mono)">${j.processed}/${j.total} · ${p}% · ${(j.created_at||'').slice(0,16).replace('T',' ')}</div></div>${histBadge(j.status)}<div style="display:flex;gap:6px;flex-wrap:wrap">${btns}</div></div>`;
     }).join('');
   }catch{c.innerHTML=`<div style="color:var(--red);font-size:13px;text-align:center;padding:32px">Backend offline. Execute <code>python main.py</code></div>`;}
 }

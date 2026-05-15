@@ -1,7 +1,7 @@
 # Lista de proxies para rotação automática — DUE Consulta
 #
 # Cada proxy adiciona +1.000 req/hora de capacidade.
-# Exemplo: 5 proxies = 5.000 req/hora
+# Exemplo: 20 proxies = 20.000 req/hora
 #
 # Formatos aceitos (um por linha):
 #   http://host:porta
@@ -11,7 +11,7 @@
 # Linhas começando com # são ignoradas.
 # Sem proxies configurados, o sistema usa o IP direto (1.000 req/hora).
 #
-# --- Proxies configurados ---
+# --- Proxies configurados (20 total) ---
 http://xkbdbkdf:ex8pxtha2x60@142.111.48.253:7030
 http://xkbdbkdf:ex8pxtha2x60@23.95.150.145:6114
 http://xkbdbkdf:ex8pxtha2x60@45.38.107.97:6014
@@ -22,3 +22,13 @@ http://xkbdbkdf:ex8pxtha2x60@104.239.107.47:5699
 http://xkbdbkdf:ex8pxtha2x60@23.27.208.120:5830
 http://xkbdbkdf:ex8pxtha2x60@23.229.19.94:8689
 http://xkbdbkdf:ex8pxtha2x60@2.57.20.2:6983
+http://xkbdbkdf:ex8pxtha2x60@31.58.26.92:6675
+http://xkbdbkdf:ex8pxtha2x60@31.223.188.73:5750
+http://xkbdbkdf:ex8pxtha2x60@92.112.85.247:5982
+http://xkbdbkdf:ex8pxtha2x60@173.0.10.191:6367
+http://xkbdbkdf:ex8pxtha2x60@82.29.225.131:5986
+http://xkbdbkdf:ex8pxtha2x60@104.168.25.67:5749
+http://xkbdbkdf:ex8pxtha2x60@140.99.203.89:5966
+http://xkbdbkdf:ex8pxtha2x60@82.23.202.193:7045
+http://xkbdbkdf:ex8pxtha2x60@92.112.175.191:6464
+http://xkbdbkdf:ex8pxtha2x60@142.202.253.56:5731

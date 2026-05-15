@@ -1337,6 +1337,18 @@ def cancelar(job_id):
     update_job(job_id, status="cancelled")
     return jsonify({"message": "Solicitação de cancelamento enviada"})
 
+@app.route("/api/pausar/<job_id>", methods=["POST"])
+def pausar(job_id):
+    conn = sqlite3.connect(DB_PATH)
+    row = conn.execute("SELECT status, processed FROM jobs WHERE id=?", (job_id,)).fetchone()
+    conn.close()
+    if not row:
+        return jsonify({"error": "Job não encontrado"}), 404
+    update_job(job_id, status="cancelled")
+    output_file = gerar_relatorio(job_id)
+    update_job(job_id, output_file=str(output_file), finished_at=datetime.now().isoformat())
+    return jsonify({"message": "Job pausado — relatório parcial gerado", "job_id": job_id})
+
 @app.route("/api/retomar/<job_id>", methods=["POST"])
 def retomar(job_id):
     conn = sqlite3.connect(DB_PATH)
