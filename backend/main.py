@@ -1193,21 +1193,21 @@ async def processar_job_async(job_id: str, chaves: list[str]):
                 total_idx = _processed[0] + 1
                 log(job_id, "INFO", f"[{sessao['label']}] Consultando {total_idx}/{len(chaves)}: {chave[:10]}...{chave[-6:]}")
 
-                # asyncio.wait_for garante timeout mesmo se aiohttp travar internamente
+                # API calls vão DIRETO (sem proxy) — autenticação é pelos cookies, não pelo IP.
+                # Proxy é usado apenas na fase de browser (CAPTCHA) para obter sessões distintas.
                 try:
                     resultado, novo_csrf = await asyncio.wait_for(
-                        consultar_via_api(http, chave, sessao["csrf"], job_id, proxy=proxy),
+                        consultar_via_api(http, chave, sessao["csrf"], job_id, proxy=None),
                         timeout=40.0,
                     )
                 except asyncio.TimeoutError:
-                    log(job_id, "WARN", f"[{sessao['label']}] Timeout forçado (40s) — proxy travado")
+                    log(job_id, "WARN", f"[{sessao['label']}] Timeout forçado (40s)")
                     resultado = {
                         "chave": chave, "status_nfe": "Timeout",
                         "numero_due": "", "data_due": "", "status_due": "",
-                        "obs": "Timeout 40s — proxy não respondeu",
+                        "obs": "Timeout 40s na API",
                     }
                     novo_csrf = sessao["csrf"]
-                    registrar_timeout_proxy(proxy, job_id)
                     salvar_resultado(job_id, chave, "Timeout", "", "", "", resultado["obs"])
                     _processed[0] += 1
                     update_job(job_id, processed=_processed[0])
