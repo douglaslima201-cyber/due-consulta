@@ -481,14 +481,15 @@ select option{background:#1E293B;color:#F8FAFC;}
           <button class="btn btn-p" onclick="document.getElementById('ecac-json-input').click()">📥 Selecionar JSON</button>
           <span id="ecac-json-status" style="font-size:12px;color:var(--g3)"></span>
         </div>
-        <!-- Salvar como projeto -->
-        <div id="proj-save-box" style="display:none;margin-top:14px;padding:14px;background:rgba(249,115,22,.06);border:1px solid rgba(249,115,22,.2);border-radius:var(--r)">
-          <div style="font-size:12px;color:var(--orange);font-weight:600;margin-bottom:8px">💾 Salvar como projeto para reutilizar depois</div>
-          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-            <input id="proj-save-nome" type="text" placeholder="Nome do projeto..." style="flex:1;min-width:200px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:var(--r);padding:8px 12px;color:var(--white);font-family:var(--body);font-size:13px"/>
-            <button class="btn btn-p btn-sm" onclick="salvarProjeto()">💾 Salvar</button>
-            <button class="btn btn-g btn-sm" onclick="document.getElementById('proj-save-box').style.display='none'">✕</button>
-          </div>
+      </div>
+
+      <!-- Salvar como projeto (compartilhado entre JSON import e PDF upload) -->
+      <div id="proj-save-box" style="display:none;margin-bottom:16px;padding:14px;background:rgba(249,115,22,.06);border:1px solid rgba(249,115,22,.2);border-radius:var(--r)">
+        <div style="font-size:12px;color:var(--orange);font-weight:600;margin-bottom:8px">💾 Salvar como projeto para reutilizar depois</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <input id="proj-save-nome" type="text" placeholder="Nome do projeto..." style="flex:1;min-width:200px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:var(--r);padding:8px 12px;color:var(--white);font-family:var(--body);font-size:13px"/>
+          <button class="btn btn-p btn-sm" onclick="salvarProjeto()">💾 Salvar</button>
+          <button class="btn btn-g btn-sm" onclick="document.getElementById('proj-save-box').style.display='none'">✕</button>
         </div>
       </div>
 
@@ -1586,6 +1587,8 @@ async function deletarProjeto(id){
   await fetch(`${API.replace('/ecac','')}/projetos/${id}`,{method:'DELETE'});
   renderProjetos();
 }
+let _uploadPastaPdfs = null; // pasta datada criada pelo upload direto
+
 async function ecacUploadPdfs(files){
   if(!files||!files.length) return;
   const st=document.getElementById('ecac-pdf-status');
@@ -1593,6 +1596,7 @@ async function ecacUploadPdfs(files){
   const btn=document.getElementById('btn-ecac-analisar-pdf');
   st.textContent='⏳ Enviando '+files.length+' PDF(s)...'; st.style.color='var(--g3)';
   lista.innerHTML=''; btn.disabled=true;
+  _uploadPastaPdfs=null;
   const fd=new FormData();
   for(const f of files) fd.append('files', f);
   try{
@@ -1600,6 +1604,7 @@ async function ecacUploadPdfs(files){
     const ct=r.headers.get('content-type')||'';
     if(!ct.includes('application/json')) throw new Error('Servidor não respondeu JSON (HTTP '+r.status+'). Verifique se o Flask está rodando e foi reiniciado.');
     const d=await r.json(); if(!r.ok) throw new Error(d.error||'Erro no upload');
+    _uploadPastaPdfs = d.pasta_pdfs || null;
     st.textContent=`✅ ${d.salvos} PDF(s) carregados`;
     st.style.color='var(--green)';
     lista.innerHTML=[...files].map(f=>`<div style="font-size:11px;font-family:var(--mono);color:var(--g3);padding:2px 0">📄 ${e(f.name)}</div>`).join('');
@@ -1713,12 +1718,36 @@ async function ecacAnalisarPasta(){
   if(btn){btn.disabled=true; btn.textContent='⏳ Analisando...';}
   if(errEl) errEl.style.display='none';
   try{
-    const r=await fetch(`${API}/ecac/analisar`,{method:'POST'});
+    // Se veio de upload direto, passa a pasta específica; senão usa a pasta padrão
+    const body=_uploadPastaPdfs?JSON.stringify({pasta_pdfs:_uploadPastaPdfs}):undefined;
+    const r=await fetch(`${API}/ecac/analisar`,{
+      method:'POST',
+      headers:body?{'Content-Type':'application/json'}:{},
+      body
+    });
     const ct=r.headers.get('content-type')||'';
     if(!ct.includes('application/json')) throw new Error('Servidor retornou HTTP '+r.status);
     const d=await r.json();
     if(!r.ok) throw new Error(d.error);
     DADOS=d; renderTudo(); sp('p-dash');
+    // Oferece salvar como projeto após análise por PDF
+    if(_uploadPastaPdfs){
+      const empresa=d.registros?.find(r=>r.empresa)?.empresa||'';
+      const cnpj=d.registros?.find(r=>r.cnpj)?.cnpj||'';
+      const comps=d.registros?.map(r=>r.competencia).filter(Boolean).sort()||[];
+      _ultimoImport={
+        pasta:_uploadPastaPdfs, total:d.sumario?.total_arquivos||0,
+        empresa, cnpj, comp_ini:comps[0]||'', comp_fim:comps[comps.length-1]||'',
+        total_pers:d.sumario?.total_pers||0, total_dcomps:d.sumario?.total_dcomps||0
+      };
+      const saveBox=document.getElementById('proj-save-box');
+      const nomeInput=document.getElementById('proj-save-nome');
+      if(saveBox&&nomeInput){
+        nomeInput.value=(empresa?empresa.split(' ').slice(0,3).join(' '):'')+(comps[0]?' — '+comps[0]:'');
+        saveBox.style.display='block';
+        saveBox.scrollIntoView({behavior:'smooth',block:'nearest'});
+      }
+    }
   }catch(err){
     if(errEl){errEl.style.display='block'; errEl.textContent='Erro: '+err.message;}
     else alert('Erro ao analisar: '+err.message);

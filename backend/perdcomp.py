@@ -1385,10 +1385,16 @@ def ecac_limpar():
 
 @bp.route('/api/perdcomp/ecac/analisar', methods=['POST'])
 def ecac_analisar():
-    """Analisa todos os PDFs da pasta de entrada."""
+    """Analisa todos os PDFs da pasta de entrada (ou pasta específica via JSON body)."""
     if not PDF_OK:
         return jsonify({"error": "pdfplumber não instalado"}), 500
-    dest = _ECAC_DIR / "entrada"
+    # Aceita pasta específica via body JSON (usado pelo upload direto de PDFs)
+    body = request.get_json(silent=True) or {}
+    pasta_especifica = body.get("pasta_pdfs")
+    if pasta_especifica:
+        dest = Path(pasta_especifica)
+    else:
+        dest = _ECAC_DIR / "entrada"
     dest.mkdir(exist_ok=True)
 
     pdfs = list(dest.glob("*.pdf"))

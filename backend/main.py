@@ -1343,8 +1343,10 @@ def ecac_upload_pdfs_main():
     if request.method == "GET":
         return jsonify({"status": "ok", "endpoint": "upload-pdfs-ecac"})
     from perdcomp import _ECAC_DIR
-    pasta = _ECAC_DIR / "entrada"
-    pasta.mkdir(exist_ok=True)
+    from datetime import datetime as _dt
+    ts = _dt.now().strftime("%Y-%m-%d_%H-%M-%S")
+    pasta = _ECAC_DIR / "entrada" / ts
+    pasta.mkdir(parents=True, exist_ok=True)
     files = request.files.getlist("files")
     salvos, erros = [], []
     for f in files:
@@ -1356,7 +1358,12 @@ def ecac_upload_pdfs_main():
             salvos.append(f.filename)
         except Exception as exc:
             erros.append({"arquivo": f.filename, "erro": str(exc)})
-    return jsonify({"salvos": len(salvos), "total_pasta": len(list(pasta.glob("*.pdf"))), "erros": erros})
+    return jsonify({
+        "salvos": len(salvos),
+        "total_pasta": len(list(pasta.glob("*.pdf"))),
+        "pasta_pdfs": str(pasta.resolve()),
+        "erros": erros
+    })
 
 @app.route("/api/proxies")
 def listar_proxies():
