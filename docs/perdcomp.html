@@ -526,6 +526,15 @@ select option{background:#1E293B;color:#F8FAFC;}
             <div style="margin-top:10px">
               <button class="btn btn-g btn-sm" id="btn-ecac-analisar-pdf" disabled onclick="ecacAnalisarPasta()">🔍 Analisar PDFs carregados</button>
               <div id="ecac-analisar-err" style="display:none;margin-top:8px;padding:8px 12px;background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.2);border-radius:var(--r);font-size:12px;color:#FCA5A5"></div>
+              <!-- Box salvar projeto após upload direto -->
+              <div id="proj-save-box-upload" style="display:none;margin-top:12px;padding:12px 14px;background:rgba(249,115,22,.06);border:1px solid rgba(249,115,22,.2);border-radius:var(--r)">
+                <div style="font-size:12px;color:var(--orange);font-weight:600;margin-bottom:8px">💾 Salvar como projeto</div>
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                  <input id="proj-save-nome-upload" type="text" placeholder="Nome do projeto..." style="flex:1;min-width:180px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:var(--r);padding:7px 11px;color:var(--white);font-family:var(--body);font-size:12px"/>
+                  <button class="btn btn-p btn-sm" onclick="salvarProjetoUpload()">💾 Salvar</button>
+                  <button class="btn btn-g btn-sm" onclick="document.getElementById('proj-save-box-upload').style.display='none'">✕</button>
+                </div>
+              </div>
             </div>
           </div>
           <div style="border-top:1px solid rgba(255,255,255,.05);padding-top:10px">
@@ -1503,6 +1512,27 @@ async function ecacImportarJson(file){
 
 let _ultimoImport=null;
 
+async function salvarProjetoUpload(){
+  if(!_ultimoImport) return;
+  const nome=document.getElementById('proj-save-nome-upload').value.trim()||'Projeto sem nome';
+  const r=await fetch(`${API.replace('/ecac','')}/projetos`,{method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({nome,pasta_pdfs:_ultimoImport.pasta,empresa:_ultimoImport.empresa,
+      cnpj:_ultimoImport.cnpj,competencia_ini:_ultimoImport.comp_ini,
+      competencia_fim:_ultimoImport.comp_fim,total_docs:_ultimoImport.total,
+      total_pers:_ultimoImport.total_pers,total_dcomps:_ultimoImport.total_dcomps,
+      criado_em:new Date().toISOString()})});
+  const d=await r.json();
+  if(d.ok){
+    document.getElementById('proj-save-box-upload').style.display='none';
+    document.getElementById('ecac-pdf-status').innerHTML+=
+      `<br><span style="color:var(--green);font-size:11px">✅ Projeto "${e(nome)}" salvo.</span>`;
+    _ultimoImport=null;
+  } else {
+    alert('Erro ao salvar projeto: '+(d.error||'desconhecido'));
+  }
+}
+
 async function salvarProjeto(){
   if(!_ultimoImport) return;
   const nome=document.getElementById('proj-save-nome').value.trim()||'Projeto sem nome';
@@ -1740,12 +1770,12 @@ async function ecacAnalisarPasta(){
         empresa, cnpj, comp_ini:comps[0]||'', comp_fim:comps[comps.length-1]||'',
         total_pers:d.sumario?.total_pers||0, total_dcomps:d.sumario?.total_dcomps||0
       };
-      const saveBox=document.getElementById('proj-save-box');
-      const nomeInput=document.getElementById('proj-save-nome');
-      if(saveBox&&nomeInput){
-        nomeInput.value=(empresa?empresa.split(' ').slice(0,3).join(' '):'')+(comps[0]?' — '+comps[0]:'');
-        saveBox.style.display='block';
-        saveBox.scrollIntoView({behavior:'smooth',block:'nearest'});
+      // Mostra o box de salvar dentro da seção Avançado (visível sem navegação)
+      const uploadBox=document.getElementById('proj-save-box-upload');
+      const uploadNome=document.getElementById('proj-save-nome-upload');
+      if(uploadBox&&uploadNome){
+        uploadNome.value=(empresa?empresa.split(' ').slice(0,3).join(' '):'')+(comps[0]?' — '+comps[0]:'');
+        uploadBox.style.display='block';
       }
     }
   }catch(err){
