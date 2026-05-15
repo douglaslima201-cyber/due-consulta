@@ -230,7 +230,11 @@ def log(job_id, nivel, msg):
     )
     conn.commit()
     conn.close()
-    print(f"[{nivel}] [{job_id[:8]}] {msg}")
+    try:
+        print(f"[{nivel}] [{job_id[:8]}] {msg}")
+    except UnicodeEncodeError:
+        safe = msg.encode("ascii", errors="replace").decode()
+        print(f"[{nivel}] [{job_id[:8]}] {safe}")
 
 def update_job(job_id, **kwargs):
     conn = sqlite3.connect(DB_PATH, timeout=15)
@@ -1741,6 +1745,15 @@ def serve_docs(filename):
 
 if __name__ == "__main__":
     init_db()
+    # Resetar jobs que ficaram "running" de sessões anteriores (orfãos de reinicio)
+    _conn = sqlite3.connect(DB_PATH, timeout=15)
+    _orfaos = _conn.execute(
+        "UPDATE jobs SET status='cancelled' WHERE status='running' OR status='aguardando_rate_limit' OR status LIKE 'iniciando_sessoes%'"
+    ).rowcount
+    _conn.commit()
+    _conn.close()
+    if _orfaos:
+        print(f"[STARTUP] {_orfaos} job(s) orfao(s) resetado(s) para 'cancelled' — use Retomar para continuar")
     print("=" * 60)
     print("  DUE Consulta Backend — Rodando em http://localhost:5000")
     print("  Portal                — http://localhost:5000/portal.html")
