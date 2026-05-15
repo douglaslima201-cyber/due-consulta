@@ -1196,72 +1196,73 @@ def upload():
         return jsonify({"error": "Formato inválido. Use .xlsx ou .csv"}), 400
 
     job_id = str(uuid.uuid4())
-    file_path = UPLOAD_DIR / f"{job_id}_{f.filename}"
-    f.save(str(file_path))
+    safe_name = re.sub(r'[^\w.\-]', '_', f.filename)
+    file_path = UPLOAD_DIR / f"{job_id}_{safe_name}"
 
-    # Ler e validar chaves
     try:
+        f.save(str(file_path))
+
         if str(file_path).endswith(".csv"):
             df = pd.read_csv(str(file_path), dtype=str)
         else:
             df = pd.read_excel(str(file_path), dtype=str)
-    except Exception as e:
-        return jsonify({"error": f"Erro ao ler arquivo: {e}"}), 400
 
-    # Localizar coluna com chaves NF-e
-    chave_col = None
-    for col in df.columns:
-        if any(kw in col.lower() for kw in ["chave", "nfe", "nf-e", "key", "nota"]):
-            chave_col = col
-            break
-    if not chave_col:
-        # Tentar primeira coluna com strings de 44 dígitos
+        # Localizar coluna com chaves NF-e
+        chave_col = None
         for col in df.columns:
-            sample = df[col].dropna().astype(str).str.replace(r'\D', '', regex=True)
-            if sample.str.len().eq(44).any():
+            if any(kw in col.lower() for kw in ["chave", "nfe", "nf-e", "key", "nota"]):
                 chave_col = col
                 break
+        if not chave_col:
+            for col in df.columns:
+                sample = df[col].dropna().astype(str).str.replace(r'\D', '', regex=True)
+                if sample.str.len().eq(44).any():
+                    chave_col = col
+                    break
 
-    if not chave_col:
-        return jsonify({"error": "Coluna com chaves NF-e não encontrada"}), 400
+        if not chave_col:
+            return jsonify({"error": "Coluna com chaves NF-e não encontrada"}), 400
 
-    chaves_raw = df[chave_col].dropna().astype(str).tolist()
-    chaves_valid = []
-    chaves_invalidas = []
+        chaves_raw = df[chave_col].dropna().astype(str).tolist()
+        chaves_valid = []
+        chaves_invalidas = []
 
-    for c in chaves_raw:
-        norm = normalizar_chave(c)
-        if validar_chave(norm):
-            if norm not in chaves_valid:
-                chaves_valid.append(norm)
-        else:
-            chaves_invalidas.append(c)
+        for c in chaves_raw:
+            norm = normalizar_chave(c)
+            if validar_chave(norm):
+                if norm not in chaves_valid:
+                    chaves_valid.append(norm)
+            else:
+                chaves_invalidas.append(c)
 
-    if not chaves_valid:
-        return jsonify({"error": "Nenhuma chave NF-e válida encontrada"}), 400
+        if not chaves_valid:
+            return jsonify({"error": "Nenhuma chave NF-e válida encontrada"}), 400
 
-    # Criar job no banco
-    conn = sqlite3.connect(DB_PATH, timeout=15)
-    conn.execute(
-        "INSERT INTO jobs (id, status, total, processed, created_at, input_file) VALUES (?, ?, ?, ?, ?, ?)",
-        (job_id, "pending", len(chaves_valid), 0, datetime.now().isoformat(), str(file_path))
-    )
-    conn.commit()
-    conn.close()
+        conn = sqlite3.connect(DB_PATH, timeout=15)
+        conn.execute(
+            "INSERT INTO jobs (id, status, total, processed, created_at, input_file) VALUES (?, ?, ?, ?, ?, ?)",
+            (job_id, "pending", len(chaves_valid), 0, datetime.now().isoformat(), str(file_path))
+        )
+        conn.commit()
+        conn.close()
 
-    # Salvar lista de chaves para o job
-    chaves_path = UPLOAD_DIR / f"{job_id}_chaves.json"
-    chaves_path.write_text(json.dumps(chaves_valid))
+        chaves_path = UPLOAD_DIR / f"{job_id}_chaves.json"
+        chaves_path.write_text(json.dumps(chaves_valid))
 
-    log(job_id, "INFO", f"Upload processado: {len(chaves_valid)} válidas, {len(chaves_invalidas)} inválidas")
+        log(job_id, "INFO", f"Upload processado: {len(chaves_valid)} válidas, {len(chaves_invalidas)} inválidas")
 
-    return jsonify({
-        "job_id": job_id,
-        "total_validas": len(chaves_valid),
-        "total_invalidas": len(chaves_invalidas),
-        "invalidas_preview": chaves_invalidas[:10],
-        "coluna_detectada": chave_col
-    })
+        return jsonify({
+            "job_id": job_id,
+            "total_validas": len(chaves_valid),
+            "total_invalidas": len(chaves_invalidas),
+            "invalidas_preview": chaves_invalidas[:10],
+            "coluna_detectada": chave_col
+        })
+
+    except Exception as ex:
+        import traceback
+        print(f"[UPLOAD ERROR] {traceback.format_exc()}")
+        return jsonify({"error": f"Erro ao processar arquivo: {ex}"}), 400
 
 @app.route("/api/iniciar/<job_id>", methods=["POST"])
 def iniciar(job_id):
@@ -1474,6 +1475,31 @@ app.register_blueprint(simples_bp)
 
 from societario import bp as societario_bp
 app.register_blueprint(societario_bp)
+
+# Erros sempre retornam JSON para rotas /api, HTML para o resto
+@app.errorhandler(404)
+def handle_404(e):
+    from flask import request as req
+    if req.path.startswith("/api/"):
+        return jsonify({"error": "Rota não encontrada", "path": req.path}), 404
+    return str(e), 404
+
+@app.errorhandler(405)
+def handle_405(e):
+    from flask import request as req
+    if req.path.startswith("/api/"):
+        return jsonify({"error": "Método não permitido"}), 405
+    return str(e), 405
+
+@app.errorhandler(500)
+def handle_500(e):
+    from flask import request as req
+    import traceback
+    tb = traceback.format_exc()
+    print(f"[500] {req.path}\n{tb}")
+    if req.path.startswith("/api/"):
+        return jsonify({"error": "Erro interno do servidor", "detalhe": str(e)}), 500
+    return str(e), 500
 
 # Serve static docs so browsers don't hit file:// CORS restrictions
 _DOCS_DIR = str(_BASE_DIR.parent / "docs")
