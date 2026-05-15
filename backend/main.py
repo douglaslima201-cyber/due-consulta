@@ -659,11 +659,23 @@ async def obter_sessao_com_captcha(job_id: str, proxy: str | None = None) -> tup
 
     try:
         async with async_playwright() as p:
-            try:
-                browser = await p.chromium.launch(channel="chrome", headless=False)
-                log(job_id, "INFO", f"Chrome aberto [{label}] — resolva o CAPTCHA para iniciar")
-            except Exception:
-                browser = await p.chromium.launch(headless=False, args=["--disable-blink-features=AutomationControlled"])
+            browser = None
+            _extra_args = [
+                "--disable-blink-features=AutomationControlled",
+                "--disable-error-dialogs",
+                "--no-first-run",
+                "--no-default-browser-check",
+                "--disable-infobars",
+            ]
+            for _channel in ("chrome", "msedge"):
+                try:
+                    browser = await p.chromium.launch(channel=_channel, headless=False, args=_extra_args)
+                    log(job_id, "INFO", f"{'Chrome' if _channel=='chrome' else 'Edge'} aberto [{label}] — resolva o CAPTCHA para iniciar")
+                    break
+                except Exception:
+                    pass
+            if browser is None:
+                browser = await p.chromium.launch(headless=False, args=_extra_args)
                 log(job_id, "INFO", f"Chromium aberto [{label}] — resolva o CAPTCHA para iniciar")
 
             ctx_kwargs: dict = {"viewport": {"width": 1280, "height": 800}, "user_agent": HEADERS_BASE["User-Agent"]}
