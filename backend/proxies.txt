@@ -11,4 +11,14 @@
 # Linhas começando com # são ignoradas.
 # Sem proxies configurados, o sistema usa o IP direto (1.000 req/hora).
 #
-# --- Adicione seus proxies abaixo ---
+# --- Proxies configurados ---
+http://xkbdbkdf:ex8pxtha2x60@142.111.48.253:7030
+http://xkbdbkdf:ex8pxtha2x60@23.95.150.145:6114
+http://xkbdbkdf:ex8pxtha2x60@45.38.107.97:6014
+http://xkbdbkdf:ex8pxtha2x60@38.154.203.95:5863
+http://xkbdbkdf:ex8pxtha2x60@198.23.243.226:6361
+http://xkbdbkdf:ex8pxtha2x60@84.247.60.125:6095
+http://xkbdbkdf:ex8pxtha2x60@104.239.107.47:5699
+http://xkbdbkdf:ex8pxtha2x60@23.27.208.120:5830
+http://xkbdbkdf:ex8pxtha2x60@23.229.19.94:8689
+http://xkbdbkdf:ex8pxtha2x60@2.57.20.2:6983

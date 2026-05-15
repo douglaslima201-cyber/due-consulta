@@ -136,7 +136,9 @@
       "Bash(curl -s -X POST \"http://localhost:5000/api/perdcomp/projetos/d3e9542b/analisar\" -w \"\\\\nHTTP:%{http_code}\")",
       "Bash(curl -s -X POST \"http://localhost:5000/api/perdcomp/projetos/d3e9542b/analisar\")",
       "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('status:', d.get\\('error','OK'\\)\\); print\\('registros:', len\\(d.get\\('registros',[]\\)\\)\\)\")",
-      "Bash(git -C \"c:\\\\Users\\\\Douglas Lima\\\\Desktop\\\\Demandas\\\\PeD\\\\Claude Code\\\\Averbações\\\\due-consulta\\\\due-consulta\" log --oneline -15)"
+      "Bash(git -C \"c:\\\\Users\\\\Douglas Lima\\\\Desktop\\\\Demandas\\\\PeD\\\\Claude Code\\\\Averbações\\\\due-consulta\\\\due-consulta\" log --oneline -15)",
+      "Bash(taskkill /PID 26904 /F)",
+      "Bash(taskkill //PID 26904 //F)"
     ],
     "additionalDirectories": [
       "C:\\Users\\Douglas Lima\\Desktop\\Demandas\\PeD\\Claude Code\\Averbações\\due-consulta\\due-consulta"
