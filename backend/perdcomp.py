@@ -1610,40 +1610,82 @@ def ecac_exportar_excel():
     ws1.sheet_view.showGridLines = False
     ws1.freeze_panes = "A2"
 
+    # Helpers para replicar a lógica da tela
+    def fmt_comp(c):
+        """3º Trimestre de 2025 → 3T2025, mantém formato mensal."""
+        if not c: return ""
+        import re as _re
+        m = _re.search(r'(\d)[°º]?\s*[Tt]rimestre\s+de\s+(\d{4})', c)
+        return f"{m.group(1)}T{m.group(2)}" if m else c
+
+    # Mapa arquivo → per_numero via vinculos
+    dcomp_para_per = {}
+    for v in vinculos:
+        for d in v.get("dcomps", []):
+            if d.get("arquivo"):
+                dcomp_para_per[d["arquivo"]] = v.get("per_numero","")
+
+    # Mapa arquivo → alertas para compliance
+    alertas_por_arq = {}
+    for a in alertas:
+        for arq in a.get("arquivos",[]):
+            alertas_por_arq.setdefault(arq,[]).append(a)
+
     colunas = ["Número","Arquivo","Tipo","Tributo","Competência",
-               "Valor Crédito","Créd. Transmissão","Compensado","Ressarcido",
-               "Saldo","Situação","Retificador","Status"]
+               "Créd. Original","Créd. Transmissão","Compensado","Saldo",
+               "PER Origem","Compliance","Justificativa","Status"]
     hdr(ws1, 1, colunas)
 
     for r in registros:
         ef = r.get("_efetivo", True)
         tipo = r.get("tipo","")
+        # PER Origem
+        per_orig = (r.get("referencia_per") or dcomp_para_per.get(r.get("arquivo",""),"")) if tipo=="Compensação" else ""
+        # Compliance
+        alts_doc = alertas_por_arq.get(r.get("arquivo",""), [])
+        criticos = [a for a in alts_doc if a.get("nivel") in ("alto","medio")]
+        compliance = "OK" if not criticos else "Fora do compliance"
+        justificativa = "; ".join(a.get("descricao","")[:80] for a in criticos) if criticos else ""
+        # Status
+        if not ef:
+            status = "Substituído"
+        elif r.get("retificador"):
+            status = "Retificadora"
+        else:
+            status = "Ativo"
+
         row = [
             r.get("numero",""),
             r.get("arquivo",""),
-            tipo,
+            "DCOMP" if tipo=="Compensação" else tipo.upper(),
             r.get("tributo",""),
-            r.get("competencia",""),
+            fmt_comp(r.get("competencia","")),
             brl_fmt(r.get("valor_credito",0)) if tipo != "Compensação" else None,
             brl_fmt(r.get("credito_na_transmissao",0)) or None,
             brl_fmt(r.get("valor_compensado",0)) or None,
-            brl_fmt(r.get("valor_ressarcido",0)) or None,
             brl_fmt(r.get("saldo_remanescente",0)),
-            r.get("situacao",""),
-            "Sim" if r.get("retificador") else "Não",
-            "Substituído" if not ef else ("Retificadora" if r.get("retificador") else "Ativo"),
+            per_orig or None,
+            compliance,
+            justificativa or None,
+            status,
         ]
         ws1.append(row)
         ri = ws1.max_row
-        for ci in [6,7,8,9,10]:
+        for ci in [6,7,8,9]:
             cell = ws1.cell(ri, ci)
             if cell.value is not None:
                 cell.number_format = fmt_brl
+        # Compliance colorido
+        comp_cell = ws1.cell(ri, 11)
+        if compliance == "OK":
+            comp_cell.font = Font(color="22C55E", bold=True, name="Calibri", size=9)
+        else:
+            comp_cell.font = Font(color="EF4444", bold=True, name="Calibri", size=9)
         if not ef:
             for ci in range(1, 14):
                 ws1.cell(ri, ci).font = Font(color="94A3B8", italic=True, name="Calibri", size=9)
 
-    widths = [32,36,15,8,22,16,18,14,12,14,14,12,12]
+    widths = [32,36,10,8,12,16,16,14,14,32,18,60,12]
     for i, w in enumerate(widths, 1):
         ws1.column_dimensions[get_column_letter(i)].width = w
 
