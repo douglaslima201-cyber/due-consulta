@@ -764,10 +764,17 @@ function renderPerSelector(){
   document.getElementById('per-empty').style.display='none';
   document.getElementById('per-body').style.display='block';
 
+  // Conjunto de arquivos substituídos (retificados) — não devem aparecer no seletor
+  const substituidos=new Set();
+  DADOS.vinculos.forEach(v=>(v.substituidos||[]).forEach(s=>substituidos.add(s.arquivo)));
+  (DADOS.registros||[]).forEach(r=>{ if(r._efetivo===false) substituidos.add(r.arquivo); });
+
   const sel=document.getElementById('per-select');
   sel.innerHTML='<option value="">— selecione um PER —</option>';
   DADOS.vinculos.forEach((v,i)=>{
-    const label=`${v.per_arquivo} | ${v.per_tributo||'?'} | ${v.per_competencia||'?'} | ${v.dcomps.length} DCOMP(s)`;
+    if(substituidos.has(v.per_arquivo)) return; // oculta retificados
+    const comp=fmtComp(v.per_competencia)||'?';
+    const label=`${v.per_numero||v.per_arquivo} | ${v.per_tributo||'?'} | ${comp} | ${v.dcomps.length} DCOMP(s)`;
     sel.innerHTML+=`<option value="${i}">${label}</option>`;
   });
 
