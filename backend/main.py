@@ -5,6 +5,7 @@ Execução: python main.py
 
 import asyncio
 import json
+import math
 import os
 import re
 import sqlite3
@@ -12,7 +13,7 @@ import threading
 import time
 import uuid
 from collections import deque
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import pandas as pd
@@ -112,8 +113,69 @@ def init_db():
             criado_em TEXT
         )
     """)
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS proxy_limites (
+            proxy TEXT PRIMARY KEY,
+            reset_em TEXT,
+            ultimo_uso TEXT
+        )
+    """)
     conn.commit()
     conn.close()
+
+
+def _proxy_key(proxy: str | None) -> str:
+    return proxy or "direto"
+
+
+def registrar_rate_limit_proxy(proxy: str | None, reset_em: str):
+    """Persiste o horário de reset do rate limit de um proxy no banco."""
+    conn = sqlite3.connect(DB_PATH, timeout=15)
+    conn.execute(
+        "INSERT OR REPLACE INTO proxy_limites (proxy, reset_em, ultimo_uso) VALUES (?, ?, ?)",
+        (_proxy_key(proxy), reset_em, datetime.now().isoformat())
+    )
+    conn.commit()
+    conn.close()
+
+
+def registrar_uso_proxy(proxy: str | None):
+    """Atualiza o timestamp de último uso de um proxy."""
+    conn = sqlite3.connect(DB_PATH, timeout=15)
+    conn.execute(
+        "INSERT OR REPLACE INTO proxy_limites (proxy, reset_em, ultimo_uso) VALUES (?, COALESCE((SELECT reset_em FROM proxy_limites WHERE proxy=?), NULL), ?)",
+        (_proxy_key(proxy), _proxy_key(proxy), datetime.now().isoformat())
+    )
+    conn.commit()
+    conn.close()
+
+
+def ordenar_proxies_por_disponibilidade(proxies: list[str | None]) -> list[str | None]:
+    """
+    Ordena proxies pelo estado de rate limit persistido:
+      0 — nunca usados (mais frescos)
+      1 — limite já expirou (disponíveis)
+      2 — ainda em cooldown (evitar)
+    Dentro de cada grupo, ordena pelo reset_em mais antigo primeiro.
+    """
+    conn = sqlite3.connect(DB_PATH, timeout=15)
+    rows = {row[0]: row[1] for row in conn.execute(
+        "SELECT proxy, reset_em FROM proxy_limites"
+    ).fetchall()}
+    conn.close()
+
+    agora = datetime.now().isoformat()
+
+    def prioridade(proxy):
+        key = _proxy_key(proxy)
+        reset = rows.get(key)
+        if not reset:
+            return (0, "")        # nunca usou — melhor
+        if reset <= agora:
+            return (1, reset)     # limite expirado — bom
+        return (2, reset)         # ainda em cooldown — pior
+
+    return sorted(proxies, key=prioridade)
 
 def log(job_id, nivel, msg):
     conn = sqlite3.connect(DB_PATH, timeout=15)
@@ -1007,11 +1069,20 @@ async def processar_job_async(job_id: str, chaves: list[str]):
         log(job_id, "INFO", "Todas as chaves já estavam processadas. Relatório gerado.")
         return
 
-    # Fase 1 — abrir uma sessão por proxy (cada proxy resolve seu próprio CAPTCHA)
+    # Fase 1 — calcular quantos proxies são necessários e ordenar pelos mais frescos
     rotator = ProxyRotator(PROXY_FILE)
-    proxies = rotator.proxies  # [None] se sem proxies, ou lista de URLs
+    todos_proxies = rotator.proxies  # [None] se sem proxies, ou lista de URLs
+
+    # Proxies necessários = ceil(chaves / 1000), mínimo 1, máximo disponível
+    necessarios = max(1, min(math.ceil(len(chaves_pendentes) / 1000), len(todos_proxies)))
+
+    # Ordenar pelos mais frescos (sem cooldown) e usar só os necessários
+    proxies = ordenar_proxies_por_disponibilidade(todos_proxies)[:necessarios]
+
     n_proxies = len(proxies)
-    log(job_id, "INFO", f"{n_proxies} proxy(s) configurado(s) — abrindo {n_proxies} sessão(ões)")
+    log(job_id, "INFO",
+        f"{len(chaves_pendentes)} chaves → {necessarios} proxy(s) necessário(s) "
+        f"(de {len(todos_proxies)} disponíveis) — abrindo sessões pelos mais frescos")
     update_job(job_id, status=f"iniciando_sessoes:0/{n_proxies}")
 
     sessoes = await inicializar_sessoes(job_id, proxies)
@@ -1041,7 +1112,9 @@ async def processar_job_async(job_id: str, chaves: list[str]):
                 # (assim outras sessões ativas pegam enquanto esta dorme)
                 if sessao["limiter"].near_limit():
                     espera = 3610
-                    log(job_id, "WARN", f"[{sessao['label']}] Perto do limite — aguardando reset (~1h)")
+                    reset_em = (datetime.now() + timedelta(seconds=espera)).isoformat()
+                    registrar_rate_limit_proxy(sessao["proxy"], reset_em)
+                    log(job_id, "WARN", f"[{sessao['label']}] Perto do limite — aguardando reset (~1h, libera: {reset_em[:19]})")
                     update_job(job_id, status="aguardando_rate_limit")
                     await asyncio.sleep(espera)
                     sessao["limiter"].reset()
@@ -1067,17 +1140,20 @@ async def processar_job_async(job_id: str, chaves: list[str]):
                 resultado, novo_csrf = await consultar_via_api(http, chave, sessao["csrf"], job_id, proxy=proxy)
                 sessao["csrf"] = novo_csrf
                 sessao["limiter"].record()
+                registrar_uso_proxy(proxy)
 
-                # Rate limit — devolve a chave à fila para outra sessão pegar
+                # Rate limit — persiste reset, devolve chave à fila para outra sessão pegar
                 if resultado["status_nfe"] == "Erro Rate Limit":
                     espera = _calcular_espera_rate_limit(resultado["obs"])
-                    log(job_id, "WARN", f"[{sessao['label']}] Rate limit — devolvendo chave à fila, aguardando {espera}s")
-                    await queue.put(chave)  # outra sessão pega esta chave
+                    reset_em = (datetime.now() + timedelta(seconds=espera)).isoformat()
+                    registrar_rate_limit_proxy(proxy, reset_em)
+                    log(job_id, "WARN", f"[{sessao['label']}] Rate limit — devolvendo chave à fila, aguardando {espera}s (reset: {reset_em[:19]})")
+                    await queue.put(chave)
                     update_job(job_id, status="aguardando_rate_limit")
                     await asyncio.sleep(espera)
                     sessao["limiter"].reset()
                     update_job(job_id, status="running")
-                    continue  # volta ao topo sem salvar resultado
+                    continue
 
                 # CAPTCHA expirou — devolve chave e renova apenas esta sessão
                 if resultado["status_nfe"] == "Erro CAPTCHA":

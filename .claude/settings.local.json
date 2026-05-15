@@ -159,7 +159,8 @@
       "Bash(curl -s -o - -w \"\\\\nHTTP:%{http_code}\" http://localhost:5000/api/download/54ff7fa2-9c13-4e71-8652-07a47e35fdda)",
       "Bash(curl -s \"http://localhost:5000/api/status/54ff7fa2-9c13-4e71-8652-07a47e35fdda\")",
       "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('Status:', d['status'], '| has_output:', d['has_output']\\)\")",
-      "Bash(wmic logicaldisk *)"
+      "Bash(wmic logicaldisk *)",
+      "Bash(taskkill //PID 25976 //F)"
     ],
     "additionalDirectories": [
       "C:\\Users\\Douglas Lima\\Desktop\\Demandas\\PeD\\Claude Code\\Averbações\\due-consulta\\due-consulta"
