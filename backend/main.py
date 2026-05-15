@@ -969,82 +969,102 @@ async def processar_job_async(job_id: str, chaves: list[str]):
         log(job_id, "ERROR", "Não foi possível renovar sessão")
         return None
 
-    async def handle_rate_limit(resultado: dict, proxy: str | None) -> tuple[dict, str]:
+    async def handle_rate_limit(resultado: dict, proxy: str | None) -> str | None:
         """Troca proxy ao atingir rate limit. Se todos bloqueados, aguarda o mais próximo."""
         reset_ts = time.time() + _calcular_espera_rate_limit(resultado["obs"])
         rotator.mark_limited(proxy, reset_ts)
         proximo = rotator.current()
         if proximo != "TODOS_BLOQUEADOS":
             log(job_id, "INFO", f"Rate limit em {proxy or 'IP direto'} — trocando para {proximo or 'IP direto'}")
-            return proximo, csrf_token
-        # Todos bloqueados — aguardar liberação do mais próximo
+            return proximo
         espera = rotator.seconds_to_next()
         log(job_id, "WARN",
             f"Todos os proxies atingiram o limite — aguardando {espera:.0f}s (~{espera/60:.1f} min)")
         update_job(job_id, status="aguardando_rate_limit")
         await asyncio.sleep(espera)
         update_job(job_id, status="running")
-        return rotator.current(), csrf_token
+        return rotator.current()
+
+    # Concorrência = número de proxies ativos (mínimo 1)
+    CONCURRENCY = max(rotator.count, 1)
+    _sem = asyncio.Semaphore(CONCURRENCY)
+    _csrf = [csrf_token]       # referência mutável compartilhada (seguro: asyncio é single-thread)
+    _processed = [base_processadas]
+    _stop = [False]
+    _captcha_lock = asyncio.Lock()
 
     async with aiohttp.ClientSession(cookies=cookies) as http:
-        for idx, chave in enumerate(chaves_pendentes):
-            # Verificar cancelamento
-            conn = sqlite3.connect(DB_PATH)
-            row = conn.execute("SELECT status FROM jobs WHERE id=?", (job_id,)).fetchone()
-            conn.close()
-            if row and row[0] == "cancelled":
-                log(job_id, "INFO", "Job cancelado pelo usuário")
-                break
 
-            proxy = rotator.current()
-            if proxy == "TODOS_BLOQUEADOS":
-                espera = rotator.seconds_to_next()
-                log(job_id, "WARN", f"Todos os proxies bloqueados — aguardando {espera:.0f}s")
-                update_job(job_id, status="aguardando_rate_limit")
-                await asyncio.sleep(espera)
-                update_job(job_id, status="running")
+        async def _worker(chave: str, total_idx: int):
+            if _stop[0]:
+                return
+            async with _sem:
+                if _stop[0]:
+                    return
+
+                conn = sqlite3.connect(DB_PATH)
+                row = conn.execute("SELECT status FROM jobs WHERE id=?", (job_id,)).fetchone()
+                conn.close()
+                if row and row[0] == "cancelled":
+                    log(job_id, "INFO", "Job cancelado pelo usuário")
+                    _stop[0] = True
+                    return
+
                 proxy = rotator.current()
+                if proxy == "TODOS_BLOQUEADOS":
+                    espera = rotator.seconds_to_next()
+                    log(job_id, "WARN", f"Todos os proxies bloqueados — aguardando {espera:.0f}s")
+                    update_job(job_id, status="aguardando_rate_limit")
+                    await asyncio.sleep(espera)
+                    update_job(job_id, status="running")
+                    proxy = rotator.current()
 
-            # Troca preventiva se perto do limite (antes de enviar a requisição)
-            if proxy != "TODOS_BLOQUEADOS" and rotator.near_limit(proxy):
-                rotator.mark_limited(proxy, time.time() + 3600)
-                proximo = rotator.current()
-                if proximo != "TODOS_BLOQUEADOS":
-                    log(job_id, "INFO", f"Limite próximo em {proxy or 'IP direto'} — trocando preventivamente para {proximo or 'IP direto'}")
-                    proxy = proximo
+                if proxy != "TODOS_BLOQUEADOS" and rotator.near_limit(proxy):
+                    rotator.mark_limited(proxy, time.time() + 3600)
+                    proximo = rotator.current()
+                    if proximo != "TODOS_BLOQUEADOS":
+                        log(job_id, "INFO", f"Limite próximo em {proxy or 'IP direto'} — trocando preventivamente")
+                        proxy = proximo
 
-            total_global = base_processadas + idx + 1
-            log(job_id, "INFO", f"Consultando {total_global}/{len(chaves)}: {chave[:10]}...{chave[-6:]}")
-            resultado, csrf_token = await consultar_via_api(http, chave, csrf_token, job_id, proxy=proxy)
-            rotator.record(proxy)
-
-            # Rate limit — trocar proxy ou aguardar
-            if resultado["status_nfe"] == "Erro Rate Limit":
-                proxy, csrf_token = await handle_rate_limit(resultado, proxy)
-                resultado, csrf_token = await consultar_via_api(http, chave, csrf_token, job_id, proxy=proxy)
+                log(job_id, "INFO", f"Consultando {total_idx}/{len(chaves)}: {chave[:10]}...{chave[-6:]}")
+                resultado, novo_csrf = await consultar_via_api(http, chave, _csrf[0], job_id, proxy=proxy)
+                _csrf[0] = novo_csrf
                 rotator.record(proxy)
 
-            # Renovar sessão se CAPTCHA expirou (renovações ilimitadas)
-            if resultado["status_nfe"] == "Erro CAPTCHA":
-                log(job_id, "WARN", "Sessão expirou — renovando CAPTCHA...")
-                nova = await renovar_sessao(http)
-                if nova:
-                    cookies, csrf_token = nova
-                    resultado, csrf_token = await consultar_via_api(http, chave, csrf_token, job_id, proxy=proxy)
+                if resultado["status_nfe"] == "Erro Rate Limit":
+                    proxy = await handle_rate_limit(resultado, proxy)
+                    resultado, novo_csrf = await consultar_via_api(http, chave, _csrf[0], job_id, proxy=proxy)
+                    _csrf[0] = novo_csrf
                     rotator.record(proxy)
-                else:
-                    break
 
-            salvar_resultado(
-                job_id, chave,
-                resultado["status_nfe"],
-                resultado["numero_due"],
-                resultado["data_due"],
-                resultado["status_due"],
-                resultado["obs"],
-            )
-            update_job(job_id, processed=total_global)
-            await asyncio.sleep(0.2)
+                if resultado["status_nfe"] == "Erro CAPTCHA":
+                    async with _captcha_lock:
+                        log(job_id, "WARN", "Sessão expirou — renovando CAPTCHA...")
+                        nova = await renovar_sessao(http)
+                        if nova:
+                            _, _csrf[0] = nova
+                            resultado, novo_csrf = await consultar_via_api(http, chave, _csrf[0], job_id, proxy=proxy)
+                            _csrf[0] = novo_csrf
+                            rotator.record(proxy)
+                        else:
+                            _stop[0] = True
+                            return
+
+                salvar_resultado(
+                    job_id, chave,
+                    resultado["status_nfe"],
+                    resultado["numero_due"],
+                    resultado["data_due"],
+                    resultado["status_due"],
+                    resultado["obs"],
+                )
+                _processed[0] += 1
+                update_job(job_id, processed=_processed[0])
+
+        await asyncio.gather(
+            *[_worker(chave, base_processadas + idx + 1) for idx, chave in enumerate(chaves_pendentes)],
+            return_exceptions=True,
+        )
 
     output_file = gerar_relatorio(job_id)
     update_job(job_id, status="done", finished_at=datetime.now().isoformat(), output_file=str(output_file))
