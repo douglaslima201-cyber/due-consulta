@@ -117,9 +117,17 @@ def init_db():
         CREATE TABLE IF NOT EXISTS proxy_limites (
             proxy TEXT PRIMARY KEY,
             reset_em TEXT,
-            ultimo_uso TEXT
+            ultimo_uso TEXT,
+            falhas_consecutivas INTEGER DEFAULT 0,
+            bloqueado INTEGER DEFAULT 0
         )
     """)
+    # Migração: adicionar colunas se tabela existia sem elas
+    for col, defval in [("falhas_consecutivas", "0"), ("bloqueado", "0")]:
+        try:
+            conn.execute(f"ALTER TABLE proxy_limites ADD COLUMN {col} INTEGER DEFAULT {defval}")
+        except Exception:
+            pass
     conn.commit()
     conn.close()
 
@@ -128,23 +136,55 @@ def _proxy_key(proxy: str | None) -> str:
     return proxy or "direto"
 
 
+FALHAS_PARA_BLOQUEAR = 3  # bloqueia após N timeouts consecutivos sem sucesso
+
+
 def registrar_rate_limit_proxy(proxy: str | None, reset_em: str):
     """Persiste o horário de reset do rate limit de um proxy no banco."""
     conn = sqlite3.connect(DB_PATH, timeout=15)
     conn.execute(
-        "INSERT OR REPLACE INTO proxy_limites (proxy, reset_em, ultimo_uso) VALUES (?, ?, ?)",
+        """INSERT INTO proxy_limites (proxy, reset_em, ultimo_uso, falhas_consecutivas, bloqueado)
+           VALUES (?, ?, ?, 0, 0)
+           ON CONFLICT(proxy) DO UPDATE SET reset_em=excluded.reset_em, ultimo_uso=excluded.ultimo_uso""",
         (_proxy_key(proxy), reset_em, datetime.now().isoformat())
     )
     conn.commit()
     conn.close()
 
 
-def registrar_uso_proxy(proxy: str | None):
-    """Atualiza o timestamp de último uso de um proxy."""
+def registrar_timeout_proxy(proxy: str | None, job_id: str = ""):
+    """Incrementa falhas; bloqueia automaticamente após FALHAS_PARA_BLOQUEAR consecutivas."""
+    key = _proxy_key(proxy)
     conn = sqlite3.connect(DB_PATH, timeout=15)
     conn.execute(
-        "INSERT OR REPLACE INTO proxy_limites (proxy, reset_em, ultimo_uso) VALUES (?, COALESCE((SELECT reset_em FROM proxy_limites WHERE proxy=?), NULL), ?)",
-        (_proxy_key(proxy), _proxy_key(proxy), datetime.now().isoformat())
+        """INSERT INTO proxy_limites (proxy, reset_em, ultimo_uso, falhas_consecutivas, bloqueado)
+           VALUES (?, NULL, ?, 1, 0)
+           ON CONFLICT(proxy) DO UPDATE SET
+               falhas_consecutivas = falhas_consecutivas + 1,
+               bloqueado = CASE WHEN falhas_consecutivas + 1 >= ? THEN 1 ELSE bloqueado END,
+               ultimo_uso = excluded.ultimo_uso""",
+        (key, datetime.now().isoformat(), FALHAS_PARA_BLOQUEAR)
+    )
+    row = conn.execute(
+        "SELECT falhas_consecutivas, bloqueado FROM proxy_limites WHERE proxy=?", (key,)
+    ).fetchone()
+    conn.commit()
+    conn.close()
+    if row and row[1]:
+        msg = f"Proxy {key} BLOQUEADO automaticamente após {row[0]} timeouts consecutivos"
+        print(f"[WARN] {msg}")
+        if job_id:
+            log(job_id, "WARN", msg)
+
+
+def registrar_sucesso_proxy(proxy: str | None):
+    """Reseta contador de falhas após resposta válida do proxy."""
+    conn = sqlite3.connect(DB_PATH, timeout=15)
+    conn.execute(
+        """INSERT INTO proxy_limites (proxy, reset_em, ultimo_uso, falhas_consecutivas, bloqueado)
+           VALUES (?, NULL, ?, 0, 0)
+           ON CONFLICT(proxy) DO UPDATE SET falhas_consecutivas=0, ultimo_uso=excluded.ultimo_uso""",
+        (_proxy_key(proxy), datetime.now().isoformat())
     )
     conn.commit()
     conn.close()
@@ -152,30 +192,35 @@ def registrar_uso_proxy(proxy: str | None):
 
 def ordenar_proxies_por_disponibilidade(proxies: list[str | None]) -> list[str | None]:
     """
-    Ordena proxies pelo estado de rate limit persistido:
+    Filtra proxies bloqueados e ordena os restantes:
       0 — nunca usados (mais frescos)
       1 — limite já expirou (disponíveis)
       2 — ainda em cooldown (evitar)
-    Dentro de cada grupo, ordena pelo reset_em mais antigo primeiro.
     """
     conn = sqlite3.connect(DB_PATH, timeout=15)
-    rows = {row[0]: row[1] for row in conn.execute(
-        "SELECT proxy, reset_em FROM proxy_limites"
+    rows = {row[0]: {"reset_em": row[1], "bloqueado": row[2]} for row in conn.execute(
+        "SELECT proxy, reset_em, bloqueado FROM proxy_limites"
     ).fetchall()}
     conn.close()
 
     agora = datetime.now().isoformat()
 
-    def prioridade(proxy):
-        key = _proxy_key(proxy)
-        reset = rows.get(key)
-        if not reset:
-            return (0, "")        # nunca usou — melhor
-        if reset <= agora:
-            return (1, reset)     # limite expirado — bom
-        return (2, reset)         # ainda em cooldown — pior
+    # Excluir proxies bloqueados por muitas falhas
+    validos = [p for p in proxies if not rows.get(_proxy_key(p), {}).get("bloqueado", 0)]
+    bloqueados = len(proxies) - len(validos)
+    if bloqueados:
+        print(f"[INFO] {bloqueados} proxy(s) bloqueado(s) por falhas — excluídos da seleção")
 
-    return sorted(proxies, key=prioridade)
+    def prioridade(proxy):
+        info = rows.get(_proxy_key(proxy), {})
+        reset = info.get("reset_em")
+        if not reset:
+            return (0, "")
+        if reset <= agora:
+            return (1, reset)
+        return (2, reset)
+
+    return sorted(validos, key=prioridade)
 
 def log(job_id, nivel, msg):
     conn = sqlite3.connect(DB_PATH, timeout=15)
@@ -812,8 +857,10 @@ async def inicializar_sessoes(job_id: str, proxies: list[str | None]) -> list[di
                 "limiter": RateLimiter(),
                 "label":   label,
             })
+            registrar_sucesso_proxy(proxy)
             log(job_id, "INFO", f"Sessão {i+1}/{total} pronta [{label}]")
         else:
+            registrar_timeout_proxy(proxy, job_id)
             log(job_id, "WARN", f"Sessão {i+1}/{total} falhou [{label}] — ignorando")
     return sessoes
 
@@ -1148,7 +1195,6 @@ async def processar_job_async(job_id: str, chaves: list[str]):
                 resultado, novo_csrf = await consultar_via_api(http, chave, sessao["csrf"], job_id, proxy=proxy)
                 sessao["csrf"] = novo_csrf
                 sessao["limiter"].record()
-                registrar_uso_proxy(proxy)
 
                 # Rate limit — persiste reset, devolve chave à fila para outra sessão pegar
                 if resultado["status_nfe"] == "Erro Rate Limit":
@@ -1178,6 +1224,12 @@ async def processar_job_async(job_id: str, chaves: list[str]):
                         _stop[0] = True
                         break
                     continue  # volta ao topo sem salvar resultado
+
+                # Registrar saúde do proxy com base no resultado final
+                if resultado["status_nfe"] == "Timeout":
+                    registrar_timeout_proxy(proxy, job_id)
+                elif resultado["status_nfe"] not in ("Erro Rate Limit", "Erro CAPTCHA"):
+                    registrar_sucesso_proxy(proxy)
 
                 salvar_resultado(
                     job_id, chave,
@@ -1563,12 +1615,56 @@ def ecac_upload_pdfs_main():
 @app.route("/api/proxies")
 def listar_proxies():
     rotator = ProxyRotator(PROXY_FILE)
+    conn = sqlite3.connect(DB_PATH, timeout=15)
+    limites = {row[0]: {"reset_em": row[1], "falhas": row[2], "bloqueado": bool(row[3])}
+               for row in conn.execute(
+                   "SELECT proxy, reset_em, falhas_consecutivas, bloqueado FROM proxy_limites"
+               ).fetchall()}
+    conn.close()
+    agora = datetime.now().isoformat()
+
+    proxies_info = []
+    for p in rotator.proxies:
+        key = p or "IP direto"
+        info = limites.get(p or "direto", {})
+        reset = info.get("reset_em")
+        proxies_info.append({
+            "proxy": key,
+            "disponivel": not info.get("bloqueado") and (not reset or reset <= agora),
+            "bloqueado": info.get("bloqueado", False),
+            "falhas_consecutivas": info.get("falhas", 0),
+            "libera_em": max(0, int((datetime.fromisoformat(reset) - datetime.now()).total_seconds())) if reset and reset > agora else 0,
+        })
+
+    ativos = sum(1 for p in proxies_info if not p["bloqueado"])
     return jsonify({
         "total": len(rotator.proxies),
         "configurados": rotator.count,
-        "capacidade_hora": rotator.count * 1000 if rotator.count else 1000,
-        "proxies": rotator.status()
+        "ativos": ativos,
+        "bloqueados": len(proxies_info) - ativos,
+        "capacidade_hora": ativos * 1000 if ativos else 1000,
+        "proxies": proxies_info
     })
+
+@app.route("/api/proxies/desbloquear", methods=["POST"])
+def desbloquear_proxy():
+    proxy = request.json.get("proxy") if request.is_json else request.form.get("proxy")
+    if not proxy:
+        return jsonify({"error": "proxy não informado"}), 400
+    key = proxy if proxy != "IP direto" else "direto"
+    conn = sqlite3.connect(DB_PATH, timeout=15)
+    conn.execute("UPDATE proxy_limites SET bloqueado=0, falhas_consecutivas=0 WHERE proxy=?", (key,))
+    conn.commit()
+    conn.close()
+    return jsonify({"message": f"Proxy {proxy} desbloqueado"})
+
+@app.route("/api/proxies/desbloquear-todos", methods=["POST"])
+def desbloquear_todos():
+    conn = sqlite3.connect(DB_PATH, timeout=15)
+    conn.execute("UPDATE proxy_limites SET bloqueado=0, falhas_consecutivas=0")
+    conn.commit()
+    conn.close()
+    return jsonify({"message": "Todos os proxies desbloqueados"})
 
 from piscofins import bp as piscofins_bp
 app.register_blueprint(piscofins_bp)

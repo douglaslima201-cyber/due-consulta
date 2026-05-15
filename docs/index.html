@@ -676,23 +676,41 @@ async function loadHist(){
     }).join('');
   }catch{c.innerHTML=`<div style="color:var(--red);font-size:13px;text-align:center;padding:32px">Backend offline. Execute <code>python main.py</code></div>`;}
 }
+async function desbloquearProxy(proxy){
+  await fetch(`${API}/proxies/desbloquear`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({proxy})});
+  loadProxy();
+}
+async function desbloquearTodos(){
+  await fetch(`${API}/proxies/desbloquear-todos`,{method:'POST'});
+  loadProxy();
+}
 async function loadProxy(){
   try{
     const r=await fetch(`${API}/proxies`);const d=await r.json();
     const cap=document.getElementById('proxy-cap');
     const n=d.configurados;
+    const bl=d.bloqueados||0;
     cap.innerHTML=n
-      ?`<div style="font-weight:700;color:var(--cyan);margin-bottom:4px">🔀 ${n} proxy${n>1?'s':''} configurado${n>1?'s':''}</div><div style="color:var(--g2)">Capacidade: ~<strong style="color:var(--white)">${d.capacidade_hora.toLocaleString()}</strong> req/hora</div>`
+      ?`<div style="font-weight:700;color:var(--cyan);margin-bottom:4px">🔀 ${d.ativos||n} ativo${(d.ativos||n)>1?'s':''}${bl>0?` <span style="color:var(--red);font-size:12px">(${bl} bloqueado${bl>1?'s':''})</span>`:''} de ${n} configurado${n>1?'s':''}</div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <span style="color:var(--g2)">Capacidade: ~<strong style="color:var(--white)">${d.capacidade_hora.toLocaleString()}</strong> req/hora</span>
+          ${bl>0?`<button class="btn btn-g" style="padding:3px 9px;font-size:10px" onclick="desbloquearTodos()">🔓 Desbloquear todos</button>`:''}
+        </div>`
       :`<div style="font-weight:700;color:var(--yellow);margin-bottom:4px">⚠ Nenhum proxy configurado</div><div style="color:var(--g2)">Usando IP direto — limite: <strong style="color:var(--white)">1.000 req/hora</strong></div>`;
     const list=document.getElementById('proxy-list');
-    list.innerHTML=d.proxies.filter(p=>p.proxy!=='IP direto').map(p=>`
-      <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:8px">
-        <span style="font-size:14px">${p.disponivel?'🟢':'🔴'}</span>
-        <code style="font-size:11px;color:var(--g2);flex:1">${e(p.proxy)}</code>
-        <span style="font-family:var(--mono);font-size:10px;color:${p.disponivel?'var(--green)':'var(--yellow)'}">
-          ${p.disponivel?'Disponível':`Bloqueado por ${p.libera_em}s`}
-        </span>
-      </div>`).join('');
+    list.innerHTML=d.proxies.filter(p=>p.proxy!=='IP direto').map(p=>{
+      const icon=p.bloqueado?'⛔':p.disponivel?'🟢':'🟡';
+      const status=p.bloqueado
+        ?`<span style="color:var(--red);font-size:10px">Bloqueado (${p.falhas_consecutivas} falhas)</span>`
+        :p.disponivel?`<span style="color:var(--green);font-size:10px">Disponível</span>`
+        :`<span style="color:var(--yellow);font-size:10px">Rate limit ${p.libera_em}s</span>`;
+      const btn=p.bloqueado?`<button class="btn btn-g" style="padding:2px 8px;font-size:10px" onclick="desbloquearProxy('${e(p.proxy)}')">🔓</button>`:'';
+      return`<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:rgba(255,255,255,.03);border:1px solid ${p.bloqueado?'rgba(239,68,68,.2)':'rgba(255,255,255,.06)'};border-radius:8px">
+        <span>${icon}</span>
+        <code style="font-size:10px;color:var(--g2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e(p.proxy)}</code>
+        ${status}${btn}
+      </div>`;
+    }).join('');
   }catch{document.getElementById('proxy-cap').innerHTML='<div style="color:var(--red)">Backend offline.</div>';}
 }
 async function dretomar(id){
