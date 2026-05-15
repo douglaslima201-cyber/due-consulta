@@ -779,10 +779,24 @@ function renderPerSelector(){
   DADOS.vinculos.forEach(v=>(v.substituidos||[]).forEach(s=>substituidos.add(s.arquivo)));
   (DADOS.registros||[]).forEach(r=>{ if(r._efetivo===false) substituidos.add(r.arquivo); });
 
+  // Créditos que possuem retificadora — chave: "tributo|comp_fmt"
+  // Usado para ocultar originais quando a vinculação por tributo/competência falhou
+  const credComRetificadora=new Set();
+  DADOS.vinculos.forEach(v=>{
+    if(v.tem_retificadora){
+      credComRetificadora.add(`${v.per_tributo||''}|${fmtComp(v.per_competencia)||v.per_competencia||''}`);
+    }
+  });
+
   const sel=document.getElementById('per-select');
   sel.innerHTML='<option value="">— selecione um PER —</option>';
   DADOS.vinculos.forEach((v,i)=>{
-    if(substituidos.has(v.per_arquivo)) return; // oculta retificados
+    if(substituidos.has(v.per_arquivo)) return; // oculta retificados (vinculação ok)
+    if(!v.tem_retificadora){
+      // Oculta originais quando existe retificadora para o mesmo crédito (vinculação falhou)
+      const cred=`${v.per_tributo||''}|${fmtComp(v.per_competencia)||v.per_competencia||''}`;
+      if(credComRetificadora.has(cred)) return;
+    }
     const comp=fmtComp(v.per_competencia)||'?';
     const label=`${v.per_numero||v.per_arquivo} | ${v.per_tributo||'?'} | ${comp} | ${v.dcomps.length} DCOMP(s)`;
     sel.innerHTML+=`<option value="${i}">${label}</option>`;
