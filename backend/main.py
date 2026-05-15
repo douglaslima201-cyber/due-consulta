@@ -843,9 +843,11 @@ async def consultar_via_api(
     headers = {**HEADERS_BASE, "X-CSRF-Token": csrf_token}
 
     try:
+        import aiohttp as _aio_timeout
+        _timeout = _aio_timeout.ClientTimeout(total=30, connect=10)
         # Parâmetro correto: chaveNfe (descoberto via análise do JS Angular do portal)
         url = f"{API_BASE}/api/due/listar-due-consulta"
-        async with session.get(url, headers=headers, params={"chaveNfe": chave}, proxy=proxy) as resp:
+        async with session.get(url, headers=headers, params={"chaveNfe": chave}, proxy=proxy, timeout=_timeout) as resp:
             novo_csrf = resp.headers.get("x-csrf-token", csrf_token)
             try:
                 body = await resp.json(content_type=None)
@@ -928,6 +930,12 @@ async def consultar_via_api(
                 resultado["status_nfe"] = "Averbada"
             else:
                 resultado["status_nfe"] = "Não Encontrada"
+
+    except asyncio.TimeoutError:
+        resultado["status_nfe"] = "Timeout"
+        resultado["obs"] = "Timeout de 30s — proxy lento ou bloqueado"
+        log(job_id, "WARN", f"Timeout na API para {chave[:10]}... (proxy: {proxy or 'direto'})")
+        return resultado, csrf_token
 
     except Exception as e:
         resultado["obs"] = str(e)[:200]
