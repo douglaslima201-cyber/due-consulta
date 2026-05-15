@@ -42,6 +42,20 @@ ANTICAPTCHA_KEY = "6d73ae3890ea23b5d54c6240355586c2"
 PORTAL_URL = "https://portalunico.siscomex.gov.br/due/x/#/consulta/consulta-filtro?perfil=publico"
 PROXY_FILE = _BASE_DIR / "proxies.txt"
 
+
+def _proxy_para_playwright(proxy_url: str | None) -> dict | None:
+    """Converte 'http://user:pass@host:port' para o formato de proxy do Playwright."""
+    if not proxy_url:
+        return None
+    from urllib.parse import urlparse
+    p = urlparse(proxy_url)
+    cfg: dict = {"server": f"{p.scheme}://{p.hostname}:{p.port}"}
+    if p.username:
+        cfg["username"] = p.username
+    if p.password:
+        cfg["password"] = p.password
+    return cfg
+
 # ─── Banco de dados ─────────────────────────────────────────────────────────
 
 def init_db():
@@ -630,12 +644,13 @@ HEADERS_BASE = {
 }
 
 
-async def obter_sessao_com_captcha(job_id: str) -> tuple[dict, str] | None:
+async def obter_sessao_com_captcha(job_id: str, proxy: str | None = None) -> tuple[dict, str] | None:
     """
-    Abre Chrome, aguarda o usuário resolver o hCaptcha uma única vez.
+    Abre Chrome (roteado pelo proxy, se fornecido), aguarda resolução do hCaptcha.
     Retorna (cookies, csrf_token) prontos para chamadas HTTP diretas.
     """
-    import aiohttp as _aio
+    proxy_pw = _proxy_para_playwright(proxy)
+    label = proxy or "IP direto"
 
     csrf_holder = {"token": None}
     captcha_ok = asyncio.Event()
@@ -643,15 +658,19 @@ async def obter_sessao_com_captcha(job_id: str) -> tuple[dict, str] | None:
     async with async_playwright() as p:
         try:
             browser = await p.chromium.launch(channel="chrome", headless=False)
-            log(job_id, "INFO", "Chrome aberto — resolva o CAPTCHA para iniciar")
+            log(job_id, "INFO", f"Chrome aberto [{label}] — resolva o CAPTCHA para iniciar")
         except Exception:
             browser = await p.chromium.launch(headless=False, args=["--disable-blink-features=AutomationControlled"])
-            log(job_id, "INFO", "Chromium aberto — resolva o CAPTCHA para iniciar")
+            log(job_id, "INFO", f"Chromium aberto [{label}] — resolva o CAPTCHA para iniciar")
 
-        context = await browser.new_context(
-            viewport={"width": 1280, "height": 800},
-            user_agent=HEADERS_BASE["User-Agent"],
-        )
+        ctx_kwargs: dict = {
+            "viewport": {"width": 1280, "height": 800},
+            "user_agent": HEADERS_BASE["User-Agent"],
+        }
+        if proxy_pw:
+            ctx_kwargs["proxy"] = proxy_pw
+
+        context = await browser.new_context(**ctx_kwargs)
         page = await context.new_page()
         await page.add_init_script("""
             Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
@@ -671,11 +690,11 @@ async def obter_sessao_com_captcha(job_id: str) -> tuple[dict, str] | None:
         page.on("response", rastrear_resposta)
         await page.goto(PORTAL_URL, wait_until="networkidle", timeout=30000)
 
-        log(job_id, "INFO", "Aguardando resolução do CAPTCHA (até 5 minutos)...")
+        log(job_id, "INFO", f"Aguardando resolução do CAPTCHA [{label}] (até 5 minutos)...")
         try:
             await asyncio.wait_for(captcha_ok.wait(), timeout=300)
         except asyncio.TimeoutError:
-            log(job_id, "ERROR", "Timeout: CAPTCHA não foi resolvido em 5 minutos")
+            log(job_id, "ERROR", f"Timeout: CAPTCHA não resolvido em 5 minutos [{label}]")
             await browser.close()
             return None
 
@@ -689,6 +708,33 @@ async def obter_sessao_com_captcha(job_id: str) -> tuple[dict, str] | None:
         await browser.close()
 
     return cookies, csrf
+
+
+async def inicializar_sessoes(job_id: str, proxies: list[str | None]) -> list[dict]:
+    """
+    Abre uma sessão autenticada por proxy (um CAPTCHA por proxy), sequencialmente.
+    Retorna lista de dicts com proxy, cookies, csrf e limiter próprios.
+    """
+    sessoes = []
+    total = len(proxies)
+    for i, proxy in enumerate(proxies):
+        label = proxy or "IP direto"
+        log(job_id, "INFO", f"Sessão {i+1}/{total} — aguardando CAPTCHA [{label}]")
+        update_job(job_id, status=f"iniciando_sessoes:{i+1}/{total}")
+        resultado = await obter_sessao_com_captcha(job_id, proxy=proxy)
+        if resultado:
+            cookies, csrf = resultado
+            sessoes.append({
+                "proxy":   proxy,
+                "cookies": cookies,
+                "csrf":    csrf,
+                "limiter": RateLimiter(),
+                "label":   label,
+            })
+            log(job_id, "INFO", f"Sessão {i+1}/{total} pronta [{label}]")
+        else:
+            log(job_id, "WARN", f"Sessão {i+1}/{total} falhou [{label}] — ignorando")
+    return sessoes
 
 
 async def consultar_via_api(
@@ -942,113 +988,95 @@ async def processar_job_async(job_id: str, chaves: list[str]):
         log(job_id, "INFO", "Todas as chaves já estavam processadas. Relatório gerado.")
         return
 
-    # Fase 1 — abrir Chrome, usuário resolve captcha UMA vez
-    sessao = await obter_sessao_com_captcha(job_id)
-    if not sessao:
+    # Fase 1 — abrir uma sessão por proxy (cada proxy resolve seu próprio CAPTCHA)
+    rotator = ProxyRotator(PROXY_FILE)
+    proxies = rotator.proxies  # [None] se sem proxies, ou lista de URLs
+    n_proxies = len(proxies)
+    log(job_id, "INFO", f"{n_proxies} proxy(s) configurado(s) — abrindo {n_proxies} sessão(ões)")
+    update_job(job_id, status=f"iniciando_sessoes:0/{n_proxies}")
+
+    sessoes = await inicializar_sessoes(job_id, proxies)
+    if not sessoes:
+        log(job_id, "ERROR", "Nenhuma sessão obtida — abortando")
         update_job(job_id, status="error", finished_at=datetime.now().isoformat())
         return
 
-    cookies, csrf_token = sessao
-    log(job_id, "INFO", "Sessão obtida — processando chaves via API direta")
+    capacidade = len(sessoes) * 1000
+    log(job_id, "INFO", f"{len(sessoes)} sessão(ões) prontas — capacidade: ~{capacidade} req/hora")
+    update_job(job_id, status="running")
 
-    # Fase 2 — consultar chaves pendentes sem abrir browser
-    rotator = ProxyRotator(PROXY_FILE)
-    if rotator.count:
-        log(job_id, "INFO", f"{rotator.count} proxies carregados — capacidade efetiva: ~{rotator.count * 1000} req/hora")
-    else:
-        log(job_id, "INFO", "Sem proxies configurados — usando IP direto (limite: 1000 req/hora)")
+    # Fase 2 — fila compartilhada, cada sessão puxa e processa independentemente
+    queue: asyncio.Queue = asyncio.Queue()
+    for chave in chaves_pendentes:
+        await queue.put(chave)
 
-    async def renovar_sessao(http_session) -> tuple[dict, str] | None:
-        log(job_id, "INFO", "Abrindo navegador para renovação de CAPTCHA...")
-        nova = await obter_sessao_com_captcha(job_id)
-        if nova:
-            c, t = nova
-            http_session.cookie_jar.update_cookies(c)
-            log(job_id, "INFO", "Sessão renovada com sucesso")
-            return c, t
-        log(job_id, "ERROR", "Não foi possível renovar sessão")
-        return None
-
-    async def handle_rate_limit(resultado: dict, proxy: str | None) -> str | None:
-        """Troca proxy ao atingir rate limit. Se todos bloqueados, aguarda o mais próximo."""
-        reset_ts = time.time() + _calcular_espera_rate_limit(resultado["obs"])
-        rotator.mark_limited(proxy, reset_ts)
-        proximo = rotator.current()
-        if proximo != "TODOS_BLOQUEADOS":
-            log(job_id, "INFO", f"Rate limit em {proxy or 'IP direto'} — trocando para {proximo or 'IP direto'}")
-            return proximo
-        espera = rotator.seconds_to_next()
-        log(job_id, "WARN",
-            f"Todos os proxies atingiram o limite — aguardando {espera:.0f}s (~{espera/60:.1f} min)")
-        update_job(job_id, status="aguardando_rate_limit")
-        await asyncio.sleep(espera)
-        update_job(job_id, status="running")
-        return rotator.current()
-
-    # Concorrência = número de proxies ativos (mínimo 1)
-    CONCURRENCY = max(rotator.count, 1)
-    _sem = asyncio.Semaphore(CONCURRENCY)
-    _csrf = [csrf_token]       # referência mutável compartilhada (seguro: asyncio é single-thread)
     _processed = [base_processadas]
     _stop = [False]
-    _captcha_lock = asyncio.Lock()
 
-    async with aiohttp.ClientSession(cookies=cookies) as http:
+    async def worker_sessao(sessao: dict):
+        """Worker dedicado a uma sessão/proxy — puxa da fila até esvaziar."""
+        async with aiohttp.ClientSession(cookies=sessao["cookies"]) as http:
+            while not _stop[0]:
+                try:
+                    chave = queue.get_nowait()
+                except asyncio.QueueEmpty:
+                    break
 
-        async def _worker(chave: str, total_idx: int):
-            if _stop[0]:
-                return
-            async with _sem:
-                if _stop[0]:
-                    return
-
+                # Verificar cancelamento
                 conn = sqlite3.connect(DB_PATH)
                 row = conn.execute("SELECT status FROM jobs WHERE id=?", (job_id,)).fetchone()
                 conn.close()
                 if row and row[0] == "cancelled":
                     log(job_id, "INFO", "Job cancelado pelo usuário")
                     _stop[0] = True
-                    return
+                    queue.task_done()
+                    break
 
-                proxy = rotator.current()
-                if proxy == "TODOS_BLOQUEADOS":
-                    espera = rotator.seconds_to_next()
-                    log(job_id, "WARN", f"Todos os proxies bloqueados — aguardando {espera:.0f}s")
+                proxy = sessao["proxy"]
+
+                # Troca preventiva se esta sessão está perto do limite
+                if sessao["limiter"].near_limit():
+                    espera = 3610
+                    log(job_id, "WARN", f"[{sessao['label']}] Perto do limite — aguardando reset (~1h)")
                     update_job(job_id, status="aguardando_rate_limit")
                     await asyncio.sleep(espera)
+                    sessao["limiter"].reset()
                     update_job(job_id, status="running")
-                    proxy = rotator.current()
 
-                if proxy != "TODOS_BLOQUEADOS" and rotator.near_limit(proxy):
-                    rotator.mark_limited(proxy, time.time() + 3600)
-                    proximo = rotator.current()
-                    if proximo != "TODOS_BLOQUEADOS":
-                        log(job_id, "INFO", f"Limite próximo em {proxy or 'IP direto'} — trocando preventivamente")
-                        proxy = proximo
+                total_idx = _processed[0] + 1
+                log(job_id, "INFO", f"[{sessao['label']}] Consultando {total_idx}/{len(chaves)}: {chave[:10]}...{chave[-6:]}")
+                resultado, novo_csrf = await consultar_via_api(http, chave, sessao["csrf"], job_id, proxy=proxy)
+                sessao["csrf"] = novo_csrf
+                sessao["limiter"].record()
 
-                log(job_id, "INFO", f"Consultando {total_idx}/{len(chaves)}: {chave[:10]}...{chave[-6:]}")
-                resultado, novo_csrf = await consultar_via_api(http, chave, _csrf[0], job_id, proxy=proxy)
-                _csrf[0] = novo_csrf
-                rotator.record(proxy)
-
+                # Rate limit desta sessão — aguardar reset e retentar
                 if resultado["status_nfe"] == "Erro Rate Limit":
-                    proxy = await handle_rate_limit(resultado, proxy)
-                    resultado, novo_csrf = await consultar_via_api(http, chave, _csrf[0], job_id, proxy=proxy)
-                    _csrf[0] = novo_csrf
-                    rotator.record(proxy)
+                    espera = _calcular_espera_rate_limit(resultado["obs"])
+                    log(job_id, "WARN", f"[{sessao['label']}] Rate limit — aguardando {espera}s")
+                    update_job(job_id, status="aguardando_rate_limit")
+                    await asyncio.sleep(espera)
+                    sessao["limiter"].reset()
+                    update_job(job_id, status="running")
+                    resultado, novo_csrf = await consultar_via_api(http, chave, sessao["csrf"], job_id, proxy=proxy)
+                    sessao["csrf"] = novo_csrf
+                    sessao["limiter"].record()
 
+                # CAPTCHA expirou — renovar apenas esta sessão
                 if resultado["status_nfe"] == "Erro CAPTCHA":
-                    async with _captcha_lock:
-                        log(job_id, "WARN", "Sessão expirou — renovando CAPTCHA...")
-                        nova = await renovar_sessao(http)
-                        if nova:
-                            _, _csrf[0] = nova
-                            resultado, novo_csrf = await consultar_via_api(http, chave, _csrf[0], job_id, proxy=proxy)
-                            _csrf[0] = novo_csrf
-                            rotator.record(proxy)
-                        else:
-                            _stop[0] = True
-                            return
+                    log(job_id, "WARN", f"[{sessao['label']}] Sessão expirou — renovando CAPTCHA...")
+                    nova = await obter_sessao_com_captcha(job_id, proxy=proxy)
+                    if nova:
+                        sessao["cookies"], sessao["csrf"] = nova
+                        http.cookie_jar.update_cookies(sessao["cookies"])
+                        sessao["limiter"].reset()
+                        resultado, novo_csrf = await consultar_via_api(http, chave, sessao["csrf"], job_id, proxy=proxy)
+                        sessao["csrf"] = novo_csrf
+                        sessao["limiter"].record()
+                    else:
+                        log(job_id, "ERROR", f"[{sessao['label']}] Falha ao renovar — encerrando worker")
+                        _stop[0] = True
+                        queue.task_done()
+                        break
 
                 salvar_resultado(
                     job_id, chave,
@@ -1060,11 +1088,12 @@ async def processar_job_async(job_id: str, chaves: list[str]):
                 )
                 _processed[0] += 1
                 update_job(job_id, processed=_processed[0])
+                queue.task_done()
 
-        await asyncio.gather(
-            *[_worker(chave, base_processadas + idx + 1) for idx, chave in enumerate(chaves_pendentes)],
-            return_exceptions=True,
-        )
+    await asyncio.gather(
+        *[worker_sessao(s) for s in sessoes],
+        return_exceptions=True,
+    )
 
     output_file = gerar_relatorio(job_id)
     update_job(job_id, status="done", finished_at=datetime.now().isoformat(), output_file=str(output_file))

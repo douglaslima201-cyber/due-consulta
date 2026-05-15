@@ -625,8 +625,13 @@ function updTable(rows){
   }).join('');
 }
 function updBadge(s){
-  const m={running:'<span class="bdg b-r pulse">● Executando</span>',done:'<span class="bdg b-d">✓ Concluído</span>',pending:'<span class="bdg b-w">⏳ Aguardando</span>',cancelled:'<span class="bdg b-e">✗ Cancelado</span>',aguardando_rate_limit:'<span class="bdg b-w pulse">⏸ Limite — aguardando liberação</span>'};
-  document.getElementById('jbdg').innerHTML=m[s]||'';
+  if(s&&s.startsWith('iniciando_sessoes:')){
+    const p=s.split(':')[1]||'';
+    document.getElementById('jbdg').innerHTML=`<span class="bdg b-w pulse">🔐 Configurando sessões ${p}</span>`;
+    return;
+  }
+  const m={running:'<span class="bdg b-r pulse">● Executando</span>',done:'<span class="bdg b-d">✓ Concluído</span>',pending:'<span class="bdg b-w">⏳ Aguardando</span>',cancelled:'<span class="bdg b-e">✗ Cancelado</span>',aguardando_rate_limit:'<span class="bdg b-w pulse">⏸ Limite — aguardando liberação</span>',error:'<span class="bdg b-e">✗ Erro</span>'};
+  document.getElementById('jbdg').innerHTML=m[s]||`<span class="bdg b-w">${s}</span>`;
 }
 
 async function dcancel(){if(!jobId||!confirm('Cancelar?'))return;await fetch(`${API}/cancelar/${jobId}`,{method:'POST'});clearInterval(pollT);document.getElementById('bcan').style.display='none';document.getElementById('bst').style.display='inline-flex';}
