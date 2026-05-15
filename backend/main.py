@@ -1192,7 +1192,28 @@ async def processar_job_async(job_id: str, chaves: list[str]):
                 proxy = sessao["proxy"]
                 total_idx = _processed[0] + 1
                 log(job_id, "INFO", f"[{sessao['label']}] Consultando {total_idx}/{len(chaves)}: {chave[:10]}...{chave[-6:]}")
-                resultado, novo_csrf = await consultar_via_api(http, chave, sessao["csrf"], job_id, proxy=proxy)
+
+                # asyncio.wait_for garante timeout mesmo se aiohttp travar internamente
+                try:
+                    resultado, novo_csrf = await asyncio.wait_for(
+                        consultar_via_api(http, chave, sessao["csrf"], job_id, proxy=proxy),
+                        timeout=40.0,
+                    )
+                except asyncio.TimeoutError:
+                    log(job_id, "WARN", f"[{sessao['label']}] Timeout forçado (40s) — proxy travado")
+                    resultado = {
+                        "chave": chave, "status_nfe": "Timeout",
+                        "numero_due": "", "data_due": "", "status_due": "",
+                        "obs": "Timeout 40s — proxy não respondeu",
+                    }
+                    novo_csrf = sessao["csrf"]
+                    registrar_timeout_proxy(proxy, job_id)
+                    salvar_resultado(job_id, chave, "Timeout", "", "", "", resultado["obs"])
+                    _processed[0] += 1
+                    update_job(job_id, processed=_processed[0])
+                    queue.task_done()
+                    continue
+
                 sessao["csrf"] = novo_csrf
                 sessao["limiter"].record()
 
