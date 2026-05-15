@@ -1017,6 +1017,17 @@ async def processar_job_async(job_id: str, chaves: list[str]):
         """Worker dedicado a uma sessão/proxy — puxa da fila até esvaziar."""
         async with aiohttp.ClientSession(cookies=sessao["cookies"]) as http:
             while not _stop[0]:
+
+                # Verificar perto do limite ANTES de pegar chave da fila
+                # (assim outras sessões ativas pegam enquanto esta dorme)
+                if sessao["limiter"].near_limit():
+                    espera = 3610
+                    log(job_id, "WARN", f"[{sessao['label']}] Perto do limite — aguardando reset (~1h)")
+                    update_job(job_id, status="aguardando_rate_limit")
+                    await asyncio.sleep(espera)
+                    sessao["limiter"].reset()
+                    update_job(job_id, status="running")
+
                 try:
                     chave = queue.get_nowait()
                 except asyncio.QueueEmpty:
@@ -1029,54 +1040,41 @@ async def processar_job_async(job_id: str, chaves: list[str]):
                 if row and row[0] == "cancelled":
                     log(job_id, "INFO", "Job cancelado pelo usuário")
                     _stop[0] = True
-                    queue.task_done()
                     break
 
                 proxy = sessao["proxy"]
-
-                # Troca preventiva se esta sessão está perto do limite
-                if sessao["limiter"].near_limit():
-                    espera = 3610
-                    log(job_id, "WARN", f"[{sessao['label']}] Perto do limite — aguardando reset (~1h)")
-                    update_job(job_id, status="aguardando_rate_limit")
-                    await asyncio.sleep(espera)
-                    sessao["limiter"].reset()
-                    update_job(job_id, status="running")
-
                 total_idx = _processed[0] + 1
                 log(job_id, "INFO", f"[{sessao['label']}] Consultando {total_idx}/{len(chaves)}: {chave[:10]}...{chave[-6:]}")
                 resultado, novo_csrf = await consultar_via_api(http, chave, sessao["csrf"], job_id, proxy=proxy)
                 sessao["csrf"] = novo_csrf
                 sessao["limiter"].record()
 
-                # Rate limit desta sessão — aguardar reset e retentar
+                # Rate limit — devolve a chave à fila para outra sessão pegar
                 if resultado["status_nfe"] == "Erro Rate Limit":
                     espera = _calcular_espera_rate_limit(resultado["obs"])
-                    log(job_id, "WARN", f"[{sessao['label']}] Rate limit — aguardando {espera}s")
+                    log(job_id, "WARN", f"[{sessao['label']}] Rate limit — devolvendo chave à fila, aguardando {espera}s")
+                    await queue.put(chave)  # outra sessão pega esta chave
                     update_job(job_id, status="aguardando_rate_limit")
                     await asyncio.sleep(espera)
                     sessao["limiter"].reset()
                     update_job(job_id, status="running")
-                    resultado, novo_csrf = await consultar_via_api(http, chave, sessao["csrf"], job_id, proxy=proxy)
-                    sessao["csrf"] = novo_csrf
-                    sessao["limiter"].record()
+                    continue  # volta ao topo sem salvar resultado
 
-                # CAPTCHA expirou — renovar apenas esta sessão
+                # CAPTCHA expirou — devolve chave e renova apenas esta sessão
                 if resultado["status_nfe"] == "Erro CAPTCHA":
-                    log(job_id, "WARN", f"[{sessao['label']}] Sessão expirou — renovando CAPTCHA...")
+                    log(job_id, "WARN", f"[{sessao['label']}] Sessão expirou — devolvendo chave à fila, renovando CAPTCHA...")
+                    await queue.put(chave)  # outra sessão pega enquanto renova
                     nova = await obter_sessao_com_captcha(job_id, proxy=proxy)
                     if nova:
                         sessao["cookies"], sessao["csrf"] = nova
                         http.cookie_jar.update_cookies(sessao["cookies"])
                         sessao["limiter"].reset()
-                        resultado, novo_csrf = await consultar_via_api(http, chave, sessao["csrf"], job_id, proxy=proxy)
-                        sessao["csrf"] = novo_csrf
-                        sessao["limiter"].record()
+                        log(job_id, "INFO", f"[{sessao['label']}] Sessão renovada — retomando")
                     else:
                         log(job_id, "ERROR", f"[{sessao['label']}] Falha ao renovar — encerrando worker")
                         _stop[0] = True
-                        queue.task_done()
                         break
+                    continue  # volta ao topo sem salvar resultado
 
                 salvar_resultado(
                     job_id, chave,
