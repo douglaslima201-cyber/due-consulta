@@ -11,7 +11,18 @@
 # Linhas começando com # são ignoradas.
 # Sem proxies configurados, o sistema usa o IP direto (1.000 req/hora).
 #
-# --- Proxies configurados (20 total) ---
+# --- Proxies configurados (29 total) ---
+# Novos (testados e funcionando):
+http://xkbdbkdf:ex8pxtha2x60@104.168.8.254:5707
+http://xkbdbkdf:ex8pxtha2x60@173.211.68.209:6491
+http://xkbdbkdf:ex8pxtha2x60@147.124.198.245:6104
+http://xkbdbkdf:ex8pxtha2x60@38.154.224.140:6681
+http://xkbdbkdf:ex8pxtha2x60@145.223.53.166:6700
+http://xkbdbkdf:ex8pxtha2x60@107.181.142.74:5667
+http://xkbdbkdf:ex8pxtha2x60@145.223.57.115:6148
+http://xkbdbkdf:ex8pxtha2x60@104.143.244.64:6012
+http://xkbdbkdf:ex8pxtha2x60@154.29.25.217:7228
+# Antigos:
 http://xkbdbkdf:ex8pxtha2x60@142.111.48.253:7030
 http://xkbdbkdf:ex8pxtha2x60@23.95.150.145:6114
 http://xkbdbkdf:ex8pxtha2x60@45.38.107.97:6014
