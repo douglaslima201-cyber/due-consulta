@@ -757,6 +757,25 @@ HEADERS_BASE = {
 }
 
 
+async def _testar_proxy(proxy: str | None) -> bool:
+    """Teste rápido de conectividade antes de abrir o browser. Evita Chrome desnecessário."""
+    if proxy is None:
+        return True
+    import aiohttp as _aio
+    try:
+        timeout = _aio.ClientTimeout(total=8, connect=5)
+        async with _aio.ClientSession() as s:
+            async with s.get(
+                "https://portalunico.siscomex.gov.br/due/x/",
+                proxy=proxy,
+                timeout=timeout,
+                allow_redirects=True,
+            ) as r:
+                return r.status < 500
+    except Exception:
+        return False
+
+
 async def obter_sessao_com_captcha(job_id: str, proxy: str | None = None) -> tuple[dict, str] | None:
     """
     Abre Chrome (roteado pelo proxy, se fornecido), aguarda resolução do hCaptcha.
@@ -767,6 +786,15 @@ async def obter_sessao_com_captcha(job_id: str, proxy: str | None = None) -> tup
     label = proxy or "IP direto"
     csrf_holder = {"token": None}
     captcha_ok = asyncio.Event()
+
+    # Pré-teste: verifica conectividade antes de abrir o browser
+    if proxy:
+        log(job_id, "INFO", f"Testando proxy [{label}]...")
+        ok = await _testar_proxy(proxy)
+        if not ok:
+            log(job_id, "WARN", f"Proxy [{label}] inacessivel — pulando sem abrir browser")
+            return None
+        log(job_id, "INFO", f"Proxy [{label}] OK — abrindo browser")
 
     try:
         async with async_playwright() as p:
