@@ -806,23 +806,16 @@ async def obter_sessao_com_captcha(job_id: str, proxy: str | None = None) -> tup
                 "--no-first-run",
                 "--no-default-browser-check",
                 "--disable-infobars",
-                "--disable-features=IsolateOrigins,site-per-process",
             ]
-            _ignore_args = ["--enable-automation"]
             for _channel in ("chrome", "msedge"):
                 try:
-                    browser = await p.chromium.launch(
-                        channel=_channel, headless=False,
-                        args=_extra_args, ignore_default_args=_ignore_args,
-                    )
+                    browser = await p.chromium.launch(channel=_channel, headless=False, args=_extra_args)
                     log(job_id, "INFO", f"{'Chrome' if _channel=='chrome' else 'Edge'} aberto [{label}] — resolva o CAPTCHA para iniciar")
                     break
                 except Exception:
                     pass
             if browser is None:
-                browser = await p.chromium.launch(
-                    headless=False, args=_extra_args, ignore_default_args=_ignore_args,
-                )
+                browser = await p.chromium.launch(headless=False, args=_extra_args)
                 log(job_id, "INFO", f"Chromium aberto [{label}] — resolva o CAPTCHA para iniciar")
 
             ctx_kwargs: dict = {"viewport": {"width": 1280, "height": 800}, "user_agent": HEADERS_BASE["User-Agent"]}
@@ -867,13 +860,14 @@ async def obter_sessao_com_captcha(job_id: str, proxy: str | None = None) -> tup
             nav_ok = False
             for _tentativa in range(2):
                 try:
-                    await page.goto(PORTAL_URL, wait_until="load", timeout=30000)
+                    # domcontentloaded: aguarda apenas o HTML, não todos os recursos
+                    await page.goto(PORTAL_URL, wait_until="domcontentloaded", timeout=60000)
                     nav_ok = True
                     break
                 except Exception as nav_err:
                     if _tentativa == 0:
                         log(job_id, "WARN", f"Navegação [{label}] tentativa 1 falhou ({nav_err.__class__.__name__}) — retentando")
-                        await asyncio.sleep(2)
+                        await asyncio.sleep(3)
                     else:
                         log(job_id, "WARN", f"Falha ao navegar [{label}]: {nav_err} — pulando este proxy")
                         await browser.close()
