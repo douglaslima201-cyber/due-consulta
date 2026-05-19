@@ -884,15 +884,25 @@ def analisar_compliance(registros: list, vinculos: list) -> list:
             })
 
     # R5 — Prescrição
+    _tri_mes = {1: 3, 2: 6, 3: 9, 4: 12}
     for r in registros:
         comp = r.get("competencia")
         if not comp:
             continue
         try:
-            partes = comp.split('/')
-            if len(partes) != 2:
+            mes, ano = None, None
+            # Formato trimestral: "3º Trimestre de 2022" ou variantes com ? no lugar de º
+            m_tri = re.search(r'(\d)[°º?]?\s*[Tt]rimestre\s+de\s+(\d{4})', comp)
+            if m_tri:
+                mes = _tri_mes.get(int(m_tri.group(1)))
+                ano = int(m_tri.group(2))
+            else:
+                # Formato mensal: "MM/AAAA"
+                partes = comp.split('/')
+                if len(partes) == 2:
+                    mes, ano = int(partes[0]), int(partes[1])
+            if mes is None or ano is None:
                 continue
-            mes, ano = int(partes[0]), int(partes[1])
             anos = (hoje - date(ano, mes, 1)).days / 365.25
             if anos > 5:
                 alertas.append({
