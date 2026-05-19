@@ -799,22 +799,30 @@ async def obter_sessao_com_captcha(job_id: str, proxy: str | None = None) -> tup
     try:
         async with async_playwright() as p:
             browser = None
+            # ignore_default_args remove --enable-automation que o hCaptcha detecta como bot
             _extra_args = [
                 "--disable-blink-features=AutomationControlled",
                 "--disable-error-dialogs",
                 "--no-first-run",
                 "--no-default-browser-check",
                 "--disable-infobars",
+                "--disable-features=IsolateOrigins,site-per-process",
             ]
+            _ignore_args = ["--enable-automation"]
             for _channel in ("chrome", "msedge"):
                 try:
-                    browser = await p.chromium.launch(channel=_channel, headless=False, args=_extra_args)
+                    browser = await p.chromium.launch(
+                        channel=_channel, headless=False,
+                        args=_extra_args, ignore_default_args=_ignore_args,
+                    )
                     log(job_id, "INFO", f"{'Chrome' if _channel=='chrome' else 'Edge'} aberto [{label}] — resolva o CAPTCHA para iniciar")
                     break
                 except Exception:
                     pass
             if browser is None:
-                browser = await p.chromium.launch(headless=False, args=_extra_args)
+                browser = await p.chromium.launch(
+                    headless=False, args=_extra_args, ignore_default_args=_ignore_args,
+                )
                 log(job_id, "INFO", f"Chromium aberto [{label}] — resolva o CAPTCHA para iniciar")
 
             ctx_kwargs: dict = {"viewport": {"width": 1280, "height": 800}, "user_agent": HEADERS_BASE["User-Agent"]}
@@ -824,21 +832,32 @@ async def obter_sessao_com_captcha(job_id: str, proxy: str | None = None) -> tup
             context = await browser.new_context(**ctx_kwargs)
             page = await context.new_page()
             await page.add_init_script("""
+                // Remover rastros de automação
+                delete Object.getPrototypeOf(navigator).webdriver;
                 Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
                 Object.defineProperty(navigator, 'languages', { get: () => ['pt-BR', 'pt', 'en-US', 'en'] });
-                window.chrome = { runtime: {} };
+                Object.defineProperty(navigator, 'plugins', { get: () => [1,2,3,4,5] });
+                Object.defineProperty(navigator, 'platform', { get: () => 'Win32' });
+                window.chrome = { runtime: {}, loadTimes: () => {}, csi: () => {}, app: {} };
             """)
 
             async def rastrear_resposta(response):
                 token = response.headers.get("x-csrf-token")
                 if token:
                     csrf_holder["token"] = token
-                # Log todas as URLs relevantes para diagnóstico
-                url_lower = response.url.lower()
-                if any(kw in url_lower for kw in ["captcha", "csrf", "auth", "token", "session", "login", "due/api"]):
-                    log(job_id, "INFO", f"[NAV] {response.status} {response.url[:120]}")
-                if "portal/proxy/captcha" in response.url and response.status in (200, 204):
-                    log(job_id, "INFO", f"CAPTCHA validado! [{label}]")
+
+                url = response.url
+                # Detectar CAPTCHA validado:
+                # 1. due/proxy/captcha com 2xx (redirecionamento após resolução)
+                # 2. portal/proxy/captcha com 200 (fluxo antigo)
+                # 3. Qualquer endpoint autenticado da API DUE retornando com CSRF token
+                captcha_validado = (
+                    ("due/proxy/captcha" in url and response.status in (200, 204, 302, 307))
+                    or ("portal/proxy/captcha" in url and response.status in (200, 204))
+                    or (token and "portalunico.siscomex.gov.br" in url and response.status in (200, 422))
+                )
+                if captcha_validado and not captcha_ok.is_set():
+                    log(job_id, "INFO", f"CAPTCHA validado! [{label}] via {url[:80]}")
                     captcha_ok.set()
 
             page.on("response", rastrear_resposta)
