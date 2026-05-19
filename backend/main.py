@@ -833,6 +833,10 @@ async def obter_sessao_com_captcha(job_id: str, proxy: str | None = None) -> tup
                 token = response.headers.get("x-csrf-token")
                 if token:
                     csrf_holder["token"] = token
+                # Log todas as URLs relevantes para diagnóstico
+                url_lower = response.url.lower()
+                if any(kw in url_lower for kw in ["captcha", "csrf", "auth", "token", "session", "login", "due/api"]):
+                    log(job_id, "INFO", f"[NAV] {response.status} {response.url[:120]}")
                 if "portal/proxy/captcha" in response.url and response.status in (200, 204):
                     log(job_id, "INFO", f"CAPTCHA validado! [{label}]")
                     captcha_ok.set()
