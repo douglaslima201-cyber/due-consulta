@@ -1259,11 +1259,10 @@ async def processar_job_async(job_id: str, chaves: list[str]):
                 total_idx = _processed[0] + 1
                 log(job_id, "INFO", f"[{sessao['label']}] Consultando {total_idx}/{len(chaves)}: {chave[:10]}...{chave[-6:]}")
 
-                # API calls vão DIRETO (sem proxy) — autenticação é pelos cookies, não pelo IP.
-                # Proxy é usado apenas na fase de browser (CAPTCHA) para obter sessões distintas.
+                # API calls usam o mesmo proxy do browser — portal vincula sessão ao IP do CAPTCHA
                 try:
                     resultado, novo_csrf = await asyncio.wait_for(
-                        consultar_via_api(http, chave, sessao["csrf"], job_id, proxy=None),
+                        consultar_via_api(http, chave, sessao["csrf"], job_id, proxy=proxy),
                         timeout=40.0,
                     )
                 except asyncio.TimeoutError:
