@@ -840,18 +840,13 @@ async def obter_sessao_com_captcha(job_id: str, proxy: str | None = None) -> tup
                     csrf_holder["token"] = token
 
                 url = response.url
-                # Detectar CAPTCHA validado:
-                # 1. due/proxy/captcha com 2xx (redirecionamento após resolução)
-                # 2. portal/proxy/captcha com 200 (fluxo antigo)
-                # 3. Qualquer endpoint autenticado da API DUE retornando com CSRF token
-                captcha_validado = (
-                    ("due/proxy/captcha" in url and response.status in (200, 204, 302, 307))
-                    or ("portal/proxy/captcha" in url and response.status in (200, 204))
-                    or (token and "portalunico.siscomex.gov.br" in url and response.status in (200, 422))
-                )
-                if captcha_validado and not captcha_ok.is_set():
-                    log(job_id, "INFO", f"CAPTCHA validado! [{label}] via {url[:80]}")
-                    captcha_ok.set()
+                # Detectar CAPTCHA enviado pelo usuário:
+                # Apenas URLs que contêm "captcha" no path (não user/session/etc)
+                if "proxy/captcha" in url and not captcha_ok.is_set():
+                    log(job_id, "INFO", f"CAPTCHA submetido [{label}] HTTP {response.status} — aguardando validação")
+                    if response.status in (200, 204, 302, 307):
+                        captcha_ok.set()
+                        log(job_id, "INFO", f"CAPTCHA validado! [{label}]")
 
             page.on("response", rastrear_resposta)
 
@@ -961,8 +956,8 @@ async def inicializar_sessoes(job_id: str, todos_proxies: list[str | None], nece
             registrar_sucesso_proxy(proxy)
             log(job_id, "INFO", f"Sessão {posicao}/{necessarios} pronta [{label}]")
         else:
-            # Incrementa falhas; bloqueia após FALHAS_PARA_BLOQUEAR
-            registrar_timeout_proxy(proxy, job_id)
+            if proxy is not None:  # não bloquear IP direto
+                registrar_timeout_proxy(proxy, job_id)
             log(job_id, "WARN", f"Proxy [{label}] falhou — tentando proximo")
 
     if len(sessoes) < necessarios:
