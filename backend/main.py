@@ -874,6 +874,28 @@ async def obter_sessao_com_captcha(job_id: str, proxy: str | None = None) -> tup
             await asyncio.sleep(3)
             await browser.close()
 
+        # Validar sessão: confirmar que os cookies permitem chamadas reais à API
+        import aiohttp as _aio_val
+        log(job_id, "INFO", f"Validando sessão [{label}]...")
+        try:
+            _timeout_val = _aio_val.ClientTimeout(total=15)
+            async with _aio_val.ClientSession(cookies=cookies) as _s:
+                async with _s.get(
+                    f"{API_BASE}/api/due/listar-due-consulta",
+                    params={"chaveNfe": "35260110264039000186550010001234561234567891"},
+                    headers={**HEADERS_BASE, "X-CSRF-Token": csrf or ""},
+                    proxy=proxy,
+                    timeout=_timeout_val,
+                ) as _r:
+                    _body = await _r.text()
+                    if "PUCX" in _body or "captcha" in _body.lower() or _r.status == 401:
+                        log(job_id, "WARN", f"Sessão [{label}] inválida (CAPTCHA não resolvido) — descartando")
+                        return None
+                    log(job_id, "INFO", f"Sessão [{label}] validada (HTTP {_r.status}) — pronta para uso")
+        except Exception as _ve:
+            log(job_id, "WARN", f"Validação falhou [{label}]: {_ve} — descartando sessão")
+            return None
+
         return cookies, csrf
 
     except Exception as ex:
@@ -968,14 +990,17 @@ async def consultar_via_api(
             except Exception:
                 body = await resp.text()
 
+            # Detectar erro CAPTCHA em qualquer status HTTP
+            _body_str = str(body) if not isinstance(body, str) else body
+            if "PUCX" in _body_str or ("captcha" in _body_str.lower() and resp.status in (200, 401, 403)):
+                resultado["status_nfe"] = "Erro CAPTCHA"
+                resultado["obs"] = "Sessão expirou — CAPTCHA precisa ser renovado"
+                return resultado, csrf_token
+
             if resp.status == 403:
                 msg = body.get("message", "") if isinstance(body, dict) else str(body)
-                if "CAPTCHA" in msg.upper():
-                    resultado["status_nfe"] = "Erro CAPTCHA"
-                    resultado["obs"] = "Sessão expirou — CAPTCHA precisa ser renovado"
-                else:
-                    resultado["status_nfe"] = "Erro"
-                    resultado["obs"] = f"HTTP 403: {msg[:150]}"
+                resultado["status_nfe"] = "Erro"
+                resultado["obs"] = f"HTTP 403: {msg[:150]}"
                 return resultado, novo_csrf
 
             if resp.status == 422:
