@@ -408,18 +408,25 @@ select:focus,input:focus{
         <div class="form-group"><label>Outros (R$)</label><input type="number" id="s-outros" value="0" min="0"></div>
       </div>
 
-      <div class="sec-lbl">🏛️ Reforma Tributária</div>
-      <div class="row2">
+      <div class="sec-lbl">🧾 Tributação</div>
+      <div class="form-group">
+        <label>Regime</label>
+        <div class="tog">
+          <button class="tbtn" onclick="setTog('s-reg','atual',this);toggleRegime('s')">Atual (PIS/COFINS)</button>
+          <button class="tbtn on" onclick="setTog('s-reg','reforma',this);toggleRegime('s')">Reforma (IBS/CBS)</button>
+          <button class="tbtn" onclick="setTog('s-reg','ambos',this);toggleRegime('s')">Ambos</button>
+        </div>
+      </div>
+      <div id="s-pc-row" class="row2" style="display:none">
+        <div class="form-group"><label>PIS (%)</label><input type="number" id="s-pis" value="1.65" min="0" step=".01"></div>
+        <div class="form-group"><label>COFINS (%)</label><input type="number" id="s-cofins" value="7.60" min="0" step=".01"></div>
+      </div>
+      <div id="s-pc-note" style="display:none;font-size:10px;color:var(--g400);margin:-4px 0 7px;padding:0 2px">↳ PIS/COFINS calculados <b>por dentro</b> (embutidos no preço)</div>
+      <div id="s-ic-row" class="row2">
         <div class="form-group"><label>IBS (%)</label><input type="number" id="s-ibs" value="9.5" min="0" step=".1"></div>
         <div class="form-group"><label>CBS (%)</label><input type="number" id="s-cbs" value="5.8" min="0" step=".1"></div>
       </div>
-      <div class="form-group">
-        <label>Inclusão</label>
-        <div class="tog">
-          <button class="tbtn on" onclick="setTog('s-trib','por_fora',this)">Por Fora (+%)</button>
-          <button class="tbtn" onclick="setTog('s-trib','por_dentro',this)">Por Dentro</button>
-        </div>
-      </div>
+      <div id="s-ic-note" style="font-size:10px;color:var(--g400);margin:-4px 0 7px;padding:0 2px">↳ IBS/CBS calculados <b>por fora</b> (adicionados ao preço)</div>
 
       <div class="sec-lbl">✅ Validação</div>
       <div class="form-group"><label>Frete Cotado (R$) — opcional</label><input type="number" id="s-cotado" placeholder="Comparar com piso"></div>
@@ -480,18 +487,25 @@ select:focus,input:focus{
         <div class="form-group"><label>Pedágio Total (R$)</label><input type="number" id="r-ped" value="0" min="0"></div>
         <div class="form-group"><label>Margem de Lucro (%)</label><input type="number" id="r-marg" value="10" min="0" step=".5"></div>
       </div>
-      <div class="row2">
+      <div class="form-group"><label>Custos Adicionais Totais (R$)</label><input type="number" id="r-add" value="0" min="0"></div>
+      <div class="form-group">
+        <label>Regime</label>
+        <div class="tog">
+          <button class="tbtn" onclick="setTog('r-reg','atual',this);toggleRegime('r')">Atual (PIS/COFINS)</button>
+          <button class="tbtn on" onclick="setTog('r-reg','reforma',this);toggleRegime('r')">Reforma (IBS/CBS)</button>
+          <button class="tbtn" onclick="setTog('r-reg','ambos',this);toggleRegime('r')">Ambos</button>
+        </div>
+      </div>
+      <div id="r-pc-row" class="row2" style="display:none">
+        <div class="form-group"><label>PIS (%)</label><input type="number" id="r-pis" value="1.65" min="0" step=".01"></div>
+        <div class="form-group"><label>COFINS (%)</label><input type="number" id="r-cofins" value="7.60" min="0" step=".01"></div>
+      </div>
+      <div id="r-pc-note" style="display:none;font-size:10px;color:var(--g400);margin:-4px 0 7px;padding:0 2px">↳ PIS/COFINS calculados <b>por dentro</b> (embutidos no preço)</div>
+      <div id="r-ic-row" class="row2">
         <div class="form-group"><label>IBS (%)</label><input type="number" id="r-ibs" value="9.5" min="0" step=".1"></div>
         <div class="form-group"><label>CBS (%)</label><input type="number" id="r-cbs" value="5.8" min="0" step=".1"></div>
       </div>
-      <div class="form-group"><label>Custos Adicionais Totais (R$)</label><input type="number" id="r-add" value="0" min="0"></div>
-      <div class="form-group">
-        <label>Inclusão de Tributos</label>
-        <div class="tog">
-          <button class="tbtn on" onclick="setTog('r-trib','por_fora',this)">Por Fora</button>
-          <button class="tbtn" onclick="setTog('r-trib','por_dentro',this)">Por Dentro</button>
-        </div>
-      </div>
+      <div id="r-ic-note" style="font-size:10px;color:var(--g400);margin:-4px 0 7px;padding:0 2px">↳ IBS/CBS calculados <b>por fora</b> (adicionados ao preço)</div>
 
       <button class="calc-btn" onclick="calcRoteiro()">⚡ CALCULAR ROTEIRO</button>
     </div>
@@ -583,7 +597,7 @@ function gt(k,def=''){return S[k]||def;}
 ['s-op','r-op'].forEach(k=>S[k]='lotacao');
 ['s-cont','r-cont'].forEach(k=>S[k]='composicao');
 ['s-base'].forEach(k=>S[k]='custo_total');
-['s-trib','r-trib'].forEach(k=>S[k]='por_fora');
+S['s-reg']='reforma'; S['r-reg']='reforma';
 
 let curMode='simples';
 function setMode(m,el){
@@ -595,6 +609,29 @@ function setMode(m,el){
 }
 
 function fmt(v,d=2){return v.toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d});}
+
+function toggleRegime(p){
+  const reg=gt(p+'-reg','reforma');
+  const showPc=reg==='atual'||reg==='ambos';
+  const showIc=reg==='reforma'||reg==='ambos';
+  document.getElementById(p+'-pc-row').style.display=showPc?'':'none';
+  document.getElementById(p+'-pc-note').style.display=showPc?'':'none';
+  document.getElementById(p+'-ic-row').style.display=showIc?'':'none';
+  document.getElementById(p+'-ic-note').style.display=showIc?'':'none';
+}
+// PIS/COFINS — por dentro (embutido no preço): total = base / (1 - aliq)
+function applyPisCofins(sub,pis,cofins){
+  const aliq=(pis+cofins)/100;
+  if(aliq<=0)return{total:sub,trib:0,pisTrib:0,cofinsTrib:0};
+  if(aliq>=1)return null;
+  const total=sub/(1-aliq);
+  return{total,trib:total-sub,pisTrib:total*(pis/100),cofinsTrib:total*(cofins/100)};
+}
+// IBS/CBS — por fora (adicionado ao preço): total = base * (1 + aliq)
+function applyIbsCbs(sub,ibs,cbs){
+  const ibsTrib=sub*(ibs/100),cbsTrib=sub*(cbs/100);
+  return{total:sub+ibsTrib+cbsTrib,trib:ibsTrib+cbsTrib,ibsTrib,cbsTrib};
+}
 function getTab(op,cont){
   if(op==='lotacao'&&cont==='composicao')return'A';
   if(op==='lotacao'&&cont==='cavalo')return'B';
@@ -649,8 +686,11 @@ function calcSimples(){
   const dist=parseFloat(document.getElementById('s-dist').value)||0;
   const ped=parseFloat(document.getElementById('s-ped').value)||0;
   const marg=parseFloat(document.getElementById('s-marg').value)||0;
-  const ibs=parseFloat(document.getElementById('s-ibs').value)||0;
-  const cbs=parseFloat(document.getElementById('s-cbs').value)||0;
+  const reg=gt('s-reg','reforma');
+  const pis=reg!=='reforma'?(parseFloat(document.getElementById('s-pis').value)||0):0;
+  const cofins=reg!=='reforma'?(parseFloat(document.getElementById('s-cofins').value)||0):0;
+  const ibs=reg!=='atual'?(parseFloat(document.getElementById('s-ibs').value)||0):0;
+  const cbs=reg!=='atual'?(parseFloat(document.getElementById('s-cbs').value)||0):0;
   const adds=(['diarias','seguro','gris','taxa','adval','outros']).reduce((a,k)=>a+(parseFloat(document.getElementById('s-'+k).value)||0),0);
   const cotado=parseFloat(document.getElementById('s-cotado').value)||0;
 
@@ -665,22 +705,36 @@ function calcSimples(){
   const custoBase=piso+ped+adds;
   const valMarg=gt('s-base')==='custo_total'?custoBase*(marg/100):piso*(marg/100);
   const sub=custoBase+valMarg;
-  const aliq=ibs+cbs;
-  const tr=applyTrib(sub,aliq,gt('s-trib','por_fora'));
-  if(!tr){renderErr('Alíquota de tributos inválida (≥100%).');return;}
 
-  const total=tr.total;
-  const pcts={piso:piso/total*100,ped:ped/total*100,add:adds/total*100,marg:valMarg/total*100,trib:tr.trib/total*100};
+  // PIS/COFINS por dentro sobre a base pré-tributo
+  const pcRes=applyPisCofins(sub,pis,cofins);
+  if(!pcRes){renderErr('Alíquota PIS/COFINS inválida (≥100%).');return;}
+  const subPC=pcRes.total;
+  const tribPisCofins=pcRes.trib;
+
+  // IBS/CBS por fora sobre o valor já com PIS/COFINS
+  const icRes=applyIbsCbs(subPC,ibs,cbs);
+  const total=icRes.total;
+  const tribIbsCbs=icRes.trib;
+  const trib=tribPisCofins+tribIbsCbs;
+
+  const pcts={piso:piso/total*100,ped:ped/total*100,add:adds/total*100,marg:valMarg/total*100,
+    tribPc:tribPisCofins/total*100,tribIc:tribIbsCbs/total*100};
   const alertas=[];
   if(cotado>0&&cotado<piso)alertas.push({t:'err',m:`🚨 Frete cotado (R$ ${fmt(cotado)}) está ABAIXO do piso mínimo (R$ ${fmt(piso)}). Operação irregular — Lei 13.703/2018.`});
   else if(cotado>0)alertas.push({t:'ok',m:`✅ Frete cotado (R$ ${fmt(cotado)}) está ACIMA do piso. Em conformidade.`});
   if(dist>2000)alertas.push({t:'warn',m:`⚠️ Distância de ${fmt(dist,0)} km. Verifique se não há múltiplos destinos — use a Roteirização para maior precisão regulatória.`});
 
-  renderSimples({tab,tipo,eixos,dist,ccd:cf.ccd,cc:cf.cc,piso,ped,adds,valMarg,sub,trib:tr.trib,total,ibs,cbs,aliq,marg,pcts,alertas,cotado,custoBase});
+  renderSimples({tab,tipo,eixos,dist,ccd:cf.ccd,cc:cf.cc,piso,ped,adds,valMarg,sub,subPC,
+    trib,tribPisCofins,tribIbsCbs,total,pis,cofins,ibs,cbs,marg,pcts,alertas,cotado,custoBase,
+    pisTrib:pcRes.pisTrib,cofinsTrib:pcRes.cofinsTrib,ibsTrib:icRes.ibsTrib,cbsTrib:icRes.cbsTrib});
 }
 
 function renderSimples(d){
-  const {tab,tipo,eixos,dist,ccd,cc,piso,ped,adds,valMarg,sub,trib,total,ibs,cbs,aliq,marg,pcts,alertas,cotado,custoBase}=d;
+  const {tab,tipo,eixos,dist,ccd,cc,piso,ped,adds,valMarg,sub,subPC,
+    trib,tribPisCofins,tribIbsCbs,total,pis,cofins,ibs,cbs,marg,pcts,alertas,cotado,custoBase,
+    pisTrib,cofinsTrib,ibsTrib,cbsTrib}=d;
+  const aliqPc=pis+cofins, aliqIc=ibs+cbs;
   const ah=alertas.map(a=>`<div class="alrt ${a.t}">${a.m}</div>`).join('');
   document.getElementById('mainArea').innerHTML=`
     ${ah}
@@ -720,7 +774,8 @@ function renderSimples(d){
             <tr><td>🚧 Pedágio</td><td>R$ ${fmt(ped)}</td><td class="pct">${fmt(pcts.ped,1)}%</td></tr>
             <tr><td>🧾 Custos Adicionais</td><td>R$ ${fmt(adds)}</td><td class="pct">${fmt(pcts.add,1)}%</td></tr>
             <tr><td>📈 Margem de Lucro (${fmt(marg,1)}%)</td><td>R$ ${fmt(valMarg)}</td><td class="pct">${fmt(pcts.marg,1)}%</td></tr>
-            <tr><td>🏛️ IBS+CBS (${fmt(aliq,1)}%)</td><td>R$ ${fmt(trib)}</td><td class="pct">${fmt(pcts.trib,1)}%</td></tr>
+            ${tribPisCofins>0?`<tr><td>🧾 PIS/COFINS (${fmt(aliqPc,2)}%) — por dentro</td><td>R$ ${fmt(tribPisCofins)}</td><td class="pct">${fmt(pcts.tribPc,1)}%</td></tr>`:''}
+            ${tribIbsCbs>0?`<tr><td>🏛️ IBS/CBS (${fmt(aliqIc,1)}%) — por fora</td><td>R$ ${fmt(tribIbsCbs)}</td><td class="pct">${fmt(pcts.tribIc,1)}%</td></tr>`:''}
             <tr><td>💰 FRETE FINAL</td><td>R$ ${fmt(total)}</td><td class="pct">100%</td></tr>
           </tbody>
         </table>
@@ -730,14 +785,16 @@ function renderSimples(d){
         <div class="bseg" style="width:${pcts.ped}%;background:#0D1B2A"></div>
         <div class="bseg" style="width:${pcts.add}%;background:#8C95A6"></div>
         <div class="bseg" style="width:${pcts.marg}%;background:#2ECC71"></div>
-        <div class="bseg" style="width:${pcts.trib}%;background:#D4930A"></div>
+        <div class="bseg" style="width:${pcts.tribPc}%;background:#D4930A"></div>
+        <div class="bseg" style="width:${pcts.tribIc}%;background:#7A5900"></div>
       </div>
       <div class="bleg">
         <span>🟠 Piso (${fmt(pcts.piso,1)}%)</span>
         <span>🔵 Pedágio (${fmt(pcts.ped,1)}%)</span>
         <span>⬜ Adicionais (${fmt(pcts.add,1)}%)</span>
         <span>🟢 Margem (${fmt(pcts.marg,1)}%)</span>
-        <span>🟡 Tributos (${fmt(pcts.trib,1)}%)</span>
+        ${pcts.tribPc>0?`<span>🟡 PIS/COFINS (${fmt(pcts.tribPc,1)}%)</span>`:''}
+        ${pcts.tribIc>0?`<span>🟤 IBS/CBS (${fmt(pcts.tribIc,1)}%)</span>`:''}
       </div>
       <div class="grid3">
         <div class="rcard"><div class="rlbl">Piso Mínimo</div><div class="rval" style="font-size:18px">R$ ${fmt(piso)}</div><div class="rsub">Obrigatório</div></div>
@@ -762,35 +819,53 @@ function renderSimples(d){
     </div>
 
     <div id="tab-st" style="display:none">
-      <div class="rcard">
-        <div class="sec-lbl" style="margin-bottom:10px">🏛️ Impacto IBS + CBS</div>
+      ${tribPisCofins>0?`<div class="rcard">
+        <div class="sec-lbl" style="margin-bottom:10px">🧾 PIS/COFINS — Regime Atual (Por Dentro)</div>
+        <div class="grid2">
+          <div>
+            <div class="drow"><span class="dl">PIS</span><span class="dv acc">${fmt(pis,2)}%</span></div>
+            <div class="drow"><span class="dl">COFINS</span><span class="dv acc">${fmt(cofins,2)}%</span></div>
+            <div class="drow"><span class="dl">Alíquota Total</span><span class="dv acc">${fmt(aliqPc,2)}%</span></div>
+          </div>
+          <div>
+            <div class="drow"><span class="dl">Base de cálculo</span><span class="dv">R$ ${fmt(sub)}</span></div>
+            <div class="drow"><span class="dl">PIS embutido</span><span class="dv">R$ ${fmt(pisTrib)}</span></div>
+            <div class="drow"><span class="dl">COFINS embutido</span><span class="dv">R$ ${fmt(cofinsTrib)}</span></div>
+            <div class="drow"><span class="dl">Preço c/ PIS/COFINS</span><span class="dv acc">R$ ${fmt(subPC)}</span></div>
+          </div>
+        </div>
+        <div class="alrt info" style="margin-top:8px;font-size:10px">Por dentro: o tributo já está embutido no preço. Fórmula: base ÷ (1 − ${fmt(aliqPc,2)}%) = R$ ${fmt(subPC)}</div>
+      </div>`:''}
+      ${tribIbsCbs>0?`<div class="rcard">
+        <div class="sec-lbl" style="margin-bottom:10px">🏛️ IBS/CBS — Reforma Tributária (Por Fora)</div>
         <div class="grid2">
           <div>
             <div class="drow"><span class="dl">IBS</span><span class="dv acc">${fmt(ibs,1)}%</span></div>
             <div class="drow"><span class="dl">CBS</span><span class="dv acc">${fmt(cbs,1)}%</span></div>
-            <div class="drow"><span class="dl">Alíquota Total</span><span class="dv acc">${fmt(aliq,1)}%</span></div>
+            <div class="drow"><span class="dl">Alíquota Total</span><span class="dv acc">${fmt(aliqIc,1)}%</span></div>
           </div>
           <div>
-            <div class="drow"><span class="dl">Base</span><span class="dv">R$ ${fmt(sub)}</span></div>
-            <div class="drow"><span class="dl">IBS s/ base</span><span class="dv">R$ ${fmt(sub*(ibs/100))}</span></div>
-            <div class="drow"><span class="dl">CBS s/ base</span><span class="dv">R$ ${fmt(sub*(cbs/100))}</span></div>
+            <div class="drow"><span class="dl">Base de cálculo</span><span class="dv">R$ ${fmt(subPC)}</span></div>
+            <div class="drow"><span class="dl">IBS adicionado</span><span class="dv">R$ ${fmt(ibsTrib)}</span></div>
+            <div class="drow"><span class="dl">CBS adicionado</span><span class="dv">R$ ${fmt(cbsTrib)}</span></div>
           </div>
         </div>
-      </div>
+        <div class="alrt info" style="margin-top:8px;font-size:10px">Por fora: o tributo é somado ao preço. Fórmula: R$ ${fmt(subPC)} × (1 + ${fmt(aliqIc,1)}%) = R$ ${fmt(total)}</div>
+      </div>`:''}
       <div class="rcard">
-        <div class="sec-lbl" style="margin-bottom:8px">Cenários Tributários</div>
+        <div class="sec-lbl" style="margin-bottom:8px">Comparativo de Cenários</div>
         <table class="ctab">
           <thead><tr><th>Cenário</th><th>Valor</th><th>Δ vs Piso</th></tr></thead>
           <tbody>
             <tr><td>Piso mínimo</td><td>R$ ${fmt(piso)}</td><td class="pct">—</td></tr>
             <tr><td>Sem tributos</td><td>R$ ${fmt(sub)}</td><td class="pct">+${fmt((sub/piso-1)*100,1)}%</td></tr>
-            <tr><td>Só IBS (${fmt(ibs,1)}%)</td><td>R$ ${fmt(sub*(1+ibs/100))}</td><td class="pct">+${fmt((sub*(1+ibs/100)/piso-1)*100,1)}%</td></tr>
-            <tr><td>Só CBS (${fmt(cbs,1)}%)</td><td>R$ ${fmt(sub*(1+cbs/100))}</td><td class="pct">+${fmt((sub*(1+cbs/100)/piso-1)*100,1)}%</td></tr>
-            <tr><td>💰 IBS + CBS</td><td>R$ ${fmt(total)}</td><td class="pct">+${fmt((total/piso-1)*100,1)}%</td></tr>
+            ${aliqPc>0?`<tr><td>Só PIS/COFINS (${fmt(aliqPc,2)}%)</td><td>R$ ${fmt(subPC)}</td><td class="pct">+${fmt((subPC/piso-1)*100,1)}%</td></tr>`:''}
+            ${aliqIc>0?`<tr><td>Só IBS/CBS (${fmt(aliqIc,1)}%)</td><td>R$ ${fmt(applyIbsCbs(sub,ibs,cbs).total)}</td><td class="pct">+${fmt((applyIbsCbs(sub,ibs,cbs).total/piso-1)*100,1)}%</td></tr>`:''}
+            <tr><td>💰 Frete Final</td><td>R$ ${fmt(total)}</td><td class="pct">+${fmt((total/piso-1)*100,1)}%</td></tr>
           </tbody>
         </table>
       </div>
-      <div class="alrt info">ℹ️ Alíquotas IBS/CBS são estimativas. Implementação gradual até 2033 conforme Reforma Tributária.</div>
+      <div class="alrt info">ℹ️ PIS/COFINS (por dentro): tributo embutido no preço — regime atual cumulativo/não cumulativo. IBS/CBS (por fora): tributo adicionado ao preço — Reforma Tributária, implementação gradual até 2033.</div>
     </div>`;
 }
 
@@ -799,10 +874,12 @@ function calcRoteiro(){
   const eixos=parseInt(document.getElementById('r-eixos').value);
   const ped=parseFloat(document.getElementById('r-ped').value)||0;
   const marg=parseFloat(document.getElementById('r-marg').value)||0;
-  const ibs=parseFloat(document.getElementById('r-ibs').value)||0;
-  const cbs=parseFloat(document.getElementById('r-cbs').value)||0;
+  const reg=gt('r-reg','reforma');
+  const pis=reg!=='reforma'?(parseFloat(document.getElementById('r-pis').value)||0):0;
+  const cofins=reg!=='reforma'?(parseFloat(document.getElementById('r-cofins').value)||0):0;
+  const ibs=reg!=='atual'?(parseFloat(document.getElementById('r-ibs').value)||0):0;
+  const cbs=reg!=='atual'?(parseFloat(document.getElementById('r-cbs').value)||0):0;
   const addGlobal=parseFloat(document.getElementById('r-add').value)||0;
-  const aliq=ibs+cbs;
   const tab=getTab(gt('r-op','lotacao'),gt('r-cont','composicao'));
   const cf=getCoefs(tab,tipo,eixos);
   if(!cf){renderErr(`Combinação não aplicável na Tabela ${tab}: "${CNOMES[tipo]}" com ${eixos} eixos.`);return;}
@@ -820,17 +897,26 @@ function calcRoteiro(){
   const custoBase=pisoTotal+ped+addGlobal;
   const valMarg=custoBase*(marg/100);
   const sub=custoBase+valMarg;
-  const tr=applyTrib(sub,aliq,gt('r-trib','por_fora'));
-  if(!tr){renderErr('Alíquota inválida.');return;}
+
+  const pcRes=applyPisCofins(sub,pis,cofins);
+  if(!pcRes){renderErr('Alíquota PIS/COFINS inválida (≥100%).');return;}
+  const subPC=pcRes.total;
+  const tribPisCofins=pcRes.trib;
+  const icRes=applyIbsCbs(subPC,ibs,cbs);
+  const total=icRes.total;
+  const tribIbsCbs=icRes.trib;
+  const trib=tribPisCofins+tribIbsCbs;
 
   renderRoteiro({tab,tipo,eixos,ccd:cf.ccd,cc:cf.cc,
-    resultsTrechos,pisoTotal,distTotal,ped,addGlobal,valMarg,sub,
-    trib:tr.trib,total:tr.total,ibs,cbs,aliq,marg,custoBase});
+    resultsTrechos,pisoTotal,distTotal,ped,addGlobal,valMarg,sub,subPC,
+    trib,tribPisCofins,tribIbsCbs,total,pis,cofins,ibs,cbs,marg,custoBase});
 }
 
 function renderRoteiro(d){
   const {tab,tipo,eixos,ccd,cc,resultsTrechos,pisoTotal,distTotal,
-    ped,addGlobal,valMarg,sub,trib,total,ibs,cbs,aliq,marg,custoBase}=d;
+    ped,addGlobal,valMarg,sub,subPC,trib,tribPisCofins,tribIbsCbs,total,
+    pis,cofins,ibs,cbs,marg,custoBase}=d;
+  const aliqPc=pis+cofins, aliqIc=ibs+cbs;
 
   const trechoRows=resultsTrechos.map((t,i)=>`
     <div class="trecho-result">
@@ -888,7 +974,8 @@ function renderRoteiro(d){
             <tr><td>🚧 Pedágio Total</td><td>R$ ${fmt(ped)}</td><td class="pct">${fmt(ped/total*100,1)}%</td></tr>
             <tr><td>🧾 Custos Adicionais</td><td>R$ ${fmt(addGlobal)}</td><td class="pct">${fmt(addGlobal/total*100,1)}%</td></tr>
             <tr><td>📈 Margem de Lucro (${fmt(marg,1)}%)</td><td>R$ ${fmt(valMarg)}</td><td class="pct">${fmt(valMarg/total*100,1)}%</td></tr>
-            <tr><td>🏛️ IBS+CBS (${fmt(aliq,1)}%)</td><td>R$ ${fmt(trib)}</td><td class="pct">${fmt(trib/total*100,1)}%</td></tr>
+            ${tribPisCofins>0?`<tr><td>🧾 PIS/COFINS (${fmt(aliqPc,2)}%) — por dentro</td><td>R$ ${fmt(tribPisCofins)}</td><td class="pct">${fmt(tribPisCofins/total*100,1)}%</td></tr>`:''}
+            ${tribIbsCbs>0?`<tr><td>🏛️ IBS/CBS (${fmt(aliqIc,1)}%) — por fora</td><td>R$ ${fmt(tribIbsCbs)}</td><td class="pct">${fmt(tribIbsCbs/total*100,1)}%</td></tr>`:''}
             <tr><td>💰 FRETE FINAL DA ROTA</td><td>R$ ${fmt(total)}</td><td class="pct">100%</td></tr>
           </tbody>
         </table>
