@@ -819,53 +819,158 @@ function renderSimples(d){
     </div>
 
     <div id="tab-st" style="display:none">
-      ${tribPisCofins>0?`<div class="rcard">
-        <div class="sec-lbl" style="margin-bottom:10px">🧾 PIS/COFINS — Regime Atual (Por Dentro)</div>
-        <div class="grid2">
-          <div>
-            <div class="drow"><span class="dl">PIS</span><span class="dv acc">${fmt(pis,2)}%</span></div>
-            <div class="drow"><span class="dl">COFINS</span><span class="dv acc">${fmt(cofins,2)}%</span></div>
-            <div class="drow"><span class="dl">Alíquota Total</span><span class="dv acc">${fmt(aliqPc,2)}%</span></div>
-          </div>
-          <div>
-            <div class="drow"><span class="dl">Base de cálculo</span><span class="dv">R$ ${fmt(sub)}</span></div>
-            <div class="drow"><span class="dl">PIS embutido</span><span class="dv">R$ ${fmt(pisTrib)}</span></div>
-            <div class="drow"><span class="dl">COFINS embutido</span><span class="dv">R$ ${fmt(cofinsTrib)}</span></div>
-            <div class="drow"><span class="dl">Preço c/ PIS/COFINS</span><span class="dv acc">R$ ${fmt(subPC)}</span></div>
-          </div>
+
+      <!-- ── RESUMO SUPERIOR ── -->
+      <div style="display:grid;grid-template-columns:repeat(${1+(tribPisCofins>0?1:0)+(tribIbsCbs>0?1:0)+1},1fr);gap:8px;margin-bottom:14px">
+        <div style="background:var(--g50);border:1px solid var(--g200);border-top:3px solid var(--g400);border-radius:8px;padding:12px;text-align:center">
+          <div style="font-size:9px;color:var(--g400);text-transform:uppercase;letter-spacing:.8px;font-weight:700">Base pré-tributo</div>
+          <div style="font-size:18px;font-weight:800;color:var(--g800);margin:5px 0">R$ ${fmt(sub)}</div>
+          <div style="font-size:10px;color:var(--g400)">piso + margem</div>
         </div>
-        <div class="alrt info" style="margin-top:8px;font-size:10px">Por dentro: o tributo já está embutido no preço. Fórmula: base ÷ (1 − ${fmt(aliqPc,2)}%) = R$ ${fmt(subPC)}</div>
-      </div>`:''}
-      ${tribIbsCbs>0?`<div class="rcard">
-        <div class="sec-lbl" style="margin-bottom:10px">🏛️ IBS/CBS — Reforma Tributária (Por Fora)</div>
-        <div class="grid2">
-          <div>
-            <div class="drow"><span class="dl">IBS</span><span class="dv acc">${fmt(ibs,1)}%</span></div>
-            <div class="drow"><span class="dl">CBS</span><span class="dv acc">${fmt(cbs,1)}%</span></div>
-            <div class="drow"><span class="dl">Alíquota Total</span><span class="dv acc">${fmt(aliqIc,1)}%</span></div>
-          </div>
-          <div>
-            <div class="drow"><span class="dl">Base de cálculo</span><span class="dv">R$ ${fmt(subPC)}</span></div>
-            <div class="drow"><span class="dl">IBS adicionado</span><span class="dv">R$ ${fmt(ibsTrib)}</span></div>
-            <div class="drow"><span class="dl">CBS adicionado</span><span class="dv">R$ ${fmt(cbsTrib)}</span></div>
-          </div>
+        ${tribPisCofins>0?`<div style="background:#FFFBF0;border:1px solid #E8C94A;border-top:3px solid #D4930A;border-radius:8px;padding:12px;text-align:center">
+          <div style="font-size:9px;color:#7A5900;text-transform:uppercase;letter-spacing:.8px;font-weight:700">🧾 PIS/COFINS</div>
+          <div style="font-size:18px;font-weight:800;color:#D4930A;margin:5px 0">R$ ${fmt(tribPisCofins)}</div>
+          <div style="font-size:10px;color:#7A5900">${fmt(aliqPc,2)}% · por dentro</div>
+        </div>`:''}
+        ${tribIbsCbs>0?`<div style="background:#F5F0E8;border:1px solid #C8A96A;border-top:3px solid #7A5900;border-radius:8px;padding:12px;text-align:center">
+          <div style="font-size:9px;color:#4A3700;text-transform:uppercase;letter-spacing:.8px;font-weight:700">🏛️ IBS/CBS</div>
+          <div style="font-size:18px;font-weight:800;color:#7A5900;margin:5px 0">R$ ${fmt(tribIbsCbs)}</div>
+          <div style="font-size:10px;color:#4A3700">${fmt(aliqIc,1)}% · por fora</div>
+        </div>`:''}
+        <div style="background:#EDFFF4;border:1px solid #8FD4A8;border-top:3px solid var(--green2);border-radius:8px;padding:12px;text-align:center">
+          <div style="font-size:9px;color:var(--green2);text-transform:uppercase;letter-spacing:.8px;font-weight:700">💰 Frete Final</div>
+          <div style="font-size:18px;font-weight:800;color:var(--green2);margin:5px 0">R$ ${fmt(total)}</div>
+          <div style="font-size:10px;color:var(--green2)">+${fmt((total/sub-1)*100,1)}% sobre a base</div>
         </div>
-        <div class="alrt info" style="margin-top:8px;font-size:10px">Por fora: o tributo é somado ao preço. Fórmula: R$ ${fmt(subPC)} × (1 + ${fmt(aliqIc,1)}%) = R$ ${fmt(total)}</div>
-      </div>`:''}
-      <div class="rcard">
-        <div class="sec-lbl" style="margin-bottom:8px">Comparativo de Cenários</div>
-        <table class="ctab">
-          <thead><tr><th>Cenário</th><th>Valor</th><th>Δ vs Piso</th></tr></thead>
-          <tbody>
-            <tr><td>Piso mínimo</td><td>R$ ${fmt(piso)}</td><td class="pct">—</td></tr>
-            <tr><td>Sem tributos</td><td>R$ ${fmt(sub)}</td><td class="pct">+${fmt((sub/piso-1)*100,1)}%</td></tr>
-            ${aliqPc>0?`<tr><td>Só PIS/COFINS (${fmt(aliqPc,2)}%)</td><td>R$ ${fmt(subPC)}</td><td class="pct">+${fmt((subPC/piso-1)*100,1)}%</td></tr>`:''}
-            ${aliqIc>0?`<tr><td>Só IBS/CBS (${fmt(aliqIc,1)}%)</td><td>R$ ${fmt(applyIbsCbs(sub,ibs,cbs).total)}</td><td class="pct">+${fmt((applyIbsCbs(sub,ibs,cbs).total/piso-1)*100,1)}%</td></tr>`:''}
-            <tr><td>💰 Frete Final</td><td>R$ ${fmt(total)}</td><td class="pct">+${fmt((total/piso-1)*100,1)}%</td></tr>
-          </tbody>
-        </table>
       </div>
-      <div class="alrt info">ℹ️ PIS/COFINS (por dentro): tributo embutido no preço — regime atual cumulativo/não cumulativo. IBS/CBS (por fora): tributo adicionado ao preço — Reforma Tributária, implementação gradual até 2033.</div>
+
+      <!-- ── FLUXO VISUAL ── -->
+      <div class="rcard" style="margin-bottom:12px">
+        <div class="sec-lbl" style="margin-bottom:14px">🔢 Fluxo de Cálculo</div>
+        <div style="display:flex;align-items:stretch;gap:6px;flex-wrap:wrap">
+
+          <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:12px 16px;background:var(--g50);border:1px solid var(--g200);border-radius:8px;min-width:110px">
+            <div style="font-size:9px;color:var(--g400);text-transform:uppercase;letter-spacing:.8px;font-weight:700;margin-bottom:4px">Base</div>
+            <div style="font-size:15px;font-weight:800;color:var(--g800)">R$ ${fmt(sub)}</div>
+            <div style="font-size:9px;color:var(--g400);margin-top:3px">frete + margem</div>
+          </div>
+
+          ${tribPisCofins>0?`
+          <div style="display:flex;align-items:center;color:var(--g400);font-size:20px;padding:0 2px">→</div>
+          <div style="display:flex;flex-direction:column;text-align:center;padding:12px 14px;background:#FFFBF0;border:2px solid #D4930A;border-radius:8px;min-width:140px">
+            <div style="font-size:9px;color:#7A5900;font-weight:700;text-transform:uppercase;letter-spacing:.6px">PIS/COFINS — Por Dentro</div>
+            <div style="font-size:10px;color:#7A5900;margin:4px 0;font-family:monospace">÷ (1 − ${fmt(aliqPc,2)}%)</div>
+            <div style="font-size:9px;color:#A07830">PIS ${fmt(pis,2)}% + COFINS ${fmt(cofins,2)}%</div>
+            <div style="border-top:1px dashed #D4930A;margin:6px 0;padding-top:6px">
+              <div style="font-size:10px;color:#7A5900">tributo embutido</div>
+              <div style="font-size:14px;font-weight:800;color:#D4930A">+ R$ ${fmt(tribPisCofins)}</div>
+            </div>
+            <div style="background:#D4930A;color:white;border-radius:5px;padding:4px 8px;font-size:11px;font-weight:800">= R$ ${fmt(subPC)}</div>
+          </div>`:''}
+
+          ${tribIbsCbs>0?`
+          <div style="display:flex;align-items:center;color:var(--g400);font-size:20px;padding:0 2px">→</div>
+          <div style="display:flex;flex-direction:column;text-align:center;padding:12px 14px;background:#F5F0E8;border:2px solid #7A5900;border-radius:8px;min-width:140px">
+            <div style="font-size:9px;color:#4A3700;font-weight:700;text-transform:uppercase;letter-spacing:.6px">IBS/CBS — Por Fora</div>
+            <div style="font-size:10px;color:#4A3700;margin:4px 0;font-family:monospace">× (1 + ${fmt(aliqIc,1)}%)</div>
+            <div style="font-size:9px;color:#6B4E1A">IBS ${fmt(ibs,1)}% + CBS ${fmt(cbs,1)}%</div>
+            <div style="border-top:1px dashed #7A5900;margin:6px 0;padding-top:6px">
+              <div style="font-size:10px;color:#4A3700">tributo adicionado</div>
+              <div style="font-size:14px;font-weight:800;color:#7A5900">+ R$ ${fmt(tribIbsCbs)}</div>
+            </div>
+            <div style="background:#7A5900;color:white;border-radius:5px;padding:4px 8px;font-size:11px;font-weight:800">= R$ ${fmt(total)}</div>
+          </div>`:''}
+
+          <div style="display:flex;align-items:center;color:var(--g400);font-size:20px;padding:0 2px">→</div>
+          <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:12px 16px;background:#EDFFF4;border:2px solid var(--green2);border-radius:8px;min-width:110px">
+            <div style="font-size:9px;color:var(--green2);text-transform:uppercase;letter-spacing:.8px;font-weight:700;margin-bottom:4px">Frete Final</div>
+            <div style="font-size:17px;font-weight:800;color:var(--green2)">R$ ${fmt(total)}</div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ── DETALHAMENTO LADO A LADO ── -->
+      ${(tribPisCofins>0||tribIbsCbs>0)?`<div style="display:grid;grid-template-columns:${tribPisCofins>0&&tribIbsCbs>0?'1fr 1fr':'1fr'};gap:10px;margin-bottom:12px">
+
+        ${tribPisCofins>0?`<div class="rcard" style="border-top:3px solid #D4930A">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <span style="font-size:11px;font-weight:700;color:#7A5900;text-transform:uppercase;letter-spacing:.8px">🧾 PIS/COFINS</span>
+            <span style="font-size:10px;background:#FFFBF0;color:#7A5900;border:1px solid #D4930A;padding:2px 8px;border-radius:12px;font-weight:700">Por Dentro</span>
+          </div>
+          <div class="drow"><span class="dl">PIS</span><span class="dv" style="color:#D4930A">${fmt(pis,2)}%</span></div>
+          <div class="drow"><span class="dl">COFINS</span><span class="dv" style="color:#D4930A">${fmt(cofins,2)}%</span></div>
+          <div class="drow" style="padding-top:10px;margin-top:4px;border-top:2px solid var(--g100)"><span class="dl" style="font-weight:700">Alíquota Total</span><span class="dv" style="color:#D4930A;font-weight:800">${fmt(aliqPc,2)}%</span></div>
+          <div style="height:1px;background:var(--g100);margin:10px 0"></div>
+          <div class="drow"><span class="dl">Base de cálculo</span><span class="dv">R$ ${fmt(sub)}</span></div>
+          <div class="drow"><span class="dl">PIS embutido</span><span class="dv">R$ ${fmt(pisTrib)}</span></div>
+          <div class="drow"><span class="dl">COFINS embutido</span><span class="dv">R$ ${fmt(cofinsTrib)}</span></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;background:#FFFBF0;border:1px solid #E8C94A;border-radius:6px;padding:8px 10px;margin-top:8px">
+            <span style="font-size:11px;font-weight:700;color:#7A5900">Tributo Total</span>
+            <span style="font-size:14px;font-weight:800;color:#D4930A">R$ ${fmt(tribPisCofins)}</span>
+          </div>
+          <div style="margin-top:10px;font-size:10px;color:var(--g400);background:var(--g50);border-radius:5px;padding:6px 8px;font-family:monospace">
+            ${fmt(sub)} ÷ (1 − ${fmt(aliqPc,2)}%) = R$ ${fmt(subPC)}
+          </div>
+        </div>`:''}
+
+        ${tribIbsCbs>0?`<div class="rcard" style="border-top:3px solid #7A5900">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <span style="font-size:11px;font-weight:700;color:#4A3700;text-transform:uppercase;letter-spacing:.8px">🏛️ IBS/CBS</span>
+            <span style="font-size:10px;background:#F5F0E8;color:#4A3700;border:1px solid #7A5900;padding:2px 8px;border-radius:12px;font-weight:700">Por Fora</span>
+          </div>
+          <div class="drow"><span class="dl">IBS</span><span class="dv" style="color:#7A5900">${fmt(ibs,1)}%</span></div>
+          <div class="drow"><span class="dl">CBS</span><span class="dv" style="color:#7A5900">${fmt(cbs,1)}%</span></div>
+          <div class="drow" style="padding-top:10px;margin-top:4px;border-top:2px solid var(--g100)"><span class="dl" style="font-weight:700">Alíquota Total</span><span class="dv" style="color:#7A5900;font-weight:800">${fmt(aliqIc,1)}%</span></div>
+          <div style="height:1px;background:var(--g100);margin:10px 0"></div>
+          <div class="drow"><span class="dl">Base de cálculo</span><span class="dv">R$ ${fmt(subPC)}</span></div>
+          <div class="drow"><span class="dl">IBS adicionado</span><span class="dv">R$ ${fmt(ibsTrib)}</span></div>
+          <div class="drow"><span class="dl">CBS adicionado</span><span class="dv">R$ ${fmt(cbsTrib)}</span></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;background:#F5F0E8;border:1px solid #C8A96A;border-radius:6px;padding:8px 10px;margin-top:8px">
+            <span style="font-size:11px;font-weight:700;color:#4A3700">Tributo Total</span>
+            <span style="font-size:14px;font-weight:800;color:#7A5900">R$ ${fmt(tribIbsCbs)}</span>
+          </div>
+          <div style="margin-top:10px;font-size:10px;color:var(--g400);background:var(--g50);border-radius:5px;padding:6px 8px;font-family:monospace">
+            R$ ${fmt(subPC)} × (1 + ${fmt(aliqIc,1)}%) = R$ ${fmt(total)}
+          </div>
+        </div>`:''}
+
+      </div>`:''}
+
+      <!-- ── COMPARATIVO DE CENÁRIOS ── -->
+      <div class="rcard">
+        <div class="sec-lbl" style="margin-bottom:12px">📊 Comparativo de Cenários</div>
+        <div style="display:flex;flex-direction:column;gap:7px">
+          ${[
+            {lbl:'🎯 Piso ANTT (base legal)',val:piso,cor:'var(--orange)',nota:'mínimo obrigatório'},
+            {lbl:'📦 Sem tributos (c/ margem)',val:sub,cor:'var(--g600)',nota:'frete + margem'},
+            ...(aliqPc>0?[{lbl:`🧾 Só PIS/COFINS — por dentro (${fmt(aliqPc,2)}%)`,val:subPC,cor:'#D4930A',nota:'regime atual'}]:[]),
+            ...(aliqIc>0?[{lbl:`🏛️ Só IBS/CBS — por fora (${fmt(aliqIc,1)}%)`,val:applyIbsCbs(sub,ibs,cbs).total,cor:'#7A5900',nota:'reforma tributária'}]:[]),
+            {lbl:'💰 Frete Final (cenário configurado)',val:total,cor:'var(--green2)',nota:'resultado calculado'},
+          ].map(s=>`
+          <div style="display:flex;align-items:center;gap:10px;padding:9px 11px;background:var(--g50);border:1px solid var(--g100);border-radius:7px">
+            <div style="flex:1;min-width:0">
+              <div style="font-size:11px;font-weight:600;color:var(--g800)">${s.lbl}</div>
+              <div style="font-size:10px;color:var(--g400);margin-top:1px">${s.nota}</div>
+            </div>
+            <div style="text-align:right;min-width:90px">
+              <div style="font-size:13px;font-weight:800;color:${s.cor}">R$ ${fmt(s.val)}</div>
+              <div style="font-size:10px;color:var(--g400)">${s.val===piso?'referência':'+'+fmt((s.val/piso-1)*100,1)+'% vs piso'}</div>
+            </div>
+            <div style="width:70px;flex-shrink:0">
+              <div style="height:6px;background:var(--g100);border-radius:3px;overflow:hidden">
+                <div style="height:100%;width:${Math.min(s.val/total*100,100).toFixed(1)}%;background:${s.cor};border-radius:3px;transition:width .4s"></div>
+              </div>
+            </div>
+          </div>`).join('')}
+        </div>
+      </div>
+
+      <div class="alrt info" style="margin-top:10px;font-size:11px">
+        <b>Por dentro (PIS/COFINS):</b> o tributo já está embutido — parte do preço final pertence ao fisco.
+        <b>Por fora (IBS/CBS):</b> o tributo é somado ao preço — o tomador paga o frete acrescido do tributo.
+        Alíquotas IBS/CBS são estimativas para implementação plena em 2033 (Reforma Tributária).
+      </div>
     </div>`;
 }
 
