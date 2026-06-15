@@ -1801,6 +1801,9 @@ app.register_blueprint(simples_bp)
 from societario import bp as societario_bp
 app.register_blueprint(societario_bp)
 
+from sped_contribuicoes import bp as sped_contribuicoes_bp
+app.register_blueprint(sped_contribuicoes_bp)
+
 # Erros sempre retornam JSON para rotas /api, HTML para o resto
 @app.errorhandler(404)
 def handle_404(e):
