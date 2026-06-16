@@ -1034,15 +1034,6 @@ function renderApuracao(periodos) {
       const antRow = ant > 0
         ? `<div class="apur-row"><span class="apur-lbl">(-) Créditos de períodos anteriores (1100/1500)</span><span class="apur-val" style="color:var(--blue-l)">(${fmt(ant)})</span></div>`
         : `<div class="apur-row"><span class="apur-lbl">(-) Créditos de períodos anteriores (1100/1500)</span><span class="apur-val" style="color:var(--g4)">—</span></div>`;
-      const rows_cst = (contrib.por_cst || []).map(c => `
-        <tr>
-          <td class="td-mono">${esc(c.cod_cont)}</td>
-          <td style="font-size:12px;color:var(--g2);">${esc(c.descricao)}</td>
-          <td class="td-valor">${fmt(c.vl_rec_brt)}</td>
-          <td class="td-valor">${fmt(c.vl_bc_cont)}</td>
-          <td class="td-valor">${fmtAliq(c.aliq)}</td>
-          <td class="td-valor" style="color:var(--orange);font-weight:700;">${fmt(c.vl_cont_apur)}</td>
-        </tr>`).join('');
       return `
         <div class="apur-card">
           <div class="apur-card-hd">${esc(lbl)}</div>
@@ -1053,12 +1044,6 @@ function renderApuracao(periodos) {
           <div style="border-top:1px solid rgba(255,255,255,.07);margin:8px 0;"></div>
           <div class="apur-row"><span class="apur-lbl">Crédito total do mês (M100/M500)</span><span class="apur-val" style="color:var(--blue-l)">${fmt(ctm)}</span></div>
           <div class="apur-row recolher"><span class="apur-lbl">Sobra do mês (a transportar / PERDCOMP)</span><span class="apur-val" style="color:${sob > 0 ? 'var(--blue-l)' : 'var(--g4)'}">${sob > 0 ? fmt(sob) : '—'}</span></div>
-          ${rows_cst ? `<div class="table-wrap" style="margin:0;border-radius:0;border:none;">
-            <table>
-              <thead><tr><th>Cód.</th><th>Descrição</th><th style="text-align:right">Rec. Bruta</th><th style="text-align:right">Base de Cálculo</th><th style="text-align:right">Alíquota</th><th style="text-align:right">Contribuição Apurada</th></tr></thead>
-              <tbody>${rows_cst}</tbody>
-            </table>
-          </div>` : ''}
         </div>`;
     }
     function saldosTable(registros, tributo) {
