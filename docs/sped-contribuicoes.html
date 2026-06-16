@@ -608,6 +608,7 @@ body.light .table-wrap::after{background:linear-gradient(to right,transparent,rg
         <div><div class="sec-lbl">Registros C170, A170, D100, D101, D105</div><h2 class="sec-ttl">Visão por CFOP e CST — Entradas e Saídas</h2></div>
       </div>
       <p style="font-size:13px;color:var(--g3);margin-bottom:20px;">Totalização por CFOP e CST de PIS/COFINS de C170 (mercadorias), A170 (serviços ISS) e Bloco D: D100 (CT-e/NFST individuais), D200 (consolidação de NF de serviços de transporte — <strong>saídas com CFOP</strong>), D101/D201 (crédito presumido PIS) e D105/D205 (crédito presumido COFINS). D200 é o registro onde transportadoras que consolidam emissões declaram a receita por CFOP.</p>
+      <div id="cfop-saidas-resumo" style="margin-bottom:16px;"></div>
       <div class="table-toolbar">
         <div class="search-box"><span class="search-icon">🔍</span><input type="text" placeholder="Buscar CFOP, CST..." id="cfop-search" oninput="filtrarCfop()"/></div>
         <select class="filter-sel" id="cfop-filter-oper" onchange="filtrarCfop()">
@@ -1276,12 +1277,70 @@ function renderG5Rateio(periodos) {
 let _cfopRows = [];
 function renderCfopCst(rows, periodos) {
   _cfopRows = rows;
-  // preenche filtro de período
   const selPer = document.getElementById('cfop-filter-per');
   const periods = [...new Set(rows.map(r => r.competencia))].sort();
   selPer.innerHTML = '<option value="">Todos os Períodos</option>' + periods.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('');
+  renderSaidasResumo(rows);
   filtrarCfop();
 }
+
+function renderSaidasResumo(rows) {
+  const el = document.getElementById('cfop-saidas-resumo');
+  if (!el) return;
+  const saidas = rows.filter(r => r.ind_oper === 'Saída');
+  if (!saidas.length) { el.innerHTML = ''; return; }
+
+  // agrupa por período + cfop para o resumo consolidado
+  const byPeriodCfop = {};
+  saidas.forEach(r => {
+    const key = `${r.competencia}||${r.cfop}||${r.origem}`;
+    if (!byPeriodCfop[key]) byPeriodCfop[key] = { competencia: r.competencia, cfop: r.cfop, origem: r.origem, qtd: 0, valor: 0 };
+    byPeriodCfop[key].qtd   += r.qtd_itens || 0;
+    byPeriodCfop[key].valor += r.vl_item   || 0;
+  });
+  const linhas = Object.values(byPeriodCfop).sort((a, b) => a.competencia.localeCompare(b.competencia) || a.cfop.localeCompare(b.cfop));
+  const totalSaidas = linhas.reduce((s, l) => s + l.valor, 0);
+
+  el.innerHTML = `
+    <div style="margin-bottom:28px;">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+        <div style="font-size:12px;font-weight:700;color:var(--g2);text-transform:uppercase;letter-spacing:.06em;">🚛 Saídas — Receita de Transporte (D200 / D100)</div>
+        <div style="font-size:13px;font-weight:700;color:var(--orange);">${fmt(totalSaidas)}</div>
+      </div>
+      <div class="table-wrap" style="margin:0;">
+        <table>
+          <thead><tr>
+            <th>Competência</th>
+            <th>Origem</th>
+            <th>CFOP</th>
+            <th style="text-align:right">Qtd Docs</th>
+            <th style="text-align:right">Valor Total</th>
+            <th style="text-align:right">% do Total</th>
+          </tr></thead>
+          <tbody>
+            ${linhas.map(l => {
+              const pct = totalSaidas > 0 ? (l.valor / totalSaidas * 100).toFixed(1) : '0.0';
+              return `<tr>
+                <td class="td-mono">${esc(l.competencia)}</td>
+                <td><span class="badge b-possivel" style="font-size:9px;">${esc(l.origem)}</span></td>
+                <td class="td-mono" style="font-weight:700;">${esc(l.cfop)}</td>
+                <td class="td-valor">${l.qtd}</td>
+                <td class="td-valor" style="color:var(--orange);font-weight:700;">${fmt(l.valor)}</td>
+                <td class="td-valor" style="color:var(--g3);">${pct}%</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+          <tfoot><tr style="background:rgba(255,255,255,.04);">
+            <td colspan="3" style="font-size:12px;font-weight:700;color:var(--g1);padding:8px 14px;">TOTAL SAÍDAS</td>
+            <td class="td-valor" style="font-weight:700;">${linhas.reduce((s,l) => s + l.qtd, 0)}</td>
+            <td class="td-valor" style="color:var(--orange);font-weight:700;">${fmt(totalSaidas)}</td>
+            <td class="td-valor">100,0%</td>
+          </tr></tfoot>
+        </table>
+      </div>
+    </div>`;
+}
+
 function filtrarCfop() {
   const q = document.getElementById('cfop-search').value.toLowerCase();
   const fo = document.getElementById('cfop-filter-oper').value;
@@ -1325,46 +1384,40 @@ function renderPerdcomp(periodos) {
     const contrib = side.contrib_periodo || 0;
     const t100 = side.total_creditos_100 || 0;
     const t200 = side.total_creditos_200 || 0;
-    const restante = side.contrib_restante || 0;
     const totalPerdcomp = side.total_perdcomp_disponivel || 0;
     const credApuracao = side.creditos_descontados_apuracao || 0;
-    const diff = side.diff_m100_vs_apuracao || 0;
+    const contrib100 = side.contrib_apos_100 || 0;
     const isPIS = side.tributo === 'PIS';
-    const color = isPIS ? 'var(--blue-l)' : 'var(--orange)';
 
     const rows = (side.steps || []).map(s => {
-      const pct = contrib > 0 ? Math.round((s.valor_disponivel / contrib) * 100) : 0;
-      const barPct = s.valor_disponivel > 0 ? Math.round((s.valor_usado_desconto / s.valor_disponivel) * 100) : 0;
       const is200 = s.serie === '200';
       const hasPerdcomp = s.valor_perdcomp > 0;
+      const hasCarry = (s.valor_carry_fwd || 0) > 0;
+      const barPct = s.valor_disponivel > 0
+        ? Math.round(((is200 ? s.valor_perdcomp : s.valor_usado_desconto) / s.valor_disponivel) * 100)
+        : 0;
       return `
         <tr class="${hasPerdcomp ? 'perdcomp-highlight' : ''} perdcomp-serie-${s.serie}">
           <td class="td-mono" style="color:${is200 ? 'var(--orange)' : 'var(--blue-l)'};">${esc(s.cod_cred)}</td>
           <td style="font-size:12px;color:var(--g2);">${esc(s.descricao)}</td>
           <td style="text-align:center;">
-            <span class="badge ${is200 ? 'b-possivel' : 'b-info'}" style="font-size:9px;">${s.serie === '100' ? '100 — Básico' : '200 — Presumido'}</span>
+            <span class="badge ${is200 ? 'b-possivel' : 'b-info'}" style="font-size:9px;">${is200 ? '200 — Presumido' : '100 — Básico'}</span>
           </td>
           <td class="td-valor">${fmt(s.valor_disponivel)}</td>
-          <td class="td-valor" style="color:var(--g2);">${fmt(s.valor_usado_desconto)}</td>
-          <td class="td-valor" style="color:${hasPerdcomp ? 'var(--orange)' : 'var(--g4)'};">${hasPerdcomp ? fmt(s.valor_perdcomp) : '—'}</td>
+          <td class="td-valor" style="color:${is200 ? 'var(--g4)' : 'var(--green)'};">${is200 ? '—' : fmt(s.valor_usado_desconto)}</td>
+          <td class="td-valor" style="color:${hasCarry ? 'var(--yellow)' : 'var(--g4)'};">${hasCarry ? fmt(s.valor_carry_fwd) : '—'}</td>
+          <td class="td-valor" style="color:${hasPerdcomp ? 'var(--orange)' : 'var(--g4)'};font-weight:${hasPerdcomp ? '700' : '400'};">${hasPerdcomp ? fmt(s.valor_perdcomp) : '—'}</td>
           <td style="padding:9px 14px;">
             <div class="perdcomp-bar-wrap">
-              <div class="${is200 && hasPerdcomp ? 'perdcomp-bar-perdcomp' : 'perdcomp-bar-desc'}" style="width:${barPct}%;"></div>
+              <div class="${is200 ? 'perdcomp-bar-perdcomp' : 'perdcomp-bar-desc'}" style="width:${barPct}%;"></div>
             </div>
           </td>
-          <td class="td-valor" style="color:var(--g3);">${fmt(s.saldo_contrib_apos)}</td>
         </tr>`;
     });
 
     const avisoHtml = totalPerdcomp > 0
-      ? `<div class="perdcomp-aviso">✅ <strong style="color:var(--green)">R$ ${totalPerdcomp.toLocaleString('pt-BR', {minimumFractionDigits:2})}</strong> disponíveis para PERDCOMP (PER/DCOMP) após consumo ótimo dos créditos série 200. Priorize a habilitação do crédito código 201 como base do pedido de compensação ou ressarcimento.</div>`
-      : `<div class="perdcomp-aviso-zero">ℹ️ Nenhum saldo série 200 restante para PERDCOMP neste período — créditos 200-série foram integralmente absorvidos pela contribuição devida.</div>`;
-    const notaRateioHtml = `
-      <div style="background:rgba(139,92,246,.07);border:1px solid rgba(139,92,246,.2);border-radius:var(--r);padding:12px 16px;font-size:12px;color:var(--g2);line-height:1.7;margin:0 16px 12px;">
-        <strong style="color:var(--purple)">ℹ️ Sobre o rateio e o valor ressarcível:</strong><br>
-        A proporção de receita <em>não tributada MI</em> (definida no 0111) <strong>não</strong> converte créditos da série 100 em ressarcíveis. Ela apenas limita o quanto desses créditos pode ser aproveitado (desconto na contribuição). Créditos série 100 vinculados a NT MI acumulam como saldo, mas <strong>não</strong> são elegíveis ao PERDCOMP/ressarcimento.<br>
-        O valor ressarcível vem exclusivamente dos <strong>créditos série 200 (presumidos)</strong> — para transportadoras, principalmente o <em>cod_cred 201</em> (crédito presumido do art. 2° da Lei 10.485/2002 ou crédito vinculado a exportações conforme art. 5° da Lei 10.833/2003). Se o valor ressarcível parece baixo para o porte da empresa, verifique se os créditos presumidos (D101/D101/D105/D205) estão sendo declarados corretamente com cod_cred na série 200.
-      </div>`;
+      ? `<div class="perdcomp-aviso">✅ <strong style="color:var(--green)">R$ ${totalPerdcomp.toLocaleString('pt-BR', {minimumFractionDigits:2})}</strong> disponíveis para PERDCOMP / ressarcimento (créditos presumidos série 200). Habilite o crédito para PER/DCOMP conforme art. 16 da Lei 11.116/2005.</div>`
+      : `<div class="perdcomp-aviso-zero">ℹ️ Nenhum crédito série 200 (presumido) neste período — nenhum saldo para PERDCOMP identificado.</div>`;
 
     return `
       <div class="perdcomp-tributo">
@@ -1377,15 +1430,15 @@ function renderPerdcomp(periodos) {
               <div class="perdcomp-stat-val">${fmt(contrib)}</div>
             </div>
             <div class="perdcomp-stat">
-              <div class="perdcomp-stat-lbl">Série 100</div>
+              <div class="perdcomp-stat-lbl">Série 100 (disponível)</div>
               <div class="perdcomp-stat-val" style="color:var(--blue-l);">${fmt(t100)}</div>
             </div>
             <div class="perdcomp-stat">
-              <div class="perdcomp-stat-lbl">Série 200</div>
+              <div class="perdcomp-stat-lbl">Série 200 (ressarcível)</div>
               <div class="perdcomp-stat-val" style="color:var(--orange);">${fmt(t200)}</div>
             </div>
             <div class="perdcomp-stat">
-              <div class="perdcomp-stat-lbl">PERDCOMP</div>
+              <div class="perdcomp-stat-lbl">Saldo p/ PERDCOMP</div>
               <div class="perdcomp-stat-val" style="color:${totalPerdcomp > 0 ? 'var(--orange)' : 'var(--g4)'};">${fmt(totalPerdcomp)}</div>
             </div>
           </div>
@@ -1395,10 +1448,10 @@ function renderPerdcomp(periodos) {
           <thead><tr>
             <th>Cód.</th><th>Descrição (Tabela 4.3.6)</th><th>Série</th>
             <th style="text-align:right">Disponível</th>
-            <th style="text-align:right">Usado (Desconto)</th>
+            <th style="text-align:right">Descontado (M200)</th>
+            <th style="text-align:right">Carry-forward</th>
             <th style="text-align:right">Saldo PERDCOMP</th>
-            <th>Consumo</th>
-            <th style="text-align:right">Saldo Déb. Após</th>
+            <th>Utilização</th>
           </tr></thead>
           <tbody>${rows.join('')}</tbody>
         </table>
@@ -1408,31 +1461,26 @@ function renderPerdcomp(periodos) {
             <div class="perdcomp-sumbox-val">${fmt(contrib)}</div>
           </div>
           <div class="perdcomp-sumbox">
-            <div class="perdcomp-sumbox-lbl">Créditos Descontados (M200/M600)</div>
+            <div class="perdcomp-sumbox-lbl">Descontado na Apuração (M200)</div>
             <div class="perdcomp-sumbox-val" style="color:var(--green);">${fmt(credApuracao)}</div>
           </div>
           <div class="perdcomp-sumbox">
-            <div class="perdcomp-sumbox-lbl">Total M100/M500 (série 100+200)</div>
-            <div class="perdcomp-sumbox-val" style="color:${Math.abs(diff) > 0.05 ? 'var(--yellow)' : 'var(--g1)'};">${fmt(t100 + t200)}</div>
-          </div>
-          <div class="perdcomp-sumbox">
-            <div class="perdcomp-sumbox-lbl">Série 100 — Não Ressarcível</div>
+            <div class="perdcomp-sumbox-lbl">Série 100 (desconto)</div>
             <div class="perdcomp-sumbox-val" style="color:var(--blue-l);">${fmt(t100)}</div>
           </div>
           <div class="perdcomp-sumbox">
-            <div class="perdcomp-sumbox-lbl">Série 200 — Ressarcível</div>
+            <div class="perdcomp-sumbox-lbl">Série 200 (ressarcível)</div>
             <div class="perdcomp-sumbox-val" style="color:var(--orange);">${fmt(t200)}</div>
           </div>
           <div class="perdcomp-sumbox ${totalPerdcomp > 0 ? 'destaque' : ''}">
             <div class="perdcomp-sumbox-lbl">Saldo p/ PERDCOMP</div>
             <div class="perdcomp-sumbox-val">${fmt(totalPerdcomp)}</div>
           </div>
-          <div class="perdcomp-sumbox" style="background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.15);">
-            <div class="perdcomp-sumbox-lbl">Contribuição Residual</div>
-            <div class="perdcomp-sumbox-val" style="color:var(--red);">${fmt(restante)}</div>
+          <div class="perdcomp-sumbox" style="background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.18);">
+            <div class="perdcomp-sumbox-lbl">Contrib. após Série 100</div>
+            <div class="perdcomp-sumbox-val" style="color:var(--blue-l);">${fmt(contrib100)}</div>
           </div>
         </div>
-        ${Math.abs(diff) > 0.05 ? `<div style="background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.2);border-radius:var(--r);padding:10px 14px;font-size:12px;color:var(--g2);line-height:1.6;margin:0 16px 16px;">⚠️ Divergência de <strong>${fmt(Math.abs(diff))}</strong> entre o total de créditos disponíveis em M100/M500 (<strong>${fmt(t100+t200)}</strong>) e o valor descontado na apuração M200/M600 (<strong>${fmt(credApuracao)}</strong>). Verifique se há créditos acumulados de períodos anteriores (vl_cred_desc_ant &gt; 0) ou uso via DCOMP (vl_cred_dcomp) nas linhas do registro M100/M500.</div>` : ''}
         ${avisoHtml}` : '<div style="padding:16px;font-size:12px;color:var(--g4);">Nenhum crédito encontrado nos registros M100/M500 para este período.</div>'}
       </div>`;
   }

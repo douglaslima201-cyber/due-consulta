@@ -876,12 +876,14 @@ def extract_perdcomp_previa(dfs: dict[str, pd.DataFrame]) -> dict:
         creditos_200 = [(c, v) for c, v in creditos_raw.items()
                         if c.isdigit() and 200 <= int(c) <= 299]
 
+        # ── Série 100: aplica contra contribuição (somente desconto, não ressarcível) ──
         saldo_deve = contrib_periodo
         steps: list[dict] = []
 
         for cod, valor in sorted(creditos_100, key=lambda x: int(x[0])):
             usado = min(valor, saldo_deve)
             saldo_deve = max(0.0, round(saldo_deve - valor, 2))
+            carry_fwd = round(max(0.0, valor - usado), 2)
             steps.append({
                 "cod_cred": cod,
                 "descricao": _TABELA_COD_CRED.get(cod, f"Código {cod}"),
@@ -889,29 +891,31 @@ def extract_perdcomp_previa(dfs: dict[str, pd.DataFrame]) -> dict:
                 "ressarcivel": False,
                 "valor_disponivel": round(valor, 2),
                 "valor_usado_desconto": round(usado, 2),
+                "valor_carry_fwd": carry_fwd,
                 "valor_perdcomp": 0.0,
-                "saldo_contrib_apos": round(max(0.0, saldo_deve), 2),
             })
 
+        contrib_apos_100 = round(max(0.0, saldo_deve), 2)
+
+        # ── Série 200: elegíveis a PERDCOMP/ressarcimento de forma independente ──
+        # Créditos presumidos (série 200) NÃO precisam ser consumidos pela
+        # contribuição residual — a empresa pode pedir PERDCOMP diretamente.
         for cod, valor in sorted(creditos_200, key=lambda x: _sortkey_200(x[0])):
-            usado = min(valor, saldo_deve)
-            saldo_deve = max(0.0, round(saldo_deve - valor, 2))
-            perdcomp = round(max(0.0, valor - usado), 2)
             steps.append({
                 "cod_cred": cod,
                 "descricao": _TABELA_COD_CRED.get(cod, f"Código {cod}"),
                 "serie": "200",
                 "ressarcivel": True,
                 "valor_disponivel": round(valor, 2),
-                "valor_usado_desconto": round(usado, 2),
-                "valor_perdcomp": perdcomp,
-                "saldo_contrib_apos": round(max(0.0, saldo_deve), 2),
+                "valor_usado_desconto": 0.0,
+                "valor_carry_fwd": 0.0,
+                "valor_perdcomp": round(valor, 2),
             })
 
         total_100 = round(sum(v for _, v in creditos_100), 2)
         total_200 = round(sum(v for _, v in creditos_200), 2)
         total_m100 = round(total_100 + total_200, 2)
-        total_perdcomp = round(sum(s["valor_perdcomp"] for s in steps), 2)
+        total_perdcomp = round(total_200, 2)
         diff = round(total_m100 - creditos_descontados_apuracao, 2)
 
         return {
@@ -922,8 +926,7 @@ def extract_perdcomp_previa(dfs: dict[str, pd.DataFrame]) -> dict:
             "total_creditos_200": total_200,
             "total_creditos": total_m100,
             "diff_m100_vs_apuracao": diff,
-            "contrib_apos_100": round(max(0.0, contrib_periodo - total_100), 2),
-            "contrib_restante": round(max(0.0, contrib_periodo - total_100 - total_200), 2),
+            "contrib_apos_100": contrib_apos_100,
             "total_perdcomp_disponivel": total_perdcomp,
             "steps": steps,
         }
