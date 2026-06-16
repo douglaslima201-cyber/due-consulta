@@ -107,6 +107,16 @@ def main():
         print(f"  filtro=Entrada rows={cfop_entrada}")
         page.select_option("#cfop-filter-oper", "")
 
+        # ── Aba Prévia PERDCOMP ────────────────────────────────────────────────
+        print("\n=== Aba Prévia PERDCOMP ===")
+        page.click('.tab-btn[data-tab="perdcomp"]')
+        page.wait_for_timeout(300)
+        perdcomp_text = page.locator("#perdcomp-body").inner_text()
+        has_cred_series = "100" in perdcomp_text or "200" in perdcomp_text
+        print(f"  conteúdo não vazio: {bool(perdcomp_text.strip())}")
+        print(f"  séries de crédito visíveis: {has_cred_series}")
+        print(" ", perdcomp_text[:400].replace("\n", " | "))
+
         # ── Aba Conclusão ─────────────────────────────────────────────────────
         print("\n=== Aba Conclusão ===")
         page.click('.tab-btn[data-tab="conclusao"]')

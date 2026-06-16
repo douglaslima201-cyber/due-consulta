@@ -18,6 +18,7 @@ from flask import Blueprint, jsonify, request, send_file
 
 from sped_contribuicoes_parser import (
     parse_sped_file, extract_header, extract_apuracao, extract_cfop_cst,
+    extract_perdcomp_previa,
 )
 from sped_contribuicoes_regras import gerar_achados, gerar_achados_transposicao
 
@@ -117,6 +118,7 @@ def upload():
             "total_achados": len(achados),
             "apuracao": extract_apuracao(dfs),
             "cfop_cst": extract_cfop_cst(dfs),
+            "perdcomp_previa": extract_perdcomp_previa(dfs),
         })
 
     if len(periodos_dfs) >= 2:

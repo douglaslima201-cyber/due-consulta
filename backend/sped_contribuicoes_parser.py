@@ -389,6 +389,20 @@ def build_participante_map(dfs: dict[str, pd.DataFrame]) -> dict[str, str]:
     return dict(zip(df["cod_part"], df["nome"]))
 
 
+def build_participante_tipo_map(dfs: dict[str, pd.DataFrame]) -> dict[str, str]:
+    """cod_part -> 'PF' se CPF preenchido, 'PJ' caso contrário (registro 0150).
+    Usado para detectar subcontratação de autônomos (PF) no G1."""
+    df = dfs.get("0150")
+    if df is None or df.empty:
+        return {}
+    result = {}
+    for _, row in df.iterrows():
+        cod = str(row.get("cod_part", "")).strip()
+        cpf = str(row.get("cpf", "")).strip().replace(".", "").replace("-", "")
+        result[cod] = "PF" if cpf and len(cpf) >= 11 and cpf not in ("00000000000",) else "PJ"
+    return result
+
+
 # ─── 5. EXTRATORES COMPLEMENTARES ─────────────────────────────────────────────
 
 def extract_apuracao(dfs: dict[str, pd.DataFrame]) -> dict:
@@ -512,3 +526,127 @@ def extract_cfop_cst(dfs: dict[str, pd.DataFrame]) -> list[dict]:
 
     linhas.sort(key=lambda r: (r["ind_oper"], r["cfop"], r["cst_pis"]))
     return linhas
+
+
+# ─── 6. PRÉVIA PERDCOMP (Tabela 4.3.6) ────────────────────────────────────────
+
+_TABELA_COD_CRED: dict[str, str] = {
+    "101": "Alíquota Básica (1,65% PIS / 7,60% COFINS)",
+    "102": "Alíquota Diferenciada",
+    "103": "Alíquota por Unidade de Produto",
+    "104": "Estoque de Abertura",
+    "105": "Embalagens para Revenda",
+    "106": "Presumido da Agroindústria",
+    "107": "Outras Operações — Básico",
+    "108": "Importação de Bens/Serviços como Insumo",
+    "109": "Ativo Imob. — Encargos de Depreciação (F120)",
+    "110": "Devoluções de Vendas ao Mercado Interno",
+    "111": "Outras Operações — Custos e Despesas",
+    "112": "Ativo Imob. — Valor de Aquisição (F130)",
+    "201": "Presumido — Alíquota Básica (ressarcível / PERDCOMP)",
+    "202": "Presumido — Alíquota Diferenciada",
+    "203": "Presumido — Alíquota por Unidade de Produto",
+    "204": "Presumido — Estoque de Abertura",
+    "205": "Presumido — Embalagens para Revenda",
+    "206": "Presumido — Agroindústria",
+    "207": "Presumido — Outras Operações (ressarcível / PERDCOMP)",
+    "208": "Presumido — Importação de Bens/Serviços",
+    "209": "Presumido — Ativo Imob. (Depreciação)",
+    "210": "Presumido — Devoluções de Vendas",
+    "211": "Presumido — Outras Operações",
+}
+
+
+def _sortkey_200(cod: str) -> int:
+    """Ordena 200-série para consumo: 207 primeiro, 202 segundo, 201 por último."""
+    try:
+        c = int(cod)
+    except ValueError:
+        return 500
+    if c == 207:
+        return 0
+    if c == 202:
+        return 1
+    if c == 201:
+        return 999
+    return c
+
+
+def extract_perdcomp_previa(dfs: dict[str, pd.DataFrame]) -> dict:
+    """Classifica créditos do período pelos códigos da Tabela 4.3.6 do SPED e
+    simula a ordem ótima de utilização segundo as regras de PERDCOMP:
+      1. Série 100 (não ressarcível) — descontada contra contribuição devida
+      2. Série 200 (ressarcível)    — ordem: 207 → 202 → demais → 201
+    O saldo remanescente no código 201 é o candidato principal ao PERDCOMP."""
+
+    def _build(df_cred, df_tot, tributo: str) -> dict:
+        creditos_raw: dict[str, float] = {}
+        if df_cred is not None and not df_cred.empty:
+            for _, row in df_cred.iterrows():
+                cod = str(row.get("cod_cred", "")).strip()
+                val = parse_decimal(row.get("vl_cred_disp", "0"))
+                if cod:
+                    creditos_raw[cod] = creditos_raw.get(cod, 0.0) + val
+
+        contrib_periodo = 0.0
+        if df_tot is not None and not df_tot.empty:
+            r = df_tot.iloc[0]
+            contrib_periodo = parse_decimal(r.get("vl_tot_cont_nc_per", "0"))
+
+        creditos_100 = [(c, v) for c, v in creditos_raw.items()
+                        if c.isdigit() and 100 <= int(c) <= 199]
+        creditos_200 = [(c, v) for c, v in creditos_raw.items()
+                        if c.isdigit() and 200 <= int(c) <= 299]
+
+        saldo_deve = contrib_periodo
+        steps: list[dict] = []
+
+        for cod, valor in sorted(creditos_100, key=lambda x: int(x[0])):
+            usado = min(valor, saldo_deve)
+            saldo_deve = max(0.0, round(saldo_deve - valor, 2))
+            steps.append({
+                "cod_cred": cod,
+                "descricao": _TABELA_COD_CRED.get(cod, f"Código {cod}"),
+                "serie": "100",
+                "ressarcivel": False,
+                "valor_disponivel": round(valor, 2),
+                "valor_usado_desconto": round(usado, 2),
+                "valor_perdcomp": 0.0,
+                "saldo_contrib_apos": round(max(0.0, saldo_deve), 2),
+            })
+
+        for cod, valor in sorted(creditos_200, key=lambda x: _sortkey_200(x[0])):
+            usado = min(valor, saldo_deve)
+            saldo_deve = max(0.0, round(saldo_deve - valor, 2))
+            perdcomp = round(max(0.0, valor - usado), 2)
+            steps.append({
+                "cod_cred": cod,
+                "descricao": _TABELA_COD_CRED.get(cod, f"Código {cod}"),
+                "serie": "200",
+                "ressarcivel": True,
+                "valor_disponivel": round(valor, 2),
+                "valor_usado_desconto": round(usado, 2),
+                "valor_perdcomp": perdcomp,
+                "saldo_contrib_apos": round(max(0.0, saldo_deve), 2),
+            })
+
+        total_100 = round(sum(v for _, v in creditos_100), 2)
+        total_200 = round(sum(v for _, v in creditos_200), 2)
+        total_perdcomp = round(sum(s["valor_perdcomp"] for s in steps), 2)
+
+        return {
+            "tributo": tributo,
+            "contrib_periodo": round(contrib_periodo, 2),
+            "total_creditos_100": total_100,
+            "total_creditos_200": total_200,
+            "total_creditos": round(total_100 + total_200, 2),
+            "contrib_apos_100": round(max(0.0, contrib_periodo - total_100), 2),
+            "contrib_restante": round(max(0.0, contrib_periodo - total_100 - total_200), 2),
+            "total_perdcomp_disponivel": total_perdcomp,
+            "steps": steps,
+        }
+
+    return {
+        "pis": _build(dfs.get("M100"), dfs.get("M200"), "PIS"),
+        "cofins": _build(dfs.get("M500"), dfs.get("M600"), "COFINS"),
+    }

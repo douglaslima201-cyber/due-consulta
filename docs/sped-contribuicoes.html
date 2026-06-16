@@ -23,46 +23,47 @@ html{scroll-behavior:smooth;}
 body{font-family:var(--sans);background:var(--db1);color:var(--white);overflow-x:hidden;line-height:1.6;min-height:100vh;}
 ::-webkit-scrollbar{width:5px;}
 ::-webkit-scrollbar-track{background:transparent;}
-::-webkit-scrollbar-thumb{background:rgba(139,92,246,.35);border-radius:3px;}
+::-webkit-scrollbar-thumb{background:rgba(249,115,22,.35);border-radius:3px;}
 
 /* NAV */
-nav{position:fixed;top:0;left:0;right:0;z-index:200;height:64px;display:flex;align-items:center;padding:0 48px;background:rgba(6,13,26,.92);backdrop-filter:blur(24px);border-bottom:1px solid rgba(139,92,246,.15);}
+nav{position:fixed;top:0;left:0;right:0;z-index:200;height:64px;display:flex;align-items:center;padding:0 48px;background:rgba(6,13,26,.92);backdrop-filter:blur(24px);border-bottom:1px solid rgba(249,115,22,.15);}
 .nav-brand{display:flex;align-items:center;gap:12px;}
-.nav-icon{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--purple),#7C3AED);display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 4px 16px rgba(139,92,246,.35);}
+.nav-icon{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--orange),var(--orange-d));display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 4px 16px rgba(249,115,22,.35);}
 .nav-name{font-size:15px;font-weight:700;letter-spacing:-.02em;}
-.nav-name span{color:var(--purple);}
+.nav-name span{color:var(--orange);}
 .nav-right{margin-left:auto;display:flex;align-items:center;gap:16px;}
 .nav-back{font-size:13px;color:var(--g3);text-decoration:none;display:flex;align-items:center;gap:6px;transition:color .2s;}
 .nav-back:hover{color:var(--white);}
 .nav-tag{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--g3);background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);padding:4px 12px;border-radius:100px;}
 
 /* BG */
-.hero-bg{position:fixed;inset:0;pointer-events:none;z-index:0;background:radial-gradient(ellipse 70% 50% at 30% 20%,rgba(139,92,246,.07) 0%,transparent 60%),radial-gradient(ellipse 60% 50% at 80% 80%,rgba(34,197,94,.04) 0%,transparent 60%);}
-.hero-grid{position:fixed;inset:0;pointer-events:none;z-index:0;background-image:linear-gradient(rgba(139,92,246,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(139,92,246,.03) 1px,transparent 1px);background-size:56px 56px;mask-image:radial-gradient(ellipse 100% 100% at 50% 0%,black 30%,transparent 100%);}
+.hero-bg{position:fixed;inset:0;pointer-events:none;z-index:0;background:radial-gradient(ellipse 80% 60% at 20% 20%,rgba(29,78,216,.07) 0%,transparent 60%),radial-gradient(ellipse 60% 50% at 80% 80%,rgba(249,115,22,.05) 0%,transparent 60%);}
+.hero-grid{position:fixed;inset:0;pointer-events:none;z-index:0;background-image:linear-gradient(rgba(249,115,22,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(249,115,22,.03) 1px,transparent 1px);background-size:56px 56px;mask-image:radial-gradient(ellipse 100% 100% at 50% 0%,black 30%,transparent 100%);}
 
 /* LAYOUT */
 .page{position:relative;z-index:1;max-width:1360px;margin:0 auto;padding:80px 48px 80px;}
 
 /* HEADER */
 .pg-header{padding-top:48px;margin-bottom:48px;}
-.pg-eyebrow{display:inline-flex;align-items:center;gap:8px;background:rgba(139,92,246,.08);border:1px solid rgba(139,92,246,.2);border-radius:100px;padding:5px 14px;margin-bottom:20px;font-size:11px;font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--purple);}
-.pg-eyebrow::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--purple);}
+.pg-eyebrow{display:inline-flex;align-items:center;gap:8px;background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.2);border-radius:100px;padding:5px 14px;margin-bottom:20px;font-size:11px;font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--orange);}
+.pg-eyebrow::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--orange);animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
 h1.pg-title{font-size:clamp(28px,4vw,48px);font-weight:800;letter-spacing:-.04em;line-height:1.05;margin-bottom:12px;}
-h1.pg-title .hl{background:linear-gradient(135deg,var(--purple),#A78BFA);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+h1.pg-title .hl{background:linear-gradient(135deg,var(--orange),var(--orange-l));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
 .pg-sub{font-size:15px;color:var(--g2);max-width:620px;line-height:1.7;}
 
 /* UPLOAD ZONE */
-.upload-zone{background:var(--db2);border:2px dashed rgba(139,92,246,.3);border-radius:var(--r3);padding:60px 40px;text-align:center;cursor:pointer;transition:all .25s;position:relative;overflow:hidden;}
-.upload-zone:hover,.upload-zone.drag{border-color:rgba(139,92,246,.7);background:rgba(139,92,246,.05);}
+.upload-zone{background:var(--db2);border:2px dashed rgba(249,115,22,.3);border-radius:var(--r3);padding:60px 40px;text-align:center;cursor:pointer;transition:all .25s;position:relative;overflow:hidden;}
+.upload-zone:hover,.upload-zone.drag{border-color:rgba(249,115,22,.7);background:rgba(249,115,22,.05);}
 .upload-icon{font-size:48px;margin-bottom:16px;display:block;}
 .upload-title{font-size:20px;font-weight:700;margin-bottom:8px;}
 .upload-sub{font-size:14px;color:var(--g3);margin-bottom:24px;}
 .upload-hint{font-size:12px;color:var(--g4);font-family:var(--mono);}
 #file-input{display:none;}
 .btn{display:inline-flex;align-items:center;gap:6px;padding:10px 22px;border-radius:var(--r);font-size:13px;font-weight:600;font-family:var(--sans);cursor:pointer;border:none;text-decoration:none;transition:all .2s;}
-.btn-purple{background:linear-gradient(135deg,var(--purple),#7C3AED);color:var(--white);box-shadow:0 4px 16px rgba(139,92,246,.3);}
-.btn-purple:hover{transform:translateY(-1px);box-shadow:0 6px 24px rgba(139,92,246,.45);}
-.btn-purple:disabled{opacity:.45;cursor:not-allowed;transform:none;box-shadow:none;}
+.btn-orange{background:linear-gradient(135deg,var(--orange),var(--orange-d));color:var(--white);box-shadow:0 4px 16px rgba(249,115,22,.3);}
+.btn-orange:hover{transform:translateY(-1px);box-shadow:0 6px 24px rgba(249,115,22,.45);}
+.btn-orange:disabled{opacity:.45;cursor:not-allowed;transform:none;box-shadow:none;}
 .btn-green{background:linear-gradient(135deg,var(--green),var(--green-d));color:var(--white);box-shadow:0 4px 16px rgba(34,197,94,.25);}
 .btn-green:hover{transform:translateY(-1px);box-shadow:0 6px 24px rgba(34,197,94,.4);}
 .btn-ghost{background:rgba(255,255,255,.05);color:var(--g2);border:1px solid rgba(255,255,255,.09);}
@@ -80,18 +81,18 @@ h1.pg-title .hl{background:linear-gradient(135deg,var(--purple),#A78BFA);-webkit
 
 /* LOADING */
 #loading{display:none;text-align:center;padding:40px;}
-.spinner{width:40px;height:40px;border:3px solid rgba(139,92,246,.2);border-top-color:var(--purple);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px;}
+.spinner{width:40px;height:40px;border:3px solid rgba(249,115,22,.2);border-top-color:var(--orange);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px;}
 @keyframes spin{to{transform:rotate(360deg);}}
 
 /* RESULTS */
 #results{display:none;}
 
 /* DIVIDER */
-.dvd{height:1px;background:linear-gradient(90deg,transparent,rgba(139,92,246,.15),transparent);margin:40px 0;}
+.dvd{height:1px;background:linear-gradient(90deg,transparent,rgba(249,115,22,.15),transparent);margin:40px 0;}
 
 /* SECTION HEADER */
 .sec-hd{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:20px;}
-.sec-lbl{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--purple);margin-bottom:6px;}
+.sec-lbl{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);margin-bottom:6px;}
 h2.sec-ttl{font-size:20px;font-weight:700;letter-spacing:-.02em;}
 h3.sub-ttl{font-size:15px;font-weight:700;margin-bottom:12px;color:var(--g1);}
 
@@ -99,9 +100,9 @@ h3.sub-ttl{font-size:15px;font-weight:700;margin-bottom:12px;color:var(--g1);}
 .tabs{display:flex;gap:0;flex-wrap:wrap;border-bottom:2px solid rgba(255,255,255,.07);margin-bottom:32px;}
 .tab-btn{display:flex;align-items:center;gap:8px;background:none;border:none;color:var(--g3);font-family:var(--sans);font-size:12px;font-weight:600;padding:12px 16px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s;white-space:nowrap;}
 .tab-btn:hover{color:var(--white);}
-.tab-btn.active{color:var(--purple);border-bottom-color:var(--purple);}
-.tab-badge{background:rgba(139,92,246,.12);color:var(--purple);border-radius:100px;font-size:10px;font-family:var(--mono);padding:1px 7px;line-height:1.6;}
-.tab-btn.active .tab-badge{background:rgba(139,92,246,.25);}
+.tab-btn.active{color:var(--orange);border-bottom-color:var(--orange);}
+.tab-badge{background:rgba(249,115,22,.12);color:var(--orange);border-radius:100px;font-size:10px;font-family:var(--mono);padding:1px 7px;line-height:1.6;}
+.tab-btn.active .tab-badge{background:rgba(249,115,22,.25);}
 .tab-pane{display:none;}
 .tab-pane.active{display:block;}
 
@@ -109,7 +110,7 @@ h3.sub-ttl{font-size:15px;font-weight:700;margin-bottom:12px;color:var(--g1);}
 .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:32px;}
 .kpi{background:var(--db2);border:1px solid rgba(255,255,255,.07);border-radius:var(--r2);padding:22px;position:relative;overflow:hidden;}
 .kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;border-radius:var(--r2) var(--r2) 0 0;}
-.kpi-purple::before{background:linear-gradient(90deg,var(--purple),#A78BFA);}
+.kpi-orange::before{background:linear-gradient(90deg,var(--orange),var(--orange-l));}
 .kpi-green::before{background:linear-gradient(90deg,var(--green),var(--green-d));}
 .kpi-yellow::before{background:linear-gradient(90deg,var(--yellow),#D97706);}
 .kpi-blue::before{background:linear-gradient(90deg,var(--blue),var(--blue-l));}
@@ -121,8 +122,8 @@ h3.sub-ttl{font-size:15px;font-weight:700;margin-bottom:12px;color:var(--g1);}
 
 /* INSIGHTS */
 .insights-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-bottom:32px;}
-.insight-card{background:linear-gradient(160deg,var(--db2) 0%,var(--db3) 100%);border:1px solid rgba(139,92,246,.15);border-radius:var(--r2);padding:20px 22px;position:relative;}
-.insight-tag{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--purple);margin-bottom:8px;}
+.insight-card{background:linear-gradient(160deg,var(--db2) 0%,var(--db3) 100%);border:1px solid rgba(249,115,22,.15);border-radius:var(--r2);padding:20px 22px;position:relative;}
+.insight-tag{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--orange);margin-bottom:8px;}
 .insight-headline{font-size:22px;font-weight:800;letter-spacing:-.02em;margin-bottom:6px;}
 .insight-desc{font-size:12px;color:var(--g2);line-height:1.6;}
 .insight-meta{font-size:11px;color:var(--g4);font-family:var(--mono);margin-top:8px;}
@@ -147,11 +148,11 @@ h3.sub-ttl{font-size:15px;font-weight:700;margin-bottom:12px;color:var(--g1);}
 .table-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
 .search-box{flex:1;min-width:180px;position:relative;}
 .search-box input{width:100%;background:var(--db3);border:1px solid rgba(255,255,255,.09);border-radius:var(--r);padding:8px 12px 8px 36px;font-size:13px;color:var(--white);font-family:var(--sans);outline:none;transition:border-color .2s;}
-.search-box input:focus{border-color:rgba(139,92,246,.4);}
+.search-box input:focus{border-color:rgba(249,115,22,.4);}
 .search-box input::placeholder{color:var(--g4);}
 .search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--g4);}
 .filter-sel{background:var(--db3);border:1px solid rgba(255,255,255,.09);border-radius:var(--r);padding:8px 12px;font-size:12px;color:var(--g2);font-family:var(--sans);outline:none;cursor:pointer;}
-.filter-sel:focus{border-color:rgba(139,92,246,.4);}
+.filter-sel:focus{border-color:rgba(249,115,22,.4);}
 
 .table-wrap{background:var(--db2);border:1px solid rgba(255,255,255,.07);border-radius:var(--r2);overflow:hidden;overflow-x:auto;margin-bottom:24px;}
 table{width:100%;border-collapse:collapse;font-size:12px;}
@@ -159,13 +160,13 @@ thead{background:var(--db3);}
 th{padding:11px 13px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--g3);font-family:var(--mono);font-weight:500;border-bottom:1px solid rgba(255,255,255,.06);white-space:nowrap;}
 td{padding:10px 13px;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:top;}
 tr:last-child td{border-bottom:none;}
-tr:hover td{background:rgba(139,92,246,.03);}
+tr:hover td{background:rgba(249,115,22,.03);}
 .td-mono{font-family:var(--mono);font-size:11px;color:var(--g3);white-space:nowrap;}
 .td-desc{max-width:300px;}
 .td-valor{text-align:right;font-family:var(--mono);white-space:nowrap;}
-.row-detail{display:none;background:rgba(139,92,246,.04);}
+.row-detail{display:none;background:rgba(249,115,22,.04);}
 .row-detail td{padding:8px 13px 14px;border-bottom:1px solid rgba(255,255,255,.04);}
-.detail-box{background:var(--db3);border-left:3px solid var(--purple);border-radius:0 var(--r) var(--r) 0;padding:10px 14px;font-size:12px;color:var(--g2);line-height:1.6;}
+.detail-box{background:var(--db3);border-left:3px solid var(--orange);border-radius:0 var(--r) var(--r) 0;padding:10px 14px;font-size:12px;color:var(--g2);line-height:1.6;}
 .detail-box strong{color:var(--white);display:block;margin-bottom:4px;}
 
 /* EXPORT BAR */
@@ -181,7 +182,7 @@ tr:hover td{background:rgba(139,92,246,.03);}
 .alert-err ul{margin:0;padding-left:18px;font-size:12px;color:var(--g2);line-height:1.6;}
 
 /* ── GROUP TABS ─────────────────────────────────────────────────────────────── */
-.group-info{background:linear-gradient(160deg,var(--db2) 0%,var(--db3) 100%);border:1px solid rgba(139,92,246,.15);border-radius:var(--r2);padding:20px 22px;margin-bottom:20px;display:flex;gap:14px;align-items:flex-start;}
+.group-info{background:linear-gradient(160deg,var(--db2) 0%,var(--db3) 100%);border:1px solid rgba(249,115,22,.15);border-radius:var(--r2);padding:20px 22px;margin-bottom:20px;display:flex;gap:14px;align-items:flex-start;}
 .group-info-icon{font-size:26px;flex-shrink:0;margin-top:2px;}
 .group-info-title{font-size:15px;font-weight:700;margin-bottom:4px;}
 .group-info-desc{font-size:13px;color:var(--g2);line-height:1.7;}
@@ -196,21 +197,21 @@ tr:hover td{background:rgba(139,92,246,.03);}
 .achado-card-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;}
 .achado-card-meta{margin-left:auto;font-family:var(--mono);font-weight:700;font-size:13px;}
 .achado-card-desc{font-size:13px;color:var(--g1);margin-bottom:10px;line-height:1.6;}
-.achado-card-action{background:rgba(139,92,246,.06);border-left:3px solid var(--purple);border-radius:0 var(--r) var(--r) 0;padding:10px 14px;font-size:12px;color:var(--g2);line-height:1.6;}
-.achado-card-action strong{display:block;margin-bottom:4px;font-size:10px;text-transform:uppercase;letter-spacing:.08em;font-family:var(--mono);color:var(--purple);}
+.achado-card-action{background:rgba(249,115,22,.06);border-left:3px solid var(--orange);border-radius:0 var(--r) var(--r) 0;padding:10px 14px;font-size:12px;color:var(--g2);line-height:1.6;}
+.achado-card-action strong{display:block;margin-bottom:4px;font-size:10px;text-transform:uppercase;letter-spacing:.08em;font-family:var(--mono);color:var(--orange);}
 .achado-card-legal{font-size:11px;color:var(--g4);font-family:var(--mono);margin-top:8px;}
 .achado-empty{text-align:center;color:var(--g3);font-size:13px;padding:32px;background:var(--db2);border:1px solid rgba(255,255,255,.06);border-radius:var(--r2);}
 
 /* ── APURAÇÃO TAB ───────────────────────────────────────────────────────────── */
 .apur-periodo{margin-bottom:28px;}
-.apur-periodo-hd{font-size:13px;font-weight:700;font-family:var(--mono);color:var(--purple);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid rgba(139,92,246,.2);}
+.apur-periodo-hd{font-size:13px;font-weight:700;font-family:var(--mono);color:var(--orange);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid rgba(249,115,22,.2);}
 .apur-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
 .apur-card{background:var(--db2);border:1px solid rgba(255,255,255,.07);border-radius:var(--r2);overflow:hidden;}
 .apur-card-hd{background:var(--db3);padding:10px 16px;font-size:11px;font-weight:700;font-family:var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--g2);}
 .apur-row{display:flex;justify-content:space-between;align-items:center;padding:9px 16px;border-bottom:1px solid rgba(255,255,255,.04);}
 .apur-row:last-child{border-bottom:none;}
-.apur-row.total{background:rgba(139,92,246,.06);font-weight:700;}
-.apur-row.total .apur-val{color:var(--purple);}
+.apur-row.total{background:rgba(249,115,22,.06);font-weight:700;}
+.apur-row.total .apur-val{color:var(--orange);}
 .apur-row.recolher{background:rgba(34,197,94,.06);font-weight:700;}
 .apur-row.recolher .apur-val{color:var(--green);}
 .apur-lbl{font-size:12px;color:var(--g2);}
@@ -231,21 +232,49 @@ tr:hover td{background:rgba(139,92,246,.03);}
 .rateio-reflex-hd{font-size:11px;font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--yellow);margin-bottom:10px;}
 
 /* ── CONCLUSÃO TAB ──────────────────────────────────────────────────────────── */
-.conclusao-exec{background:linear-gradient(160deg,var(--db2) 0%,var(--db3) 100%);border:1px solid rgba(139,92,246,.2);border-radius:var(--r2);padding:22px 24px;margin-bottom:24px;}
-.conclusao-exec-hd{font-size:13px;font-weight:700;color:var(--purple);margin-bottom:10px;font-family:var(--mono);letter-spacing:.06em;text-transform:uppercase;}
+.conclusao-exec{background:linear-gradient(160deg,var(--db2) 0%,var(--db3) 100%);border:1px solid rgba(249,115,22,.2);border-radius:var(--r2);padding:22px 24px;margin-bottom:24px;}
+.conclusao-exec-hd{font-size:13px;font-weight:700;color:var(--orange);margin-bottom:10px;font-family:var(--mono);letter-spacing:.06em;text-transform:uppercase;}
 .conclusao-exec-text{font-size:13px;color:var(--g1);line-height:1.8;}
 .conclusao-grupo{background:var(--db2);border:1px solid rgba(255,255,255,.07);border-radius:var(--r2);padding:16px 20px;margin-bottom:10px;}
 .conclusao-grupo-hd{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
 .conclusao-grupo-title{font-size:14px;font-weight:700;}
 .conclusao-grupo-status{margin-left:auto;}
 .conclusao-grupo-body{font-size:13px;color:var(--g2);line-height:1.7;}
-.conclusao-acao{background:rgba(139,92,246,.06);border-left:3px solid var(--purple);border-radius:0 var(--r) var(--r) 0;padding:8px 14px;font-size:12px;color:var(--g2);line-height:1.6;margin-top:8px;}
+.conclusao-acao{background:rgba(249,115,22,.06);border-left:3px solid var(--orange);border-radius:0 var(--r) var(--r) 0;padding:8px 14px;font-size:12px;color:var(--g2);line-height:1.6;margin-top:8px;}
 .plano-acao{display:flex;flex-direction:column;gap:8px;margin-top:8px;}
 .pa-item{display:flex;gap:12px;align-items:flex-start;background:var(--db2);border:1px solid rgba(255,255,255,.06);border-radius:var(--r);padding:12px 14px;}
-.pa-num{width:22px;height:22px;border-radius:50%;background:rgba(139,92,246,.2);color:var(--purple);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;}
+.pa-num{width:22px;height:22px;border-radius:50%;background:rgba(249,115,22,.2);color:var(--orange);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;}
 .pa-body{flex:1;}
 .pa-title{font-size:13px;font-weight:600;margin-bottom:2px;}
 .pa-desc{font-size:12px;color:var(--g3);line-height:1.5;}
+
+/* ── PERDCOMP TAB ────────────────────────────────────────────────────────────── */
+.perdcomp-tributo{background:var(--db2);border:1px solid rgba(255,255,255,.07);border-radius:var(--r2);overflow:hidden;margin-bottom:20px;}
+.perdcomp-tributo-hd{background:var(--db3);padding:11px 18px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,.06);}
+.perdcomp-tributo-lbl{font-size:11px;font-weight:700;font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--g2);}
+.perdcomp-tributo-stats{margin-left:auto;display:flex;gap:16px;}
+.perdcomp-stat{text-align:right;}
+.perdcomp-stat-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--g4);font-family:var(--mono);}
+.perdcomp-stat-val{font-size:14px;font-weight:700;font-family:var(--mono);}
+.perdcomp-table{width:100%;border-collapse:collapse;font-size:12px;}
+.perdcomp-table th{padding:8px 14px;text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.09em;color:var(--g3);font-family:var(--mono);font-weight:500;border-bottom:1px solid rgba(255,255,255,.06);white-space:nowrap;}
+.perdcomp-table td{padding:9px 14px;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:middle;}
+.perdcomp-table tr:last-child td{border-bottom:none;}
+.perdcomp-serie-100{border-left:3px solid var(--blue-l);}
+.perdcomp-serie-200{border-left:3px solid var(--orange);}
+.perdcomp-bar-wrap{width:100px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden;height:5px;display:inline-block;vertical-align:middle;}
+.perdcomp-bar-desc{height:5px;background:var(--blue-l);border-radius:3px;}
+.perdcomp-bar-perdcomp{height:5px;background:var(--orange);border-radius:3px;}
+.perdcomp-highlight{background:rgba(249,115,22,.07);font-weight:700;}
+.perdcomp-highlight td{color:var(--orange);}
+.perdcomp-summary{display:flex;gap:12px;flex-wrap:wrap;margin:16px;}
+.perdcomp-sumbox{flex:1;min-width:160px;background:var(--db3);border-radius:var(--r);padding:12px 16px;}
+.perdcomp-sumbox-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--g3);font-family:var(--mono);margin-bottom:4px;}
+.perdcomp-sumbox-val{font-size:18px;font-weight:800;letter-spacing:-.02em;font-family:var(--mono);}
+.perdcomp-sumbox.destaque{background:rgba(249,115,22,.1);border:1px solid rgba(249,115,22,.25);}
+.perdcomp-sumbox.destaque .perdcomp-sumbox-val{color:var(--orange);}
+.perdcomp-aviso{background:rgba(34,197,94,.05);border:1px solid rgba(34,197,94,.2);border-radius:var(--r);padding:10px 14px;font-size:12px;color:var(--g2);line-height:1.6;margin:0 16px 16px;}
+.perdcomp-aviso-zero{background:rgba(107,125,148,.06);border:1px solid rgba(107,125,148,.15);border-radius:var(--r);padding:10px 14px;font-size:12px;color:var(--g3);line-height:1.6;margin:0 16px 16px;}
 
 /* PRINT */
 @media print{
@@ -295,13 +324,13 @@ tr:hover td{background:rgba(139,92,246,.03);}
       <span class="upload-icon">🧾</span>
       <div class="upload-title">Arraste os arquivos SPED Contribuições aqui</div>
       <div class="upload-sub">ou clique para selecionar — pode enviar múltiplos meses de uma vez</div>
-      <button class="btn btn-purple" onclick="event.stopPropagation();document.getElementById('file-input').click()">Selecionar arquivos .txt</button>
+      <button class="btn btn-orange" onclick="event.stopPropagation();document.getElementById('file-input').click()">Selecionar arquivos .txt</button>
       <p class="upload-hint" style="margin-top:16px;">Envie 2+ competências para habilitar a verificação de transposição de saldo (registros 1100/1500)</p>
       <input type="file" id="file-input" accept=".txt" multiple onchange="handleFileSelect(event)"/>
     </div>
     <div class="flist" id="flist"></div>
     <div style="display:flex;gap:12px;align-items:center;margin-bottom:20px;" id="analyze-bar">
-      <button class="btn btn-purple" id="btn-analisar" onclick="analisar()" disabled>🔍 Analisar SPED</button>
+      <button class="btn btn-orange" id="btn-analisar" onclick="analisar()" disabled>🔍 Analisar SPED</button>
       <button class="btn btn-ghost btn-sm" onclick="limpar()">✕ Limpar</button>
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1px;background:rgba(255,255,255,.05);border-radius:var(--r2);overflow:hidden;border:1px solid rgba(255,255,255,.06);">
@@ -330,7 +359,7 @@ tr:hover td{background:rgba(139,92,246,.03);}
     </div>
 
     <!-- FILE BAR -->
-    <div id="file-bar" style="display:flex;align-items:center;gap:12px;margin-bottom:28px;background:var(--db2);border:1px solid rgba(139,92,246,.2);border-radius:var(--r);padding:11px 16px;flex-wrap:wrap;">
+    <div id="file-bar" style="display:flex;align-items:center;gap:12px;margin-bottom:28px;background:var(--db2);border:1px solid rgba(249,115,22,.2);border-radius:var(--r);padding:11px 16px;flex-wrap:wrap;">
       <span style="font-size:16px;">🏢</span>
       <div>
         <div style="font-size:13px;font-weight:600;" id="file-bar-name">—</div>
@@ -351,6 +380,7 @@ tr:hover td{background:rgba(139,92,246,.03);}
       <button class="tab-btn" data-tab="G4" onclick="switchTab('G4')">🔁 G4 · Transposição <span class="tab-badge" id="tab-count-G4">0</span></button>
       <button class="tab-btn" data-tab="G5" onclick="switchTab('G5')">⚖️ G5 · Rateio 0111 <span class="tab-badge" id="tab-count-G5">0</span></button>
       <button class="tab-btn" data-tab="cfop" onclick="switchTab('cfop')">🔄 CFOP/CST</button>
+      <button class="tab-btn" data-tab="perdcomp" onclick="switchTab('perdcomp')">📑 Prévia PERDCOMP</button>
       <button class="tab-btn" data-tab="conclusao" onclick="switchTab('conclusao')">📝 Conclusão</button>
     </div>
 
@@ -363,7 +393,7 @@ tr:hover td{background:rgba(139,92,246,.03);}
         <div><div class="sec-lbl">Visão Geral</div><h2 class="sec-ttl">Resumo executivo</h2></div>
       </div>
       <div class="kpi-grid">
-        <div class="kpi kpi-purple"><div class="kpi-icon">📋</div><div class="kpi-label">Total de Achados</div><div class="kpi-value" id="k-total">—</div><div class="kpi-sub" id="k-periodos">— período(s)</div></div>
+        <div class="kpi kpi-orange"><div class="kpi-icon">📋</div><div class="kpi-label">Total de Achados</div><div class="kpi-value" id="k-total">—</div><div class="kpi-sub" id="k-periodos">— período(s)</div></div>
         <div class="kpi kpi-green"><div class="kpi-icon">💰</div><div class="kpi-label">Oportunidades</div><div class="kpi-value" id="k-oportunidades">—</div><div class="kpi-sub" id="k-oportunidades-n">— achados</div></div>
         <div class="kpi kpi-red"><div class="kpi-icon">⚠️</div><div class="kpi-label">Riscos Identificados</div><div class="kpi-value" id="k-riscos">—</div><div class="kpi-sub" id="k-riscos-n">— achados</div></div>
         <div class="kpi kpi-yellow"><div class="kpi-icon">🔎</div><div class="kpi-label">Inconsistências</div><div class="kpi-value" id="k-inconsistencias">—</div><div class="kpi-sub" id="k-inconsistencias-n">— achados</div></div>
@@ -515,6 +545,24 @@ tr:hover td{background:rgba(139,92,246,.03);}
         </table>
       </div>
       <div id="cfop-count" style="font-size:11px;color:var(--g4);font-family:var(--mono);margin-top:6px;text-align:right;"></div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!--  ABA PRÉVIA PERDCOMP                                               -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="tab-pane" id="tab-perdcomp">
+      <div class="sec-hd">
+        <div><div class="sec-lbl">Tabela 4.3.6 — SPED Contribuições</div><h2 class="sec-ttl">Prévia PERDCOMP</h2></div>
+      </div>
+      <div class="group-info" style="margin-bottom:24px;">
+        <div class="group-info-icon">📑</div>
+        <div>
+          <div class="group-info-title">Classificação de Créditos e Estratégia PERDCOMP</div>
+          <div class="group-info-desc">Os créditos apurados no Bloco M são classificados pelos códigos da Tabela 4.3.6 do Guia Prático EFD-Contribuições em duas séries: <strong style="color:var(--blue-l)">Série 100 (não ressarcíveis)</strong> — somente podem ser descontados contra a contribuição devida; e <strong style="color:var(--orange)">Série 200 (ressarcíveis)</strong> — podem ser descontados e/ou compensados via PER/DCOMP. A simulação abaixo aplica a ordem ótima de consumo: série 100 primeiro, depois série 200 na ordem 207 → 202 → outros → 201, preservando o máximo do código 201 para PERDCOMP.</div>
+          <div class="group-info-legal">Base legal: Lei 10.637/2002, art. 13 e 14 · Lei 10.833/2003, art. 15 e 16 · IN RFB 2.055/2010 · Tabela 4.3.6 — Guia Prático EFD-Contribuições</div>
+        </div>
+      </div>
+      <div id="perdcomp-body"></div>
     </div>
 
     <!-- ═══════════════════════════════════════════════════════════════════ -->
@@ -718,6 +766,7 @@ function renderResults(data) {
   renderApuracao(allPorPeriodo);
   renderGroupPanes(allAchados, allPorPeriodo);
   renderCfopCst(allCfopCst, allPorPeriodo);
+  renderPerdcomp(allPorPeriodo);
   renderConclusao(allAchados, s, allPorPeriodo);
 }
 
@@ -780,7 +829,7 @@ function countBy(arr, key) { const o = {}; arr.forEach(a => { o[a[key]] = (o[a[k
 function renderCharts(achados) {
   const byGrupo = countBy(achados, 'grupo');
   const gKeys = Object.keys(GRUPOS).filter(g => byGrupo[g]);
-  makeChart('chart-grupo', 'bar', gKeys, [{ data: gKeys.map(g => byGrupo[g] || 0), backgroundColor: '#8B5CF6', borderRadius: 6, borderSkipped: false }], { plugins: { legend: { display: false } } });
+  makeChart('chart-grupo', 'bar', gKeys, [{ data: gKeys.map(g => byGrupo[g] || 0), backgroundColor: '#F97316', borderRadius: 6, borderSkipped: false }], { plugins: { legend: { display: false } } });
   const byTipo = countBy(achados, 'tipo');
   const tLabels = ['OPORTUNIDADE', 'RISCO', 'INCONSISTENCIA', 'INFORMATIVO'].filter(t => byTipo[t]);
   const tColors = { OPORTUNIDADE: '#22C55E', RISCO: '#EF4444', INCONSISTENCIA: '#F59E0B', INFORMATIVO: '#6B7D94' };
@@ -886,7 +935,7 @@ function renderApuracao(periodos) {
           <td class="td-valor">${fmt(c.vl_rec_brt)}</td>
           <td class="td-valor">${fmt(c.vl_bc_cont)}</td>
           <td class="td-valor">${fmtAliq(c.aliq)}</td>
-          <td class="td-valor" style="color:var(--purple);font-weight:700;">${fmt(c.vl_cont_apur)}</td>
+          <td class="td-valor" style="color:var(--orange);font-weight:700;">${fmt(c.vl_cont_apur)}</td>
         </tr>`).join('');
       return `
         <div class="apur-card">
@@ -975,9 +1024,9 @@ function renderG5Rateio(periodos) {
   const el = document.getElementById('rateio-dados');
   if (!periodos.length) { el.innerHTML = ''; return; }
 
-  const COLORS_RB = ['#8B5CF6', '#22C55E', '#3B82F6', '#F59E0B'];
+  const COLORS_RB = ['#F97316', '#22C55E', '#3B82F6', '#F59E0B'];
   const LABELS_RB = [
-    { key: 'trib_mi', pct: 'pct_trib_mi', label: 'Receita Tributada MI', color: '#8B5CF6', desc: 'Base para aproveitamento integral de créditos comuns no regime não cumulativo.' },
+    { key: 'trib_mi', pct: 'pct_trib_mi', label: 'Receita Tributada MI', color: '#F97316', desc: 'Base para aproveitamento integral de créditos comuns no regime não cumulativo.' },
     { key: 'nt_mi', pct: 'pct_nt_mi', label: 'Receita Não Tributada MI', color: '#F59E0B', desc: 'Receita de operações não sujeitas ao PIS/COFINS não-cumulativo (ex: receitas isentas). Reduz o crédito aproveitável.' },
     { key: 'exp', pct: 'pct_exp', label: 'Receita de Exportação', color: '#22C55E', desc: 'Receita de exportação de serviços. Créditos atrelados podem ser ressarcidos ou compensados (Lei 10.833/2003, art. 5º).' },
     { key: 'cum', pct: 'pct_cum', label: 'Receita Cumulativa', color: '#3B82F6', desc: 'Receita sujeita ao regime cumulativo (alíquotas 0,65%/3%). Não gera crédito não-cumulativo.' },
@@ -1026,7 +1075,7 @@ function renderG5Rateio(periodos) {
         <div class="rateio-reflex">
           <div class="rateio-reflex-hd">⚡ Reflexo no aproveitamento de créditos comuns (CST 56 / CST 66)</div>
           <div style="font-size:13px;color:var(--g2);line-height:1.7;">
-            Para despesas comuns (ex: combustível rateado entre fretes tributados e não tributados), somente <strong style="color:var(--purple);">${fmtPct(pctTrib)}</strong> do crédito é aproveitável diretamente — proporção equivalente à receita tributada MI.
+            Para despesas comuns (ex: combustível rateado entre fretes tributados e não tributados), somente <strong style="color:var(--orange);">${fmtPct(pctTrib)}</strong> do crédito é aproveitável diretamente — proporção equivalente à receita tributada MI.
             ${pctExp > 0 ? `A parcela de <strong style="color:var(--green);">${fmtPct(pctExp)}</strong> vinculada a exportações pode ser objeto de ressarcimento ou compensação (Lei 10.833/2003, art. 5º).` : ''}
             Créditos em CST 56/66 devem refletir estes percentuais no campo PERC_RAT_CRED dos registros M105/M505.
           </div>
@@ -1077,6 +1126,139 @@ function filtrarCfop() {
   document.getElementById('cfop-count').textContent = `Exibindo ${filtered.length} de ${_cfopRows.length} linhas`;
 }
 
+// ── Prévia PERDCOMP ───────────────────────────────────────────────────────────
+function renderPerdcomp(periodos) {
+  const el = document.getElementById('perdcomp-body');
+  if (!periodos.length) { el.innerHTML = '<div class="achado-empty">Nenhum período processado.</div>'; return; }
+
+  function buildTributo(side) {
+    if (!side || !side.steps) return '';
+    const contrib = side.contrib_periodo || 0;
+    const t100 = side.total_creditos_100 || 0;
+    const t200 = side.total_creditos_200 || 0;
+    const restante = side.contrib_restante || 0;
+    const totalPerdcomp = side.total_perdcomp_disponivel || 0;
+    const isPIS = side.tributo === 'PIS';
+    const color = isPIS ? 'var(--blue-l)' : 'var(--orange)';
+
+    const rows = (side.steps || []).map(s => {
+      const pct = contrib > 0 ? Math.round((s.valor_disponivel / contrib) * 100) : 0;
+      const barPct = s.valor_disponivel > 0 ? Math.round((s.valor_usado_desconto / s.valor_disponivel) * 100) : 0;
+      const is200 = s.serie === '200';
+      const hasPerdcomp = s.valor_perdcomp > 0;
+      return `
+        <tr class="${hasPerdcomp ? 'perdcomp-highlight' : ''} perdcomp-serie-${s.serie}">
+          <td class="td-mono" style="color:${is200 ? 'var(--orange)' : 'var(--blue-l)'};">${esc(s.cod_cred)}</td>
+          <td style="font-size:12px;color:var(--g2);">${esc(s.descricao)}</td>
+          <td style="text-align:center;">
+            <span class="badge ${is200 ? 'b-possivel' : 'b-info'}" style="font-size:9px;">${s.serie === '100' ? '100 — Básico' : '200 — Presumido'}</span>
+          </td>
+          <td class="td-valor">${fmt(s.valor_disponivel)}</td>
+          <td class="td-valor" style="color:var(--g2);">${fmt(s.valor_usado_desconto)}</td>
+          <td class="td-valor" style="color:${hasPerdcomp ? 'var(--orange)' : 'var(--g4)'};">${hasPerdcomp ? fmt(s.valor_perdcomp) : '—'}</td>
+          <td style="padding:9px 14px;">
+            <div class="perdcomp-bar-wrap">
+              <div class="${is200 && hasPerdcomp ? 'perdcomp-bar-perdcomp' : 'perdcomp-bar-desc'}" style="width:${barPct}%;"></div>
+            </div>
+          </td>
+          <td class="td-valor" style="color:var(--g3);">${fmt(s.saldo_contrib_apos)}</td>
+        </tr>`;
+    });
+
+    const avisoHtml = totalPerdcomp > 0
+      ? `<div class="perdcomp-aviso">✅ <strong style="color:var(--green)">R$ ${totalPerdcomp.toLocaleString('pt-BR', {minimumFractionDigits:2})}</strong> disponíveis para PERDCOMP (PER/DCOMP) após consumo ótimo dos créditos série 200. Priorize a habilitação do crédito código 201 como base do pedido de compensação ou ressarcimento.</div>`
+      : `<div class="perdcomp-aviso-zero">ℹ️ Nenhum saldo série 200 restante para PERDCOMP neste período — créditos 200-série foram integralmente absorvidos pela contribuição devida.</div>`;
+
+    return `
+      <div class="perdcomp-tributo">
+        <div class="perdcomp-tributo-hd">
+          <span style="font-size:16px;">${isPIS ? '🔵' : '🟠'}</span>
+          <span class="perdcomp-tributo-lbl">${esc(side.tributo)}</span>
+          <div class="perdcomp-tributo-stats">
+            <div class="perdcomp-stat">
+              <div class="perdcomp-stat-lbl">Contribuição Período</div>
+              <div class="perdcomp-stat-val">${fmt(contrib)}</div>
+            </div>
+            <div class="perdcomp-stat">
+              <div class="perdcomp-stat-lbl">Série 100</div>
+              <div class="perdcomp-stat-val" style="color:var(--blue-l);">${fmt(t100)}</div>
+            </div>
+            <div class="perdcomp-stat">
+              <div class="perdcomp-stat-lbl">Série 200</div>
+              <div class="perdcomp-stat-val" style="color:var(--orange);">${fmt(t200)}</div>
+            </div>
+            <div class="perdcomp-stat">
+              <div class="perdcomp-stat-lbl">PERDCOMP</div>
+              <div class="perdcomp-stat-val" style="color:${totalPerdcomp > 0 ? 'var(--orange)' : 'var(--g4)'};">${fmt(totalPerdcomp)}</div>
+            </div>
+          </div>
+        </div>
+        ${rows.length ? `
+        <table class="perdcomp-table">
+          <thead><tr>
+            <th>Cód.</th><th>Descrição (Tabela 4.3.6)</th><th>Série</th>
+            <th style="text-align:right">Disponível</th>
+            <th style="text-align:right">Usado (Desconto)</th>
+            <th style="text-align:right">Saldo PERDCOMP</th>
+            <th>Consumo</th>
+            <th style="text-align:right">Saldo Déb. Após</th>
+          </tr></thead>
+          <tbody>${rows.join('')}</tbody>
+        </table>
+        <div class="perdcomp-summary">
+          <div class="perdcomp-sumbox">
+            <div class="perdcomp-sumbox-lbl">Contribuição do Período</div>
+            <div class="perdcomp-sumbox-val">${fmt(contrib)}</div>
+          </div>
+          <div class="perdcomp-sumbox">
+            <div class="perdcomp-sumbox-lbl">Total Série 100 (não ressarcível)</div>
+            <div class="perdcomp-sumbox-val" style="color:var(--blue-l);">${fmt(t100)}</div>
+          </div>
+          <div class="perdcomp-sumbox">
+            <div class="perdcomp-sumbox-lbl">Saldo após Série 100</div>
+            <div class="perdcomp-sumbox-val">${fmt(side.contrib_apos_100)}</div>
+          </div>
+          <div class="perdcomp-sumbox">
+            <div class="perdcomp-sumbox-lbl">Total Série 200 (ressarcível)</div>
+            <div class="perdcomp-sumbox-val" style="color:var(--orange);">${fmt(t200)}</div>
+          </div>
+          <div class="perdcomp-sumbox ${totalPerdcomp > 0 ? 'destaque' : ''}">
+            <div class="perdcomp-sumbox-lbl">Saldo p/ PERDCOMP</div>
+            <div class="perdcomp-sumbox-val">${fmt(totalPerdcomp)}</div>
+          </div>
+          <div class="perdcomp-sumbox" style="background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.15);">
+            <div class="perdcomp-sumbox-lbl">Contribuição Residual</div>
+            <div class="perdcomp-sumbox-val" style="color:var(--red);">${fmt(restante)}</div>
+          </div>
+        </div>
+        ${avisoHtml}` : '<div style="padding:16px;font-size:12px;color:var(--g4);">Nenhum crédito encontrado nos registros M100/M500 para este período.</div>'}
+      </div>`;
+  }
+
+  el.innerHTML = periodos.map(p => {
+    const pc = p.perdcomp_previa || {};
+    const pis = pc.pis || {};
+    const cof = pc.cofins || {};
+    const totalPisPerdcomp = pis.total_perdcomp_disponivel || 0;
+    const totalCofPerdcomp = cof.total_perdcomp_disponivel || 0;
+    return `
+      <div class="apur-periodo">
+        <div class="apur-periodo-hd">📅 Competência: ${esc(p.competencia)} &nbsp;·&nbsp; ${esc(p.arquivo)}</div>
+        ${buildTributo(pis)}
+        <div style="height:16px;"></div>
+        ${buildTributo(cof)}
+        ${(totalPisPerdcomp + totalCofPerdcomp) > 0 ? `
+        <div style="background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.25);border-radius:var(--r2);padding:14px 18px;margin-top:12px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+          <span style="font-size:20px;">💡</span>
+          <div>
+            <div style="font-size:13px;font-weight:700;color:var(--orange);margin-bottom:2px;">Saldo PERDCOMP consolidado · ${esc(p.competencia)}</div>
+            <div style="font-size:12px;color:var(--g2);">PIS: <strong>${fmt(totalPisPerdcomp)}</strong> &nbsp;+&nbsp; COFINS: <strong>${fmt(totalCofPerdcomp)}</strong> &nbsp;=&nbsp; <strong style="color:var(--orange);">${fmt(totalPisPerdcomp + totalCofPerdcomp)}</strong> disponíveis para compensação / ressarcimento via PER/DCOMP.</div>
+          </div>
+        </div>` : ''}
+      </div>`;
+  }).join('<div class="dvd"></div>');
+}
+
 // ── Conclusão ─────────────────────────────────────────────────────────────────
 function renderConclusao(achados, resumo, periodos) {
   const el = document.getElementById('conclusao-body');
@@ -1102,7 +1284,7 @@ function renderConclusao(achados, resumo, periodos) {
     const bodyText = items.length
       ? `${items.length} achado(s): ${items.filter(a=>a.tipo==='OPORTUNIDADE').length} oportunidade(s), ${items.filter(a=>a.tipo==='RISCO').length} risco(s), ${items.filter(a=>a.tipo==='INCONSISTENCIA').length} inconsistência(s).${nAltoG > 0 ? ` <strong style="color:var(--red);">${nAltoG} com severidade ALTA.</strong>` : ''}`
       : 'Nenhum achado identificado neste grupo — parâmetros dentro do esperado para o(s) período(s) analisado(s).';
-    const acaoHtml = recsUniq.length ? `<div class="conclusao-acao"><strong style="font-size:10px;color:var(--purple);display:block;margin-bottom:4px;font-family:var(--mono);letter-spacing:.06em;">INSTRUÇÕES CONSULTIVAS</strong>${recsUniq.map(r => `<div style="margin-bottom:4px;">→ ${esc(r)}</div>`).join('')}</div>` : '';
+    const acaoHtml = recsUniq.length ? `<div class="conclusao-acao"><strong style="font-size:10px;color:var(--orange);display:block;margin-bottom:4px;font-family:var(--mono);letter-spacing:.06em;">INSTRUÇÕES CONSULTIVAS</strong>${recsUniq.map(r => `<div style="margin-bottom:4px;">→ ${esc(r)}</div>`).join('')}</div>` : '';
     return `
       <div class="conclusao-grupo">
         <div class="conclusao-grupo-hd">
@@ -1130,7 +1312,7 @@ function renderConclusao(achados, resumo, periodos) {
       <div class="pa-body">
         <div class="pa-title"><span class="badge ${tipoBadge(a.tipo)}" style="margin-right:6px;">${tipoIcon(a.tipo)} ${esc(a.tipo)}</span><span class="badge ${sevBadge(a.severidade)}">${esc(a.severidade)}</span> &nbsp;${esc(GRUPOS[a.grupo] || a.grupo)} · ${esc(a.competencia)}</div>
         <div class="pa-desc">${esc(a.descricao)}</div>
-        <div class="pa-desc" style="margin-top:4px;color:var(--purple);">→ ${esc(a.recomendacao)}</div>
+        <div class="pa-desc" style="margin-top:4px;color:var(--orange);">→ ${esc(a.recomendacao)}</div>
       </div>
     </div>`).join('') : '<div class="achado-empty">Nenhum ponto de ação prioritário identificado.</div>';
 

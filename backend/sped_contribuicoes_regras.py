@@ -36,6 +36,7 @@ import pandas as pd
 from sped_contribuicoes_parser import (
     CST_COM_CREDITO, CST_RATEIO, CST_SEM_CREDITO, parse_decimal,
     build_item_map, build_conta_map, build_participante_map,
+    build_participante_tipo_map,
 )
 
 TOLERANCIA_VALOR = 1.0   # diferenças de até R$ 1,00 não são sinalizadas
@@ -127,7 +128,13 @@ def _achado(grupo, bloco, registro, competencia, tipo, descricao, valor, base_le
 
 # ─── G1 — Créditos tomados nos blocos A, C e F ────────────────────────────────
 
-def _g1_creditos_acf(dfs: dict[str, pd.DataFrame], header: dict, item_map: dict, conta_map: dict) -> list[dict]:
+BASE_LEGAL_SUBCONTRATADO_PF = (
+    "Lei 10.637/2002, art. 3º, §4º; Lei 10.833/2003, art. 3º, §4º; "
+    "IN RFB 2.121/2022 — crédito sobre frete subcontratado de PF ou PJ Simples = 75% das alíquotas normais"
+)
+
+def _g1_creditos_acf(dfs: dict[str, pd.DataFrame], header: dict, item_map: dict, conta_map: dict,
+                     participante_tipo_map: dict | None = None) -> list[dict]:
     achados: list[dict] = []
     competencia = header.get("competencia", "")
 
@@ -216,13 +223,66 @@ def _g1_creditos_acf(dfs: dict[str, pd.DataFrame], header: dict, item_map: dict,
             categoria, descr_categoria = _classificar(cod_item, descr_item, nome_cta)
 
             if categoria == "FRETE_SUBCONTRATADO" and vl_oper > 0:
+                cod_part = str(row.get("cod_part", "")).strip()
+                tipo_part = (participante_tipo_map or {}).get(cod_part, "PJ")
+                descr_upper = (descr_item or cod_item or "").upper()
+                is_simples = tipo_part == "PJ" and any(
+                    kw in descr_upper for kw in ("SIMPLES", "MEI", "MICRO", "EPP")
+                )
+                is_pf = tipo_part == "PF"
+                tipo_contratado = (
+                    "Pessoa Física (autônomo)" if is_pf else
+                    "PJ optante pelo Simples Nacional" if is_simples else None
+                )
+
+                if tipo_contratado:
+                    # Para PF e Simples, alíquotas corretas = 75% das normais:
+                    # PIS 1,2375% (75% de 1,65%) e COFINS 5,70% (75% de 7,60%)
+                    aliq_pis_correta = round(1.65 * 0.75, 4)   # 1.2375
+                    aliq_cofins_correta = round(7.60 * 0.75, 2) # 5.70
+                    tomou_integral = aliq_pis > aliq_pis_correta + 0.05
+                    nao_tomou = aliq_pis < 0.01
+                    if tomou_integral:
+                        achados.append(_achado(
+                            "G1", "F", "F100", competencia, "RISCO",
+                            f"F100 frete subcontratado de {tipo_contratado} "
+                            f"(fornecedor {cod_part}, R$ {vl_oper:,.2f}): crédito calculado "
+                            f"às alíquotas integrais (PIS {aliq_pis}% / COFINS {aliq_cofins}%). "
+                            f"Para {tipo_contratado} o crédito corresponde a 75% das "
+                            f"alíquotas normais (PIS {aliq_pis_correta}% / COFINS {aliq_cofins_correta}%).",
+                            vl_pis + vl_cofins, BASE_LEGAL_SUBCONTRATADO_PF,
+                            f"Solução: Recalcular o crédito usando PIS {aliq_pis_correta}% e "
+                            f"COFINS {aliq_cofins_correta}% sobre a base de R$ {vl_bc_pis:,.2f}. "
+                            "Retificar F100 e ajustar M100/M500 via redução em M110/M510 "
+                            "(estornar a diferença entre o crédito tomado e o crédito correto a 75%).",
+                            severidade=_severidade_por_valor((aliq_pis - aliq_pis_correta) / 100 * vl_bc_pis),
+                        ))
+                    elif nao_tomou:
+                        achados.append(_achado(
+                            "G1", "F", "F100", competencia, "OPORTUNIDADE",
+                            f"F100 frete subcontratado de {tipo_contratado} "
+                            f"(fornecedor {cod_part}, R$ {vl_oper:,.2f}): nenhum crédito tomado "
+                            f"(alíquota PIS = 0%). Para {tipo_contratado} é possível apropriar "
+                            f"crédito a 75% das alíquotas normais (PIS {aliq_pis_correta}% / "
+                            f"COFINS {aliq_cofins_correta}%).",
+                            vl_bc_pis * aliq_pis_correta / 100 + vl_bc_cofins * aliq_cofins_correta / 100,
+                            BASE_LEGAL_SUBCONTRATADO_PF,
+                            f"Apropriar crédito em F100 com PIS {aliq_pis_correta}% e COFINS "
+                            f"{aliq_cofins_correta}% sobre a base. Refletir em M100/M500 via "
+                            "acréscimo em M110/M510 ou retificação do SPED.",
+                            severidade=_severidade_por_valor(
+                                vl_bc_pis * aliq_pis_correta / 100 + vl_bc_cofins * aliq_cofins_correta / 100
+                            ),
+                        ))
+
+                # Verificação da base de cálculo (independente de PF/Simples)
                 pct_base = (vl_bc_pis / vl_oper) if vl_oper else 0.0
                 if pct_base < 0.999:
                     aliq_padrao = abs(aliq_pis - 1.65) > 0.01 or abs(aliq_cofins - 7.6) > 0.01
                     achados.append(_achado(
                         "G1", "F", "F100", competencia, "INCONSISTENCIA",
                         f"F100 '{descr_item or cod_item}' (fornecedor "
-                        f"{row.get('cod_part','')}): valor da operação R$ {vl_oper:,.2f}, "
+                        f"{cod_part}): valor da operação R$ {vl_oper:,.2f}, "
                         f"mas apenas R$ {vl_bc_pis:,.2f} ({pct_base * 100:.1f}%) compõe a "
                         f"base de cálculo de crédito de PIS/COFINS"
                         + (f", com alíquotas reduzidas (PIS {aliq_pis}% / COFINS {aliq_cofins}%)" if aliq_padrao else "")
@@ -259,67 +319,124 @@ def _g2_ativo_imobilizado(dfs: dict[str, pd.DataFrame], header: dict, conta_map:
     achados: list[dict] = []
     competencia = header.get("competencia", "")
 
-    df = dfs.get("F130")
-    if df is None or df.empty:
-        return achados
+    # ── F130 — crédito sobre valor de aquisição ───────────────────────────────
+    df_f130 = dfs.get("F130")
+    if df_f130 is not None and not df_f130.empty:
+        for _, row in df_f130.iterrows():
+            cod_cta = row.get("cod_cta", "")
+            nome_cta = conta_map.get(cod_cta, "")
+            ident_bem = str(row.get("ident_bem_imob", "")).strip()
+            vl_oper_aquis = parse_decimal(row.get("vl_oper_aquis", "0"))
+            vl_bc_cred = parse_decimal(row.get("vl_bc_cred", "0"))
+            vl_bc_pis = parse_decimal(row.get("vl_bc_pis", "0"))
+            cst_pis = str(row.get("cst_pis", "")).strip()
+            mes_oper_aquis = row.get("mes_oper_aquis", "")
 
-    for _, row in df.iterrows():
-        cod_cta = row.get("cod_cta", "")
-        nome_cta = conta_map.get(cod_cta, "")
-        ident_bem = str(row.get("ident_bem_imob", "")).strip()
-        vl_oper_aquis = parse_decimal(row.get("vl_oper_aquis", "0"))
-        vl_bc_cred = parse_decimal(row.get("vl_bc_cred", "0"))
-        vl_bc_pis = parse_decimal(row.get("vl_bc_pis", "0"))
-        cst_pis = str(row.get("cst_pis", "")).strip()
-        mes_oper_aquis = row.get("mes_oper_aquis", "")
+            categoria, _ = _classificar(nome_cta, ident_bem)
+            eh_frota = categoria == "ATIVO_IMOBILIZADO_FROTA" or ident_bem == "06"
 
-        categoria, _ = _classificar(nome_cta, ident_bem)
-        eh_frota = categoria == "ATIVO_IMOBILIZADO_FROTA" or ident_bem == "06"
-
-        # Verifica se a parcela mensal corresponde a 1/48 do valor de aquisição
-        # (regra geral de apropriação de crédito sobre ativo imobilizado).
-        if vl_bc_cred > 0:
-            parcela_esperada = vl_bc_cred / 48
-            if abs(parcela_esperada - vl_bc_pis) > TOLERANCIA_VALOR:
+            if eh_frota:
+                # Transportadoras devem apropriar crédito de frota EXCLUSIVAMENTE
+                # pela depreciação (F120), não pelo valor de aquisição (F130).
                 achados.append(_achado(
-                    "G2", "F", "F130", competencia, "INCONSISTENCIA",
-                    f"F130 ({nome_cta or cod_cta}, aquisição {mes_oper_aquis}): base de "
-                    f"cálculo do crédito informada na parcela (R$ {vl_bc_pis:,.2f}) "
-                    f"diverge do valor esperado para o método de 1/48 sobre "
-                    f"R$ {vl_bc_cred:,.2f} (R$ {parcela_esperada:,.2f}).",
-                    vl_bc_pis - parcela_esperada, BASE_LEGAL_ATIVO_IMOB,
-                    "Solução: (1) Verificar o valor de aquisição do bem e o método de "
-                    "apropriação (1/48 ou prazo diferente por normativa específica). "
-                    "(2) Retificar o registro F130 ajustando vl_bc_pis/vl_bc_cofins para "
-                    "o valor correto da parcela mensal. (3) Refletir a correção em M100/"
-                    "M500 — se o crédito foi sub-aproveitado, incluir acréscimo em M110/"
-                    "M510; se foi super-aproveitado, incluir redução.",
+                    "G2", "F", "F130", competencia, "RISCO",
+                    f"F130 ({nome_cta or cod_cta}, aquisição {mes_oper_aquis}, "
+                    f"valor R$ {vl_oper_aquis:,.2f}): crédito de PIS/COFINS sobre "
+                    "veículo da frota tomado pelo método de valor de aquisição. "
+                    "Transportadoras devem apropriar o crédito exclusivamente pela "
+                    "parcela de depreciação (registro F120), não pela aquisição.",
+                    vl_bc_pis, BASE_LEGAL_ATIVO_IMOB,
+                    "Solução: (1) Estornar o crédito tomado via F130 para a frota "
+                    "(redução em M110/M510). (2) Adotar o registro F120 (encargos de "
+                    "depreciação): o crédito mensal corresponde ao valor da depreciação "
+                    "contábil do bem, calculado sobre o valor de aquisição e a vida útil "
+                    "adotada. (3) Retificar o SPED substituindo os registros F130 por "
+                    "F120 para os veículos da frota e ajustando M100/M500.",
+                    severidade=_severidade_por_valor(vl_bc_pis),
                 ))
+                # Mesmo sendo método incorreto, valida o cálculo da parcela
+                if vl_bc_cred > 0:
+                    parcela_esperada = vl_bc_cred / 48
+                    if abs(parcela_esperada - vl_bc_pis) > TOLERANCIA_VALOR:
+                        achados.append(_achado(
+                            "G2", "F", "F130", competencia, "INCONSISTENCIA",
+                            f"F130 frota ({nome_cta or cod_cta}, aquisição {mes_oper_aquis}): "
+                            f"além do método incorreto, a parcela mensal (R$ {vl_bc_pis:,.2f}) "
+                            f"diverge do esperado para 1/48 sobre R$ {vl_bc_cred:,.2f} "
+                            f"(esperado R$ {parcela_esperada:,.2f}).",
+                            vl_bc_pis - parcela_esperada, BASE_LEGAL_ATIVO_IMOB,
+                            "Solução: além de migrar para o método F120 (depreciação), "
+                            "verificar o cálculo da parcela. No método F130 a parcela "
+                            "mensal deve ser 1/48 do valor de aquisição — diferença de "
+                            f"R$ {abs(vl_bc_pis - parcela_esperada):,.2f} deve ser "
+                            "corrigida antes da retificação do SPED.",
+                        ))
+            else:
+                # Para outros bens do imobilizado (não frota), verifica 1/48
+                if vl_bc_cred > 0:
+                    parcela_esperada = vl_bc_cred / 48
+                    if abs(parcela_esperada - vl_bc_pis) > TOLERANCIA_VALOR:
+                        achados.append(_achado(
+                            "G2", "F", "F130", competencia, "INCONSISTENCIA",
+                            f"F130 ({nome_cta or cod_cta}, aquisição {mes_oper_aquis}): parcela "
+                            f"do mês (R$ {vl_bc_pis:,.2f}) diverge do esperado para 1/48 sobre "
+                            f"R$ {vl_bc_cred:,.2f} (esperado R$ {parcela_esperada:,.2f}).",
+                            vl_bc_pis - parcela_esperada, BASE_LEGAL_ATIVO_IMOB,
+                            "Solução: (1) Verificar o valor de aquisição e o método de "
+                            "apropriação (1/48 ou prazo diferente). (2) Retificar F130 "
+                            "ajustando vl_bc_pis/vl_bc_cofins. (3) Refletir em M100/M500 "
+                            "via M110/M510 — sub-aproveitamento: acréscimo; super-aproveitamento: redução.",
+                        ))
+                if cst_pis in CST_RATEIO:
+                    achados.append(_achado(
+                        "G2", "F", "F130", competencia, "INFORMATIVO",
+                        f"F130 ({nome_cta or cod_cta}, aquisição {mes_oper_aquis}, "
+                        f"R$ {vl_oper_aquis:,.2f}): CST {cst_pis}, sujeito ao rateio (0111).",
+                        vl_bc_pis, BASE_LEGAL_RATEIO,
+                        "Confirmar que o percentual de rateio do 0111 foi aplicado "
+                        "corretamente neste crédito (ver achados G5).",
+                        severidade="BAIXO",
+                    ))
 
-        if eh_frota and cst_pis in CST_RATEIO:
-            achados.append(_achado(
-                "G2", "F", "F130", competencia, "INFORMATIVO",
-                f"Crédito sobre veículo da frota ({nome_cta or cod_cta}, aquisição "
-                f"{mes_oper_aquis}, valor de aquisição R$ {vl_oper_aquis:,.2f}) está "
-                f"classificado com CST {cst_pis}, sujeito ao rateio proporcional do "
-                "registro 0111 (ver G5).",
-                vl_bc_pis, BASE_LEGAL_RATEIO,
-                "Confirmar que o percentual de rateio aplicado a este crédito está "
-                "consistente com a receita bruta declarada em 0111 (ver achados do "
-                "grupo G5 — Rateio proporcional).",
-                severidade="BAIXO",
-            ))
-        elif eh_frota and cst_pis in CST_COM_CREDITO:
-            achados.append(_achado(
-                "G2", "F", "F130", competencia, "INFORMATIVO",
-                f"Crédito sobre veículo da frota ({nome_cta or cod_cta}, aquisição "
-                f"{mes_oper_aquis}, valor de aquisição R$ {vl_oper_aquis:,.2f}, parcela "
-                f"do mês R$ {vl_bc_pis:,.2f}, CST {cst_pis}).",
-                vl_bc_pis, BASE_LEGAL_ATIVO_IMOB,
-                "Crédito de ativo imobilizado (frota) identificado e classificado com "
-                "CST de crédito integral (sem rateio).",
-                severidade="BAIXO",
-            ))
+    # ── F120 — crédito sobre encargos de depreciação (método correto para frota) ─
+    df_f120 = dfs.get("F120")
+    if df_f120 is not None and not df_f120.empty:
+        for _, row in df_f120.iterrows():
+            cod_cta = row.get("cod_cta", "")
+            nome_cta = conta_map.get(cod_cta, "")
+            ident_bem = str(row.get("ident_bem_imob", "")).strip()
+            mes_oper_aquis = row.get("mes_oper_aquis", "")
+            vl_oper_depre = parse_decimal(row.get("vl_oper_depre", "0"))
+            vl_bc_cred = parse_decimal(row.get("vl_bc_cred", "0"))
+            vl_bc_pis = parse_decimal(row.get("vl_bc_pis", "0"))
+            cst_pis = str(row.get("cst_pis", "")).strip()
+
+            categoria, _ = _classificar(nome_cta, ident_bem)
+            eh_frota = categoria == "ATIVO_IMOBILIZADO_FROTA" or ident_bem == "06"
+
+            if eh_frota:
+                achados.append(_achado(
+                    "G2", "F", "F120", competencia, "INFORMATIVO",
+                    f"F120 ({nome_cta or cod_cta}, aquisição {mes_oper_aquis}): crédito "
+                    f"sobre encargos de depreciação de frota (R$ {vl_bc_pis:,.2f}) — "
+                    "método correto para transportadoras.",
+                    vl_bc_pis, BASE_LEGAL_ATIVO_IMOB,
+                    "Método de depreciação (F120) é o correto para frota. "
+                    "Confirmar que o encargo de depreciação contábil e o CST "
+                    f"({cst_pis}) estão corretos e que o crédito foi refletido em M100/M500.",
+                    severidade="BAIXO",
+                ))
+            else:
+                if vl_bc_cred > 0 and abs(vl_bc_pis - vl_oper_depre) > TOLERANCIA_VALOR and vl_oper_depre > 0:
+                    achados.append(_achado(
+                        "G2", "F", "F120", competencia, "INCONSISTENCIA",
+                        f"F120 ({nome_cta or cod_cta}, aquisição {mes_oper_aquis}): base do "
+                        f"crédito (R$ {vl_bc_pis:,.2f}) diverge do encargo de depreciação "
+                        f"declarado (R$ {vl_oper_depre:,.2f}).",
+                        vl_bc_pis - vl_oper_depre, BASE_LEGAL_ATIVO_IMOB,
+                        "Verificar o valor do encargo de depreciação contábil e ajustar "
+                        "vl_bc_pis/vl_bc_cofins no F120 para que correspondam ao encargo real.",
+                    ))
 
     return achados
 
@@ -607,10 +724,10 @@ def gerar_achados(dfs: dict[str, pd.DataFrame], header: dict) -> list[dict]:
     ``gerar_achados_transposicao``, quando há 2+ arquivos."""
     item_map = build_item_map(dfs)
     conta_map = build_conta_map(dfs)
-    build_participante_map(dfs)  # reservado para enriquecimento futuro
+    participante_tipo_map = build_participante_tipo_map(dfs)
 
     achados: list[dict] = []
-    achados += _g1_creditos_acf(dfs, header, item_map, conta_map)
+    achados += _g1_creditos_acf(dfs, header, item_map, conta_map, participante_tipo_map)
     achados += _g2_ativo_imobilizado(dfs, header, conta_map)
     achados += _g3_reconciliacao_m(dfs, header)
     achados += _resumo_1100_1500(dfs, "1100", header.get("competencia", ""))
