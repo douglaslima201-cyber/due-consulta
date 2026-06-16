@@ -45,6 +45,7 @@ TOLERANCIA_PCT = 0.01    # diferenças de até 1 ponto percentual no rateio
 BASE_LEGAL_NAO_CUMULATIVO = "Lei 10.637/2002, art. 3º; Lei 10.833/2003, art. 3º; IN RFB 2.121/2022"
 BASE_LEGAL_INSUMO = "Lei 10.637/2002, art. 3º, II; Lei 10.833/2003, art. 3º, II; STJ Tema 779 (REsp 1.221.170/PR); IN RFB 2.121/2022, art. 176"
 BASE_LEGAL_ATIVO_IMOB = "Lei 10.637/2002, art. 3º, VI e § 14; Lei 10.833/2003, art. 3º, VI e § 14; IN RFB 2.121/2022, arts. 199 a 216"
+BASE_LEGAL_CONTROLE_CREDITO = "Lei 10.637/2002, art. 3º e seguintes; Lei 10.833/2003, art. 3º e seguintes; IN RFB 2.121/2022 — Registros de controle de créditos 1100/1500 (Guia Prático EFD-Contribuições)"
 BASE_LEGAL_RATEIO = "Lei 10.637/2002, art. 3º, §§ 8º e 9º; Lei 10.833/2003, art. 3º, §§ 8º e 9º; IN RFB 2.121/2022, Título V (apuração de créditos)"
 BASE_LEGAL_FRETE_SUBCONTRATADO = "Lei 10.637/2002, art. 3º, IX; Lei 10.833/2003, art. 3º, IX; IN RFB 2.121/2022 (créditos sobre fretes)"
 BASE_LEGAL_PEDAGIO = "Lei 10.209/2001 (Vale-Pedágio obrigatório — não integra o preço do frete); IN RFB 2.121/2022"
@@ -528,23 +529,35 @@ def _g3_reconciliacao_m(dfs: dict[str, pd.DataFrame], header: dict) -> list[dict
 # ─── G4 — Transposição de saldo 1100/1500 (multi-período) ────────────────────
 
 def _resumo_1100_1500(dfs: dict[str, pd.DataFrame], registro: str, competencia: str) -> list[dict]:
-    """Achados informativos (arquivo único) listando os créditos de ativo
-    imobilizado em controle nos registros 1100 (PIS) / 1500 (COFINS)."""
+    """Achados informativos (arquivo único) listando os créditos em controle
+    nos registros 1100 (PIS) / 1500 (COFINS) — controle de saldo de crédito."""
     achados: list[dict] = []
     df = dfs.get(registro)
     if df is None or df.empty:
         return achados
 
     bloco = "1"
-    total = df["vl_cred"].apply(parse_decimal).sum()
+    tributo = "PIS" if registro == "1100" else "COFINS"
+    total_cred = df["vl_cred"].apply(parse_decimal).sum()
+    total_desc_ant = df["vl_cred_desc_pa_ant"].apply(parse_decimal).sum() if "vl_cred_desc_pa_ant" in df.columns else 0.0
+    total_desc_pa = df["vl_cred_desc_pa"].apply(parse_decimal).sum() if "vl_cred_desc_pa" in df.columns else 0.0
+    total_sld = df["sld_cred_final"].apply(parse_decimal).sum() if "sld_cred_final" in df.columns else 0.0
+
+    descricao = (
+        f"Registro {registro} ({tributo}): {len(df)} linha(s) de controle de crédito. "
+        f"Fórmula: Saldo inicial + Crédito do período (R$ {total_cred:,.2f}) "
+        f"- Descontado em períodos anteriores (R$ {total_desc_ant:,.2f}) "
+        f"- Descontado no período atual (R$ {total_desc_pa:,.2f}) "
+        f"= Saldo final (R$ {total_sld:,.2f})."
+    )
     achados.append(_achado(
         "G4", bloco, registro, competencia, "INFORMATIVO",
-        f"Registro {registro}: {len(df)} período(s) de origem com crédito de "
-        f"ativo imobilizado em controle, totalizando R$ {total:,.2f} no período.",
-        total, BASE_LEGAL_ATIVO_IMOB,
+        descricao,
+        total_sld, BASE_LEGAL_CONTROLE_CREDITO,
         "Envie também o(s) arquivo(s) SPED do(s) mês(es) seguinte(s) para que o "
-        "sistema verifique a transposição de saldo (continuidade dos créditos "
-        "de ativo imobilizado de um período para o outro).",
+        "sistema verifique a transposição de saldo: o saldo final deste período "
+        f"(R$ {total_sld:,.2f}) deve aparecer corretamente no próximo período, "
+        "refletido no campo vl_cred_desc_pa_ant do registro 1100/1500.",
         severidade="BAIXO",
     ))
     return achados
@@ -553,12 +566,17 @@ def _resumo_1100_1500(dfs: dict[str, pd.DataFrame], registro: str, competencia: 
 def gerar_achados_transposicao(periodos: list[tuple[dict, dict[str, pd.DataFrame]]]) -> list[dict]:
     """Recebe uma lista de (header, dfs) ordenada por competência e gera
     achados de transposição de saldo entre registros 1100 (PIS) e 1500
-    (COFINS) de períodos consecutivos."""
+    (COFINS) de períodos consecutivos.
+
+    Fórmula validada: saldo_final(período A) deve ser igual ao saldo inicial
+    implícito de período B, ou seja, vl_cred(B) - vl_cred_desc_pa_ant(B)
+    deve refletir o sld_cred_final(A) para a mesma origem."""
     achados: list[dict] = []
     if len(periodos) < 2:
         return achados
 
-    for registro, bloco, base_legal in (("1100", "1", BASE_LEGAL_ATIVO_IMOB), ("1500", "1", BASE_LEGAL_ATIVO_IMOB)):
+    for registro, bloco in (("1100", "1"), ("1500", "1")):
+        tributo = "PIS" if registro == "1100" else "COFINS"
         for i in range(len(periodos) - 1):
             header_a, dfs_a = periodos[i]
             header_b, dfs_b = periodos[i + 1]
@@ -570,50 +588,58 @@ def gerar_achados_transposicao(periodos: list[tuple[dict, dict[str, pd.DataFrame
             if df_a is None or df_a.empty:
                 continue
 
-            mapa_b: dict[tuple[str, str], float] = {}
+            # Monta mapa de período B: (per_apur_cred, cod_cred) → (vl_cred, sld_cred_final)
+            mapa_b: dict[tuple[str, str], dict] = {}
             if df_b is not None and not df_b.empty:
                 for _, row in df_b.iterrows():
                     chave = (str(row.get("per_apur_cred", "")), str(row.get("cod_cred", "")))
-                    mapa_b[chave] = mapa_b.get(chave, 0.0) + parse_decimal(row.get("vl_cred", "0"))
+                    mapa_b[chave] = {
+                        "vl_cred": parse_decimal(row.get("vl_cred", "0")),
+                        "sld_cred_final": parse_decimal(row.get("sld_cred_final", "0")),
+                        "vl_cred_desc_pa_ant": parse_decimal(row.get("vl_cred_desc_pa_ant", "0")),
+                    }
 
             for _, row in df_a.iterrows():
                 per_apur = str(row.get("per_apur_cred", ""))
                 cod_cred = str(row.get("cod_cred", ""))
+                sld_a = parse_decimal(row.get("sld_cred_final", "0"))
                 vl_a = parse_decimal(row.get("vl_cred", "0"))
-                if vl_a <= 0:
+                if vl_a <= 0 and sld_a <= 0:
                     continue
                 chave = (per_apur, cod_cred)
 
                 if chave not in mapa_b:
-                    achados.append(_achado(
-                        "G4", bloco, registro, comp_b, "RISCO",
-                        f"Crédito de ativo imobilizado de origem {per_apur} (código "
-                        f"{cod_cred}, R$ {vl_a:,.2f} em {comp_a}) não aparece mais no "
-                        f"{registro} de {comp_b}.",
-                        vl_a, base_legal,
-                        "Solução: (1) Se houve alienação/baixa do bem, documentar com "
-                        "nota fiscal de saída e registrar ajuste de encerramento do "
-                        "crédito no M100/M500 (código de redução RD_XXX). (2) Se não "
-                        "houve alienação, o crédito foi omitido indevidamente: retificar "
-                        "o SPED incluindo a linha do período de origem no registro "
-                        "1100/1500 e apropriar os créditos não aproveitados via acréscimo "
-                        "em M110/M510 (crédito extemporâneo, sujeito a SELIC em favor do contribuinte).",
-                    ))
+                    if sld_a > TOLERANCIA_VALOR:
+                        achados.append(_achado(
+                            "G4", bloco, registro, comp_b, "RISCO",
+                            f"Controle de crédito {tributo} — origem {per_apur} (código "
+                            f"{cod_cred}) tinha saldo de R$ {sld_a:,.2f} em {comp_a} "
+                            f"mas não aparece no {registro} de {comp_b}.",
+                            sld_a, BASE_LEGAL_CONTROLE_CREDITO,
+                            "Verificar se o crédito foi integralmente utilizado ou se foi "
+                            "omitido indevidamente. Se ainda há saldo, retificar o SPED de "
+                            f"{comp_b} incluindo a linha do período de origem no {registro} "
+                            "e apropriar os créditos não aproveitados via M110/M510 "
+                            "(crédito extemporâneo, com correção pela SELIC).",
+                        ))
                 else:
-                    vl_b = mapa_b[chave]
-                    if abs(vl_a - vl_b) > TOLERANCIA_VALOR:
+                    info_b = mapa_b[chave]
+                    # Saldo inicial em B = vl_cred(B) - vl_cred_desc_pa_ant(B);
+                    # deve corresponder ao sld_cred_final(A)
+                    saldo_inicial_b = info_b["vl_cred"] - info_b["vl_cred_desc_pa_ant"]
+                    diff = saldo_inicial_b - sld_a
+                    if abs(diff) > TOLERANCIA_VALOR:
                         achados.append(_achado(
                             "G4", bloco, registro, comp_b, "INCONSISTENCIA",
-                            f"Crédito de ativo imobilizado de origem {per_apur} (código "
-                            f"{cod_cred}) variou de R$ {vl_a:,.2f} em {comp_a} para "
-                            f"R$ {vl_b:,.2f} em {comp_b} sem justificativa aparente.",
-                            vl_b - vl_a, base_legal,
-                            "Solução: (1) Identificar a competência onde a variação foi "
-                            "originada (reajuste, baixa parcial ou erro de digitação). "
-                            "(2) Retificar o SPED daquela competência corrigindo o saldo "
-                            "no registro 1100/1500. (3) Propagar a correção para as "
-                            "competências subsequentes, ajustando M100/M500 via acréscimo "
-                            "ou redução conforme a diferença apurada.",
+                            f"Transposição de saldo {tributo} — origem {per_apur} (código "
+                            f"{cod_cred}): saldo final em {comp_a} era R$ {sld_a:,.2f}, "
+                            f"mas o saldo inicial implícito em {comp_b} é R$ {saldo_inicial_b:,.2f} "
+                            f"(diferença de R$ {abs(diff):,.2f}).",
+                            abs(diff), BASE_LEGAL_CONTROLE_CREDITO,
+                            "Fórmula esperada: saldo_final(período anterior) = "
+                            "vl_cred(período atual) - vl_cred_desc_pa_ant(período atual). "
+                            "Identificar se houve ajuste não documentado e corrigir "
+                            "o campo vl_cred_desc_pa_ant no registro 1100/1500 via retificação.",
                         ))
 
     return achados

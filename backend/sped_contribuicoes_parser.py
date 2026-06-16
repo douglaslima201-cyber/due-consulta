@@ -84,18 +84,21 @@ REGISTROS: dict[str, list[str]] = {
         "cod_cta", "cod_ccus",
     ],
 
-    # Bloco D — Serviços de transporte (CT-e)
+    # Bloco D — Serviços de transporte (CT-e / NFST)
     "D100": [
-        "ind_oper", "_extra", "cod_part", "cod_mod", "cod_sit", "ser",
+        "ind_oper", "ind_emit", "cod_part", "cod_mod", "cod_sit", "ser",
         "sub", "num_doc", "chv_cte", "dt_doc", "dt_a_p", "tp_ct_e",
         "chv_cte_ref", "vl_doc", "vl_desc", "ind_frt", "vl_serv",
         "vl_bc_icms", "vl_icms", "vl_nt", "cod_inf", "cod_cta",
     ],
-    # D190 — consolidação por CST/CFOP (filho de D100, análogo ao C170)
-    "D190": [
-        "cst_pis", "cst_cofins", "cfop", "vl_item",
-        "vl_bc_pis", "quant_bc_pis", "aliq_pis", "aliq_pis_quant", "vl_pis",
-        "vl_bc_cofins", "quant_bc_cofins", "aliq_cofins", "aliq_cofins_quant", "vl_cofins",
+    # D101/D105 — crédito presumido PIS/COFINS (filhos de D100)
+    "D101": [
+        "nat_bc_cred", "cst_pis", "vl_item_nc", "vl_bc_cred",
+        "aliq_pis", "vl_cred", "cod_cta", "cod_ccus",
+    ],
+    "D105": [
+        "nat_bc_cred", "cst_cofins", "vl_item_nc", "vl_bc_cred",
+        "aliq_cofins", "vl_cred", "cod_cta", "cod_ccus",
     ],
     "D200": [
         "ind_oper", "ind_doc", "qtd_doc", "cfop", "vl_doc", "vl_desc",
@@ -278,7 +281,7 @@ def parse_sped_file(content: bytes) -> dict[str, pd.DataFrame]:
 
     registros: dict[str, list[list[str]]] = defaultdict(list)
     # Armazena, por linha, o valor de _ind_oper a ser anexado depois
-    _ind_oper_extra: dict[str, list[str]] = {"C170": [], "A170": [], "D190": []}
+    _ind_oper_extra: dict[str, list[str]] = {"C170": [], "A170": [], "D101": [], "D105": []}
     _cur_ind_oper: dict[str, str] = {}
 
     for linha in text.splitlines():
@@ -300,8 +303,10 @@ def parse_sped_file(content: bytes) -> dict[str, pd.DataFrame]:
             _ind_oper_extra["C170"].append(_cur_ind_oper.get("C100", ""))
         elif reg == "A170":
             _ind_oper_extra["A170"].append(_cur_ind_oper.get("A100", ""))
-        elif reg == "D190":
-            _ind_oper_extra["D190"].append(_cur_ind_oper.get("D100", ""))
+        elif reg == "D101":
+            _ind_oper_extra["D101"].append(_cur_ind_oper.get("D100", ""))
+        elif reg == "D105":
+            _ind_oper_extra["D105"].append(_cur_ind_oper.get("D100", ""))
 
         registros[reg].append(valores)
 
@@ -451,16 +456,39 @@ def extract_apuracao(dfs: dict[str, pd.DataFrame]) -> dict:
                 })
         return out
 
+    def _saldos_controle(df) -> list[dict]:
+        if df is None or df.empty:
+            return []
+        result = []
+        for _, row in df.iterrows():
+            vl_cred = parse_decimal(row.get("vl_cred", "0"))
+            vl_desc_ant = parse_decimal(row.get("vl_cred_desc_pa_ant", "0"))
+            vl_desc_pa = parse_decimal(row.get("vl_cred_desc_pa", "0"))
+            vl_disp = parse_decimal(row.get("vl_cred_disp", "0"))
+            sld_final = parse_decimal(row.get("sld_cred_final", "0"))
+            result.append({
+                "per_apur_cred": str(row.get("per_apur_cred", "")).strip(),
+                "cod_cred": str(row.get("cod_cred", "")).strip(),
+                "vl_cred": round(vl_cred, 2),
+                "vl_cred_desc_pa_ant": round(vl_desc_ant, 2),
+                "vl_cred_desc_pa": round(vl_desc_pa, 2),
+                "vl_cred_disp": round(vl_disp, 2),
+                "sld_cred_final": round(sld_final, 2),
+            })
+        return result
+
     return {
         "pis": _totais(dfs.get("M200"), dfs.get("M210"), "aliq_pis"),
         "cofins": _totais(dfs.get("M600"), dfs.get("M610"), "aliq_cofins"),
+        "saldos_pis_1100": _saldos_controle(dfs.get("1100")),
+        "saldos_cofins_1500": _saldos_controle(dfs.get("1500")),
     }
 
 
 def extract_cfop_cst(dfs: dict[str, pd.DataFrame]) -> list[dict]:
     """Agrega os valores de PIS/COFINS por CFOP e CST, separando entradas e
     saídas, a partir dos registros C170 (mercadorias), A170 (serviços) e
-    D190 (CT-e/NFST — serviços de transporte, saídas do Bloco D)."""
+    D100/D101/D105 (CT-e/NFST — serviços de transporte do Bloco D)."""
     linhas: list[dict] = []
 
     numeric_cols = ("vl_item", "vl_bc_pis", "vl_pis", "vl_bc_cofins", "vl_cofins")
@@ -533,36 +561,102 @@ def extract_cfop_cst(dfs: dict[str, pd.DataFrame]) -> list[dict]:
                 "vl_cofins": round(float(row.get("vl_cofins", 0)), 2),
             })
 
-    df_d190 = dfs.get("D190")
-    if df_d190 is not None and not df_d190.empty and "_ind_oper" in df_d190.columns:
-        df = df_d190.copy()
-        for col in numeric_cols:
+    # D100 — documentos de transporte (CT-e / NFST); ind_oper é campo próprio do registro
+    df_d100 = dfs.get("D100")
+    if df_d100 is not None and not df_d100.empty and "ind_oper" in df_d100.columns:
+        df = df_d100.copy()
+        for col in ("vl_serv", "vl_doc"):
             if col in df.columns:
                 df[col] = df[col].map(parse_decimal)
             else:
                 df[col] = 0.0
-        grp_cols = ["_ind_oper", "cfop", "cst_pis", "cst_cofins"]
+        # vl_serv é o valor da prestação; usa vl_doc como fallback quando zero
+        df["_vl"] = df["vl_serv"].where(df["vl_serv"] > 0, df["vl_doc"])
+        grp_cols = ["ind_oper", "cod_mod"]
         grp_cols = [c for c in grp_cols if c in df.columns]
         grouped = df.groupby(grp_cols, dropna=False).agg(
-            qtd_itens=("vl_item", "size"),
-            vl_item=("vl_item", "sum"),
-            vl_bc_pis=("vl_bc_pis", "sum"),
-            vl_pis=("vl_pis", "sum"),
-            vl_bc_cofins=("vl_bc_cofins", "sum"),
-            vl_cofins=("vl_cofins", "sum"),
+            qtd_itens=("_vl", "size"),
+            vl_item=("_vl", "sum"),
+        ).reset_index()
+        for _, row in grouped.iterrows():
+            io = str(row.get("ind_oper", "")).strip()
+            cod_mod = str(row.get("cod_mod", "")).strip()
+            linhas.append({
+                "origem": "D100",
+                "ind_oper": _IND_OPER_LABEL.get(io, io or "—"),
+                "cfop": "—",
+                "cst_pis": "—",
+                "cst_cofins": f"Mod.{cod_mod}" if cod_mod else "—",
+                "qtd_itens": int(row.get("qtd_itens", 0)),
+                "vl_item": round(float(row.get("vl_item", 0)), 2),
+                "vl_bc_pis": 0.0,
+                "vl_pis": 0.0,
+                "vl_bc_cofins": 0.0,
+                "vl_cofins": 0.0,
+            })
+
+    # D101 — crédito presumido PIS (filho de D100)
+    df_d101 = dfs.get("D101")
+    if df_d101 is not None and not df_d101.empty and "_ind_oper" in df_d101.columns:
+        df = df_d101.copy()
+        for col in ("vl_item_nc", "vl_bc_cred", "vl_cred"):
+            if col in df.columns:
+                df[col] = df[col].map(parse_decimal)
+            else:
+                df[col] = 0.0
+        grp_cols = ["_ind_oper", "cst_pis"]
+        grp_cols = [c for c in grp_cols if c in df.columns]
+        grouped = df.groupby(grp_cols, dropna=False).agg(
+            qtd_itens=("vl_item_nc", "size"),
+            vl_item=("vl_item_nc", "sum"),
+            vl_bc_pis=("vl_bc_cred", "sum"),
+            vl_pis=("vl_cred", "sum"),
         ).reset_index()
         for _, row in grouped.iterrows():
             io = str(row.get("_ind_oper", "")).strip()
             linhas.append({
-                "origem": "D190",
+                "origem": "D101",
                 "ind_oper": _IND_OPER_LABEL.get(io, io or "—"),
-                "cfop": str(row.get("cfop", "")).strip() or "—",
+                "cfop": "—",
                 "cst_pis": str(row.get("cst_pis", "")).strip(),
-                "cst_cofins": str(row.get("cst_cofins", "")).strip(),
+                "cst_cofins": "—",
                 "qtd_itens": int(row.get("qtd_itens", 0)),
                 "vl_item": round(float(row.get("vl_item", 0)), 2),
                 "vl_bc_pis": round(float(row.get("vl_bc_pis", 0)), 2),
                 "vl_pis": round(float(row.get("vl_pis", 0)), 2),
+                "vl_bc_cofins": 0.0,
+                "vl_cofins": 0.0,
+            })
+
+    # D105 — crédito presumido COFINS (filho de D100)
+    df_d105 = dfs.get("D105")
+    if df_d105 is not None and not df_d105.empty and "_ind_oper" in df_d105.columns:
+        df = df_d105.copy()
+        for col in ("vl_item_nc", "vl_bc_cred", "vl_cred"):
+            if col in df.columns:
+                df[col] = df[col].map(parse_decimal)
+            else:
+                df[col] = 0.0
+        grp_cols = ["_ind_oper", "cst_cofins"]
+        grp_cols = [c for c in grp_cols if c in df.columns]
+        grouped = df.groupby(grp_cols, dropna=False).agg(
+            qtd_itens=("vl_item_nc", "size"),
+            vl_item=("vl_item_nc", "sum"),
+            vl_bc_cofins=("vl_bc_cred", "sum"),
+            vl_cofins=("vl_cred", "sum"),
+        ).reset_index()
+        for _, row in grouped.iterrows():
+            io = str(row.get("_ind_oper", "")).strip()
+            linhas.append({
+                "origem": "D105",
+                "ind_oper": _IND_OPER_LABEL.get(io, io or "—"),
+                "cfop": "—",
+                "cst_pis": "—",
+                "cst_cofins": str(row.get("cst_cofins", "")).strip(),
+                "qtd_itens": int(row.get("qtd_itens", 0)),
+                "vl_item": round(float(row.get("vl_item", 0)), 2),
+                "vl_bc_pis": 0.0,
+                "vl_pis": 0.0,
                 "vl_bc_cofins": round(float(row.get("vl_bc_cofins", 0)), 2),
                 "vl_cofins": round(float(row.get("vl_cofins", 0)), 2),
             })

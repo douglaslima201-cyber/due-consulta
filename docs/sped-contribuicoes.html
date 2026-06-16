@@ -579,7 +579,7 @@ body.light .table-wrap::after{background:linear-gradient(to right,transparent,rg
       <div class="sec-hd">
         <div><div class="sec-lbl">Bloco M — M200 / M210 / M600 / M610</div><h2 class="sec-ttl">Totalização da apuração do período</h2></div>
       </div>
-      <p style="font-size:13px;color:var(--g3);margin-bottom:24px;">Demonstrativo extraído dos registros M200/M210 (PIS) e M600/M610 (COFINS) do arquivo SPED Contribuições. Reflete os valores declarados pela empresa para a apuração do período, antes de qualquer ajuste consultivo.</p>
+      <p style="font-size:13px;color:var(--g3);margin-bottom:24px;">Demonstrativo extraído dos registros M200/M210 (PIS) e M600/M610 (COFINS). Abaixo de cada período também são exibidos os saldos de créditos de períodos anteriores controlados nos registros 1100 (PIS) e 1500 (COFINS), com a fórmula: Crédito Total − Descontado em períodos anteriores − Descontado no período = Saldo Final.</p>
       <div id="apuracao-body"></div>
     </div>
 
@@ -605,9 +605,9 @@ body.light .table-wrap::after{background:linear-gradient(to right,transparent,rg
     <!-- ═══════════════════════════════════════════════════════════════════ -->
     <div class="tab-pane" id="tab-cfop">
       <div class="sec-hd">
-        <div><div class="sec-lbl">Registros C170, A170 e D190</div><h2 class="sec-ttl">Visão por CFOP e CST — Entradas e Saídas</h2></div>
+        <div><div class="sec-lbl">Registros C170, A170, D100, D101, D105</div><h2 class="sec-ttl">Visão por CFOP e CST — Entradas e Saídas</h2></div>
       </div>
-      <p style="font-size:13px;color:var(--g3);margin-bottom:20px;">Totalização por CFOP e CST de PIS/COFINS de C170 (mercadorias), A170 (serviços ISS) e D190 (CT-e / NFST — serviços de transporte prestados, Bloco D). As saídas do Bloco D representam a receita da transportadora.</p>
+      <p style="font-size:13px;color:var(--g3);margin-bottom:20px;">Totalização por CFOP e CST de PIS/COFINS de C170 (mercadorias), A170 (serviços ISS) e Bloco D: D100 (documentos CT-e/NFST — valor total da prestação), D101 (crédito presumido PIS) e D105 (crédito presumido COFINS). Saídas D100 representam a receita de transporte da transportadora.</p>
       <div class="table-toolbar">
         <div class="search-box"><span class="search-icon">🔍</span><input type="text" placeholder="Buscar CFOP, CST..." id="cfop-search" oninput="filtrarCfop()"/></div>
         <select class="filter-sel" id="cfop-filter-oper" onchange="filtrarCfop()">
@@ -618,8 +618,10 @@ body.light .table-wrap::after{background:linear-gradient(to right,transparent,rg
         <select class="filter-sel" id="cfop-filter-orig" onchange="filtrarCfop()">
           <option value="">Todas as Origens</option>
           <option value="C170">C170 — Mercadorias</option>
-          <option value="A170">A170 — Serviços</option>
-          <option value="D190">D190 — CT-e/NFST</option>
+          <option value="A170">A170 — Serviços ISS</option>
+          <option value="D100">D100 — CT-e/NFST (valor)</option>
+          <option value="D101">D101 — Créd. Presumido PIS</option>
+          <option value="D105">D105 — Créd. Presumido COFINS</option>
         </select>
         <select class="filter-sel" id="cfop-filter-per" onchange="filtrarCfop()">
           <option value="">Todos os Períodos</option>
@@ -1048,12 +1050,51 @@ function renderApuracao(periodos) {
           </div>` : ''}
         </div>`;
     }
+    function saldosTable(registros, tributo) {
+      if (!registros || !registros.length) return '';
+      const rows = registros.map(r => `
+        <tr>
+          <td class="td-mono">${esc(r.per_apur_cred)}</td>
+          <td class="td-mono">${esc(r.cod_cred)}</td>
+          <td class="td-valor">${fmt(r.vl_cred)}</td>
+          <td class="td-valor" style="color:var(--g3);">${fmt(r.vl_cred_desc_pa_ant)}</td>
+          <td class="td-valor" style="color:var(--g3);">${fmt(r.vl_cred_desc_pa)}</td>
+          <td class="td-valor" style="color:var(--green);font-weight:700;">${fmt(r.sld_cred_final)}</td>
+        </tr>`).join('');
+      const totalSld = registros.reduce((s, r) => s + (r.sld_cred_final || 0), 0);
+      return `
+        <div style="margin-top:20px;">
+          <div style="font-size:12px;font-weight:700;color:var(--g2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">
+            📋 Controle de Saldo de Créditos — ${tributo} (${tributo === 'PIS' ? '1100' : '1500'})
+          </div>
+          <p style="font-size:12px;color:var(--g3);margin-bottom:12px;">
+            Fórmula: Saldo inicial + Crédito do período − Descontado em per. anteriores − Descontado no período = <strong>Saldo final</strong>.
+            Total disponível: <strong style="color:var(--green);">${fmt(totalSld)}</strong>
+          </p>
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th>Per. Origem</th><th>Cód. Crédito</th>
+                <th style="text-align:right">Crédito Total</th>
+                <th style="text-align:right">Desc. Per. Ant.</th>
+                <th style="text-align:right">Desc. Per. Atual</th>
+                <th style="text-align:right">Saldo Final</th>
+              </tr></thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>
+        </div>`;
+    }
+    const saldos1100 = (ap.saldos_pis_1100 || []);
+    const saldos1500 = (ap.saldos_cofins_1500 || []);
     return `<div class="apur-periodo">
       <div class="apur-periodo-hd">📅 Competência: ${esc(p.competencia)} &nbsp;·&nbsp; ${esc(p.arquivo)}</div>
       <div class="apur-grid">
         ${apCard('PIS — Apuração (M200 / M210)', pis)}
         ${apCard('COFINS — Apuração (M600 / M610)', cof)}
       </div>
+      ${saldosTable(saldos1100, 'PIS')}
+      ${saldosTable(saldos1500, 'COFINS')}
     </div>`;
   }).join('<div class="dvd"></div>');
 }
