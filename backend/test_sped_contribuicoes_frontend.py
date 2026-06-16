@@ -6,6 +6,8 @@ Pré-requisito: backend rodando em http://localhost:5000.
 Executar: python test_sped_contribuicoes_frontend.py
 """
 import os
+import sys
+sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 from playwright.sync_api import sync_playwright
 
 BASE = os.path.dirname(__file__)
@@ -50,6 +52,10 @@ def main():
         print(" ", page.locator("#file-bar-name").inner_text())
         print(" ", page.locator("#file-bar-info").inner_text())
 
+        print("\n=== Abas disponíveis ===")
+        tabs = page.locator(".tab-btn").all_text_contents()
+        print(" ", tabs)
+
         print("\n=== Insights ===")
         for card in page.locator(".insight-card").all_text_contents():
             print(" -", " | ".join(line.strip() for line in card.splitlines() if line.strip()))
@@ -62,10 +68,58 @@ def main():
         print("\n=== Contagem da tabela de achados ===")
         print(" ", page.locator("#table-count").inner_text())
 
-        # Testa filtro por grupo G4
+        # ── Aba Apuração ───────────────────────────────────────────────────────
+        print("\n=== Aba Apuração ===")
+        page.click('.tab-btn[data-tab="apuracao"]')
+        page.wait_for_timeout(300)
+        apur_text = page.locator("#apuracao-body").inner_text()
+        print(" ", apur_text[:350].replace("\n", " | "))
+
+        # ── Abas G1-G5 ────────────────────────────────────────────────────────
+        print("\n=== Abas G1-G5 ===")
+        for g in ["G1", "G2", "G3", "G4", "G5"]:
+            page.click(f'.tab-btn[data-tab="{g}"]')
+            page.wait_for_timeout(150)
+            badge = page.locator(f"#tab-count-{g}").inner_text()
+            cards = page.locator(f"#tab-{g} .achado-card").count()
+            print(f"  {g}: badge={badge}, cards={cards}")
+
+        # G5 rateio proporcional
+        page.click('.tab-btn[data-tab="G5"]')
+        page.wait_for_timeout(200)
+        rateio_text = page.locator("#rateio-dados").inner_text()
+        has_pct = "%" in rateio_text
+        print(f"\n  G5 Rateio — percentuais visíveis: {has_pct}")
+        print(" ", rateio_text[:200].replace("\n", " | "))
+
+        # ── Aba CFOP/CST ───────────────────────────────────────────────────────
+        print("\n=== Aba CFOP/CST ===")
+        page.click('.tab-btn[data-tab="cfop"]')
+        page.wait_for_timeout(400)
+        cfop_rows = page.locator("#cfop-body tr").count()
+        cfop_count = page.locator("#cfop-count").inner_text()
+        print(f"  rows={cfop_rows}, count=\"{cfop_count}\"")
+
+        # Filtro por Entradas
+        page.select_option("#cfop-filter-oper", "Entrada")
+        page.wait_for_timeout(200)
+        cfop_entrada = page.locator("#cfop-body tr").count()
+        print(f"  filtro=Entrada rows={cfop_entrada}")
+        page.select_option("#cfop-filter-oper", "")
+
+        # ── Aba Conclusão ─────────────────────────────────────────────────────
+        print("\n=== Aba Conclusão ===")
+        page.click('.tab-btn[data-tab="conclusao"]')
+        page.wait_for_timeout(200)
+        conclusao_text = page.locator("#conclusao-body").inner_text()
+        print(" ", conclusao_text[:300].replace("\n", " | "))
+
+        # Testa filtro por grupo G4 na aba Resumo
+        page.click('.tab-btn[data-tab="resumo"]')
+        page.wait_for_timeout(200)
         page.select_option("#filter-grupo", "G4")
         page.wait_for_timeout(300)
-        print("\n=== Filtro G4 ===")
+        print("\n=== Filtro G4 (Resumo) ===")
         print(" ", page.locator("#table-count").inner_text())
         g4_rows = page.locator(".data-row:visible").all_text_contents()
         for r in g4_rows:

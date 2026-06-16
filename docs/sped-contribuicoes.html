@@ -36,7 +36,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:200;height:64px;display:flex;ali
 .nav-back:hover{color:var(--white);}
 .nav-tag{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--g3);background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);padding:4px 12px;border-radius:100px;}
 
-/* BACKGROUND */
+/* BG */
 .hero-bg{position:fixed;inset:0;pointer-events:none;z-index:0;background:radial-gradient(ellipse 70% 50% at 30% 20%,rgba(139,92,246,.07) 0%,transparent 60%),radial-gradient(ellipse 60% 50% at 80% 80%,rgba(34,197,94,.04) 0%,transparent 60%);}
 .hero-grid{position:fixed;inset:0;pointer-events:none;z-index:0;background-image:linear-gradient(rgba(139,92,246,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(139,92,246,.03) 1px,transparent 1px);background-size:56px 56px;mask-image:radial-gradient(ellipse 100% 100% at 50% 0%,black 30%,transparent 100%);}
 
@@ -75,7 +75,6 @@ h1.pg-title .hl{background:linear-gradient(135deg,var(--purple),#A78BFA);-webkit
 .fitem-ic{font-size:18px;}
 .fitem-name{font-size:13px;font-weight:500;flex:1;}
 .fitem-size{font-size:11px;color:var(--g3);font-family:var(--mono);}
-.fitem-comp{font-size:11px;color:var(--purple);font-family:var(--mono);}
 .fitem-rm{background:none;border:none;color:var(--g3);cursor:pointer;font-size:14px;transition:color .15s;padding:4px;}
 .fitem-rm:hover{color:var(--red);}
 
@@ -84,44 +83,55 @@ h1.pg-title .hl{background:linear-gradient(135deg,var(--purple),#A78BFA);-webkit
 .spinner{width:40px;height:40px;border:3px solid rgba(139,92,246,.2);border-top-color:var(--purple);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px;}
 @keyframes spin{to{transform:rotate(360deg);}}
 
-/* RESULTS — hidden until analysis */
+/* RESULTS */
 #results{display:none;}
 
 /* DIVIDER */
-.dvd{height:1px;background:linear-gradient(90deg,transparent,rgba(139,92,246,.15),transparent);margin:48px 0;}
+.dvd{height:1px;background:linear-gradient(90deg,transparent,rgba(139,92,246,.15),transparent);margin:40px 0;}
 
 /* SECTION HEADER */
 .sec-hd{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:20px;}
 .sec-lbl{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--purple);margin-bottom:6px;}
 h2.sec-ttl{font-size:20px;font-weight:700;letter-spacing:-.02em;}
+h3.sub-ttl{font-size:15px;font-weight:700;margin-bottom:12px;color:var(--g1);}
+
+/* TABS */
+.tabs{display:flex;gap:0;flex-wrap:wrap;border-bottom:2px solid rgba(255,255,255,.07);margin-bottom:32px;}
+.tab-btn{display:flex;align-items:center;gap:8px;background:none;border:none;color:var(--g3);font-family:var(--sans);font-size:12px;font-weight:600;padding:12px 16px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s;white-space:nowrap;}
+.tab-btn:hover{color:var(--white);}
+.tab-btn.active{color:var(--purple);border-bottom-color:var(--purple);}
+.tab-badge{background:rgba(139,92,246,.12);color:var(--purple);border-radius:100px;font-size:10px;font-family:var(--mono);padding:1px 7px;line-height:1.6;}
+.tab-btn.active .tab-badge{background:rgba(139,92,246,.25);}
+.tab-pane{display:none;}
+.tab-pane.active{display:block;}
 
 /* KPI GRID */
-.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-bottom:40px;}
-.kpi{background:var(--db2);border:1px solid rgba(255,255,255,.07);border-radius:var(--r2);padding:24px;position:relative;overflow:hidden;}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:32px;}
+.kpi{background:var(--db2);border:1px solid rgba(255,255,255,.07);border-radius:var(--r2);padding:22px;position:relative;overflow:hidden;}
 .kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;border-radius:var(--r2) var(--r2) 0 0;}
 .kpi-purple::before{background:linear-gradient(90deg,var(--purple),#A78BFA);}
 .kpi-green::before{background:linear-gradient(90deg,var(--green),var(--green-d));}
 .kpi-yellow::before{background:linear-gradient(90deg,var(--yellow),#D97706);}
 .kpi-blue::before{background:linear-gradient(90deg,var(--blue),var(--blue-l));}
 .kpi-red::before{background:linear-gradient(90deg,var(--red),#DC2626);}
-.kpi-label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--g3);font-family:var(--mono);margin-bottom:10px;}
-.kpi-value{font-size:28px;font-weight:800;letter-spacing:-.03em;line-height:1;}
-.kpi-sub{font-size:12px;color:var(--g3);margin-top:6px;}
-.kpi-icon{position:absolute;right:20px;top:20px;font-size:22px;opacity:.3;}
+.kpi-label{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--g3);font-family:var(--mono);margin-bottom:8px;}
+.kpi-value{font-size:26px;font-weight:800;letter-spacing:-.03em;line-height:1;}
+.kpi-sub{font-size:11px;color:var(--g3);margin-top:6px;}
+.kpi-icon{position:absolute;right:16px;top:16px;font-size:20px;opacity:.3;}
 
-/* INSIGHTS (estilo "case study" / resultados) */
-.insights-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:40px;}
-.insight-card{background:linear-gradient(160deg,var(--db2) 0%,var(--db3) 100%);border:1px solid rgba(139,92,246,.15);border-radius:var(--r2);padding:22px 24px;position:relative;}
-.insight-tag{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--purple);margin-bottom:10px;}
-.insight-headline{font-size:24px;font-weight:800;letter-spacing:-.02em;margin-bottom:6px;}
+/* INSIGHTS */
+.insights-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-bottom:32px;}
+.insight-card{background:linear-gradient(160deg,var(--db2) 0%,var(--db3) 100%);border:1px solid rgba(139,92,246,.15);border-radius:var(--r2);padding:20px 22px;position:relative;}
+.insight-tag{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--purple);margin-bottom:8px;}
+.insight-headline{font-size:22px;font-weight:800;letter-spacing:-.02em;margin-bottom:6px;}
 .insight-desc{font-size:12px;color:var(--g2);line-height:1.6;}
-.insight-meta{font-size:11px;color:var(--g4);font-family:var(--mono);margin-top:10px;}
+.insight-meta{font-size:11px;color:var(--g4);font-family:var(--mono);margin-top:8px;}
 
 /* CHART GRID */
-.chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:40px;}
-.chart-card{background:var(--db2);border:1px solid rgba(255,255,255,.07);border-radius:var(--r2);padding:24px;}
-.chart-card h3{font-size:14px;font-weight:600;color:var(--g2);margin-bottom:20px;}
-.chart-wrap{position:relative;height:240px;}
+.chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:32px;}
+.chart-card{background:var(--db2);border:1px solid rgba(255,255,255,.07);border-radius:var(--r2);padding:22px;}
+.chart-card h3{font-size:13px;font-weight:600;color:var(--g2);margin-bottom:16px;}
+.chart-wrap{position:relative;height:220px;}
 
 /* BADGES */
 .badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:100px;font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;font-family:var(--mono);white-space:nowrap;}
@@ -134,56 +144,123 @@ h2.sec-ttl{font-size:20px;font-weight:700;letter-spacing:-.02em;}
 .b-alto{background:rgba(239,68,68,.08);color:var(--red);border:1px solid rgba(239,68,68,.15);}
 
 /* TABLE */
-.table-toolbar{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap;}
-.search-box{flex:1;min-width:200px;position:relative;}
-.search-box input{width:100%;background:var(--db3);border:1px solid rgba(255,255,255,.09);border-radius:var(--r);padding:9px 14px 9px 38px;font-size:13px;color:var(--white);font-family:var(--sans);outline:none;transition:border-color .2s;}
+.table-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
+.search-box{flex:1;min-width:180px;position:relative;}
+.search-box input{width:100%;background:var(--db3);border:1px solid rgba(255,255,255,.09);border-radius:var(--r);padding:8px 12px 8px 36px;font-size:13px;color:var(--white);font-family:var(--sans);outline:none;transition:border-color .2s;}
 .search-box input:focus{border-color:rgba(139,92,246,.4);}
 .search-box input::placeholder{color:var(--g4);}
-.search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:14px;color:var(--g4);}
-.filter-sel{background:var(--db3);border:1px solid rgba(255,255,255,.09);border-radius:var(--r);padding:9px 14px;font-size:12px;color:var(--g2);font-family:var(--sans);outline:none;cursor:pointer;}
+.search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--g4);}
+.filter-sel{background:var(--db3);border:1px solid rgba(255,255,255,.09);border-radius:var(--r);padding:8px 12px;font-size:12px;color:var(--g2);font-family:var(--sans);outline:none;cursor:pointer;}
 .filter-sel:focus{border-color:rgba(139,92,246,.4);}
 
-.table-wrap{background:var(--db2);border:1px solid rgba(255,255,255,.07);border-radius:var(--r2);overflow:hidden;overflow-x:auto;}
+.table-wrap{background:var(--db2);border:1px solid rgba(255,255,255,.07);border-radius:var(--r2);overflow:hidden;overflow-x:auto;margin-bottom:24px;}
 table{width:100%;border-collapse:collapse;font-size:12px;}
 thead{background:var(--db3);}
-th{padding:12px 14px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--g3);font-family:var(--mono);font-weight:500;border-bottom:1px solid rgba(255,255,255,.06);white-space:nowrap;}
-td{padding:11px 14px;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:top;}
+th{padding:11px 13px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--g3);font-family:var(--mono);font-weight:500;border-bottom:1px solid rgba(255,255,255,.06);white-space:nowrap;}
+td{padding:10px 13px;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:top;}
 tr:last-child td{border-bottom:none;}
-tr:hover td{background:rgba(139,92,246,.04);}
+tr:hover td{background:rgba(139,92,246,.03);}
 .td-mono{font-family:var(--mono);font-size:11px;color:var(--g3);white-space:nowrap;}
-.td-desc{max-width:320px;}
+.td-desc{max-width:300px;}
 .td-valor{text-align:right;font-family:var(--mono);white-space:nowrap;}
-.td-toggle{cursor:pointer;user-select:none;}
 .row-detail{display:none;background:rgba(139,92,246,.04);}
-.row-detail td{padding:10px 14px 16px;border-bottom:1px solid rgba(255,255,255,.04);}
-.detail-box{background:var(--db3);border-left:3px solid var(--purple);border-radius:0 var(--r) var(--r) 0;padding:12px 16px;font-size:12px;color:var(--g2);line-height:1.6;}
+.row-detail td{padding:8px 13px 14px;border-bottom:1px solid rgba(255,255,255,.04);}
+.detail-box{background:var(--db3);border-left:3px solid var(--purple);border-radius:0 var(--r) var(--r) 0;padding:10px 14px;font-size:12px;color:var(--g2);line-height:1.6;}
 .detail-box strong{color:var(--white);display:block;margin-bottom:4px;}
 
 /* EXPORT BAR */
-.export-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:24px;}
+.export-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:20px;}
 
 /* DISCLAIMER / ALERTS */
-.disclaimer{background:rgba(245,158,11,.05);border:1px solid rgba(245,158,11,.2);border-radius:var(--r2);padding:20px 24px;margin-top:40px;display:flex;gap:14px;align-items:flex-start;}
-.disc-icon{font-size:20px;flex-shrink:0;margin-top:2px;}
+.disclaimer{background:rgba(245,158,11,.05);border:1px solid rgba(245,158,11,.2);border-radius:var(--r2);padding:18px 22px;margin-top:32px;display:flex;gap:12px;align-items:flex-start;}
+.disc-icon{font-size:18px;flex-shrink:0;margin-top:2px;}
 .disc-title{font-size:13px;font-weight:600;color:var(--yellow);margin-bottom:4px;}
 .disc-text{font-size:12px;color:var(--g3);line-height:1.6;}
-.alert-err{background:rgba(239,68,68,.05);border:1px solid rgba(239,68,68,.2);border-radius:var(--r2);padding:16px 20px;margin-bottom:20px;}
+.alert-err{background:rgba(239,68,68,.05);border:1px solid rgba(239,68,68,.2);border-radius:var(--r2);padding:14px 18px;margin-bottom:18px;}
 .alert-err-title{font-size:13px;font-weight:600;color:var(--red);margin-bottom:6px;}
 .alert-err ul{margin:0;padding-left:18px;font-size:12px;color:var(--g2);line-height:1.6;}
 
+/* ── GROUP TABS ─────────────────────────────────────────────────────────────── */
+.group-info{background:linear-gradient(160deg,var(--db2) 0%,var(--db3) 100%);border:1px solid rgba(139,92,246,.15);border-radius:var(--r2);padding:20px 22px;margin-bottom:20px;display:flex;gap:14px;align-items:flex-start;}
+.group-info-icon{font-size:26px;flex-shrink:0;margin-top:2px;}
+.group-info-title{font-size:15px;font-weight:700;margin-bottom:4px;}
+.group-info-desc{font-size:13px;color:var(--g2);line-height:1.7;}
+.group-info-legal{font-size:11px;color:var(--g4);font-family:var(--mono);margin-top:7px;}
+
+.group-stats{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px;}
+.group-stat{background:var(--db2);border:1px solid rgba(255,255,255,.07);border-radius:var(--r);padding:12px 16px;flex:1;min-width:140px;}
+.group-stat-label{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--g3);font-family:var(--mono);margin-bottom:5px;}
+.group-stat-value{font-size:19px;font-weight:800;letter-spacing:-.02em;}
+
+.achado-card{background:var(--db2);border:1px solid rgba(255,255,255,.07);border-radius:var(--r2);padding:16px 20px;margin-bottom:10px;}
+.achado-card-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;}
+.achado-card-meta{margin-left:auto;font-family:var(--mono);font-weight:700;font-size:13px;}
+.achado-card-desc{font-size:13px;color:var(--g1);margin-bottom:10px;line-height:1.6;}
+.achado-card-action{background:rgba(139,92,246,.06);border-left:3px solid var(--purple);border-radius:0 var(--r) var(--r) 0;padding:10px 14px;font-size:12px;color:var(--g2);line-height:1.6;}
+.achado-card-action strong{display:block;margin-bottom:4px;font-size:10px;text-transform:uppercase;letter-spacing:.08em;font-family:var(--mono);color:var(--purple);}
+.achado-card-legal{font-size:11px;color:var(--g4);font-family:var(--mono);margin-top:8px;}
+.achado-empty{text-align:center;color:var(--g3);font-size:13px;padding:32px;background:var(--db2);border:1px solid rgba(255,255,255,.06);border-radius:var(--r2);}
+
+/* ── APURAÇÃO TAB ───────────────────────────────────────────────────────────── */
+.apur-periodo{margin-bottom:28px;}
+.apur-periodo-hd{font-size:13px;font-weight:700;font-family:var(--mono);color:var(--purple);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid rgba(139,92,246,.2);}
+.apur-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
+.apur-card{background:var(--db2);border:1px solid rgba(255,255,255,.07);border-radius:var(--r2);overflow:hidden;}
+.apur-card-hd{background:var(--db3);padding:10px 16px;font-size:11px;font-weight:700;font-family:var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--g2);}
+.apur-row{display:flex;justify-content:space-between;align-items:center;padding:9px 16px;border-bottom:1px solid rgba(255,255,255,.04);}
+.apur-row:last-child{border-bottom:none;}
+.apur-row.total{background:rgba(139,92,246,.06);font-weight:700;}
+.apur-row.total .apur-val{color:var(--purple);}
+.apur-row.recolher{background:rgba(34,197,94,.06);font-weight:700;}
+.apur-row.recolher .apur-val{color:var(--green);}
+.apur-lbl{font-size:12px;color:var(--g2);}
+.apur-lbl.sub{color:var(--g3);font-size:11px;padding-left:12px;}
+.apur-val{font-family:var(--mono);font-size:12px;color:var(--white);}
+
+/* ── RATEIO TAB (G5 enriquecido) ────────────────────────────────────────────── */
+.rateio-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;}
+.rateio-card{background:var(--db2);border:1px solid rgba(255,255,255,.07);border-radius:var(--r2);padding:18px 20px;}
+.rateio-card-hd{font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-family:var(--mono);color:var(--g3);margin-bottom:12px;}
+.rateio-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.04);}
+.rateio-row:last-child{border-bottom:none;}
+.rateio-lbl{font-size:13px;color:var(--g2);}
+.rateio-val{font-family:var(--mono);font-size:13px;font-weight:700;}
+.rateio-pct-bar{height:6px;border-radius:3px;margin-top:4px;transition:width .4s;}
+.rateio-pct-wrap{flex:1;margin:0 12px;}
+.rateio-reflex{background:rgba(245,158,11,.05);border:1px solid rgba(245,158,11,.15);border-radius:var(--r2);padding:16px 20px;margin-bottom:20px;}
+.rateio-reflex-hd{font-size:11px;font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--yellow);margin-bottom:10px;}
+
+/* ── CONCLUSÃO TAB ──────────────────────────────────────────────────────────── */
+.conclusao-exec{background:linear-gradient(160deg,var(--db2) 0%,var(--db3) 100%);border:1px solid rgba(139,92,246,.2);border-radius:var(--r2);padding:22px 24px;margin-bottom:24px;}
+.conclusao-exec-hd{font-size:13px;font-weight:700;color:var(--purple);margin-bottom:10px;font-family:var(--mono);letter-spacing:.06em;text-transform:uppercase;}
+.conclusao-exec-text{font-size:13px;color:var(--g1);line-height:1.8;}
+.conclusao-grupo{background:var(--db2);border:1px solid rgba(255,255,255,.07);border-radius:var(--r2);padding:16px 20px;margin-bottom:10px;}
+.conclusao-grupo-hd{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.conclusao-grupo-title{font-size:14px;font-weight:700;}
+.conclusao-grupo-status{margin-left:auto;}
+.conclusao-grupo-body{font-size:13px;color:var(--g2);line-height:1.7;}
+.conclusao-acao{background:rgba(139,92,246,.06);border-left:3px solid var(--purple);border-radius:0 var(--r) var(--r) 0;padding:8px 14px;font-size:12px;color:var(--g2);line-height:1.6;margin-top:8px;}
+.plano-acao{display:flex;flex-direction:column;gap:8px;margin-top:8px;}
+.pa-item{display:flex;gap:12px;align-items:flex-start;background:var(--db2);border:1px solid rgba(255,255,255,.06);border-radius:var(--r);padding:12px 14px;}
+.pa-num{width:22px;height:22px;border-radius:50%;background:rgba(139,92,246,.2);color:var(--purple);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;}
+.pa-body{flex:1;}
+.pa-title{font-size:13px;font-weight:600;margin-bottom:2px;}
+.pa-desc{font-size:12px;color:var(--g3);line-height:1.5;}
+
 /* PRINT */
 @media print{
-  nav,.export-bar,.table-toolbar,.upload-zone,.disclaimer,#loading,.hero-bg,.hero-grid{display:none!important;}
+  nav,.export-bar,.table-toolbar,.upload-zone,#loading,.hero-bg,.hero-grid,.tabs{display:none!important;}
+  .tab-pane{display:block!important;}
   body{background:#fff;color:#000;}
-  .kpi,.chart-card,.table-wrap,.insight-card{background:#f9f9f9;border:1px solid #ddd;}
-  .kpi-value,.kpi-label,.sec-ttl,.chart-card h3,.insight-headline{color:#000;}
-  .td-mono,.opp-conta{color:#555;}
+  .kpi,.chart-card,.table-wrap,.insight-card,.achado-card,.group-info,.apur-card,.conclusao-exec,.conclusao-grupo{background:#f9f9f9;border:1px solid #ddd;}
+  .kpi-value,.sec-ttl,.chart-card h3,.insight-headline,.achado-card-desc,.group-info-title,.conclusao-grupo-title{color:#000;}
 }
 
 @media(max-width:900px){
   nav{padding:0 20px;}
   .page{padding:80px 20px 40px;}
-  .chart-grid{grid-template-columns:1fr;}
+  .chart-grid,.apur-grid,.rateio-grid{grid-template-columns:1fr;}
+  .tab-btn{padding:10px 10px;font-size:11px;}
 }
 </style>
 </head>
@@ -192,7 +269,6 @@ tr:hover td{background:rgba(139,92,246,.04);}
 <div class="hero-bg"></div>
 <div class="hero-grid"></div>
 
-<!-- NAV -->
 <nav>
   <div class="nav-brand">
     <div class="nav-icon">🧾</div>
@@ -210,9 +286,7 @@ tr:hover td{background:rgba(139,92,246,.04);}
   <div class="pg-header">
     <div class="pg-eyebrow">Análise Tributária · Motor de Regras</div>
     <h1 class="pg-title">SPED Contribuições — <span class="hl">EFD-PIS/COFINS</span></h1>
-    <p class="pg-sub">Envie um ou mais arquivos SPED Contribuições (.txt) e receba uma análise automática de créditos
-    nos blocos A, C e F, ajustes do bloco M, transposição de saldo nos registros 1100/1500 e rateio proporcional
-    do registro 0111 — com base nas Leis 10.637/2002 e 10.833/2003, Guia Prático EFD-Contribuições e IN RFB 2.121/2022.</p>
+    <p class="pg-sub">Envie um ou mais arquivos SPED Contribuições (.txt) e receba análise automática de créditos nos blocos A/C/F, ajustes do bloco M, transposição 1100/1500 e rateio proporcional 0111, com base nas Leis 10.637/2002 e 10.833/2003, Guia Prático EFD-Contribuições e IN RFB 2.121/2022.</p>
   </div>
 
   <!-- UPLOAD -->
@@ -225,32 +299,16 @@ tr:hover td{background:rgba(139,92,246,.04);}
       <p class="upload-hint" style="margin-top:16px;">Envie 2+ competências para habilitar a verificação de transposição de saldo (registros 1100/1500)</p>
       <input type="file" id="file-input" accept=".txt" multiple onchange="handleFileSelect(event)"/>
     </div>
-
     <div class="flist" id="flist"></div>
-
     <div style="display:flex;gap:12px;align-items:center;margin-bottom:20px;" id="analyze-bar">
       <button class="btn btn-purple" id="btn-analisar" onclick="analisar()" disabled>🔍 Analisar SPED</button>
       <button class="btn btn-ghost btn-sm" onclick="limpar()">✕ Limpar</button>
     </div>
-
-    <!-- INSTRUÇÕES -->
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1px;background:rgba(255,255,255,.05);border-radius:var(--r2);overflow:hidden;border:1px solid rgba(255,255,255,.06);margin-top:8px;">
-      <div style="background:var(--db2);padding:22px 20px;display:flex;align-items:flex-start;gap:12px;">
-        <span style="font-size:18px;flex-shrink:0;margin-top:2px;">📋</span>
-        <div><div style="font-size:13px;font-weight:600;margin-bottom:4px;">Formato aceito</div><div style="font-size:12px;color:var(--g3);line-height:1.5;">Arquivo(s) .txt no leiaute SPED Contribuições (EFD-PIS/COFINS), gerados pelo PVA ou ERP</div></div>
-      </div>
-      <div style="background:var(--db2);padding:22px 20px;display:flex;align-items:flex-start;gap:12px;">
-        <span style="font-size:18px;flex-shrink:0;margin-top:2px;">⚖️</span>
-        <div><div style="font-size:13px;font-weight:600;margin-bottom:4px;">Base jurídica</div><div style="font-size:12px;color:var(--g3);line-height:1.5;">Leis 10.637/2002 e 10.833/2003, Guia Prático EFD-Contribuições e IN RFB 2.121/2022</div></div>
-      </div>
-      <div style="background:var(--db2);padding:22px 20px;display:flex;align-items:flex-start;gap:12px;">
-        <span style="font-size:18px;flex-shrink:0;margin-top:2px;">🔒</span>
-        <div><div style="font-size:13px;font-weight:600;margin-bottom:4px;">Dados locais</div><div style="font-size:12px;color:var(--g3);line-height:1.5;">Processamento local via backend. Nenhum dado enviado a servidores externos</div></div>
-      </div>
-      <div style="background:var(--db2);padding:22px 20px;display:flex;align-items:flex-start;gap:12px;">
-        <span style="font-size:18px;flex-shrink:0;margin-top:2px;">📤</span>
-        <div><div style="font-size:13px;font-weight:600;margin-bottom:4px;">Export disponível</div><div style="font-size:12px;color:var(--g3);line-height:1.5;">Baixe o relatório completo em Excel, com achados coloridos por severidade</div></div>
-      </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1px;background:rgba(255,255,255,.05);border-radius:var(--r2);overflow:hidden;border:1px solid rgba(255,255,255,.06);">
+      <div style="background:var(--db2);padding:20px;display:flex;align-items:flex-start;gap:10px;"><span style="font-size:16px;flex-shrink:0;margin-top:2px;">📋</span><div><div style="font-size:13px;font-weight:600;margin-bottom:3px;">Formato aceito</div><div style="font-size:12px;color:var(--g3);line-height:1.5;">Arquivo(s) .txt no leiaute SPED Contribuições (EFD-PIS/COFINS)</div></div></div>
+      <div style="background:var(--db2);padding:20px;display:flex;align-items:flex-start;gap:10px;"><span style="font-size:16px;flex-shrink:0;margin-top:2px;">⚖️</span><div><div style="font-size:13px;font-weight:600;margin-bottom:3px;">Base jurídica</div><div style="font-size:12px;color:var(--g3);line-height:1.5;">Leis 10.637/2002 e 10.833/2003, Guia Prático e IN RFB 2.121/2022</div></div></div>
+      <div style="background:var(--db2);padding:20px;display:flex;align-items:flex-start;gap:10px;"><span style="font-size:16px;flex-shrink:0;margin-top:2px;">🔒</span><div><div style="font-size:13px;font-weight:600;margin-bottom:3px;">Dados locais</div><div style="font-size:12px;color:var(--g3);line-height:1.5;">Processamento via backend local. Nenhum dado enviado externamente</div></div></div>
+      <div style="background:var(--db2);padding:20px;display:flex;align-items:flex-start;gap:10px;"><span style="font-size:16px;flex-shrink:0;margin-top:2px;">📤</span><div><div style="font-size:13px;font-weight:600;margin-bottom:3px;">Export disponível</div><div style="font-size:12px;color:var(--g3);line-height:1.5;">Baixe o relatório completo em Excel com achados por severidade</div></div></div>
     </div>
   </div>
 
@@ -258,7 +316,7 @@ tr:hover td{background:rgba(139,92,246,.04);}
   <div id="loading">
     <div class="spinner"></div>
     <div style="font-size:14px;color:var(--g3);">Processando arquivo(s) SPED e aplicando motor de regras...</div>
-    <div style="font-size:12px;color:var(--g4);margin-top:4px;font-family:var(--mono);">Blocos A/C/F (créditos) · Bloco M (reconciliação) · 1100/1500 (transposição) · 0111 (rateio)</div>
+    <div style="font-size:12px;color:var(--g4);margin-top:4px;font-family:var(--mono);">Blocos A/C/F · Bloco M · 1100/1500 · 0111</div>
   </div>
 
   <!-- RESULTS -->
@@ -266,14 +324,14 @@ tr:hover td{background:rgba(139,92,246,.04);}
 
     <div class="dvd"></div>
 
-    <!-- ARQUIVO / EMPRESA -->
     <div id="erros-box" class="alert-err" style="display:none;">
       <div class="alert-err-title">⚠️ Arquivos não processados</div>
       <ul id="erros-list"></ul>
     </div>
 
-    <div id="file-bar" style="display:flex;align-items:center;gap:12px;margin-bottom:32px;background:var(--db2);border:1px solid rgba(139,92,246,.2);border-radius:var(--r);padding:12px 18px;flex-wrap:wrap;">
-      <span style="font-size:18px;">🏢</span>
+    <!-- FILE BAR -->
+    <div id="file-bar" style="display:flex;align-items:center;gap:12px;margin-bottom:28px;background:var(--db2);border:1px solid rgba(139,92,246,.2);border-radius:var(--r);padding:11px 16px;flex-wrap:wrap;">
+      <span style="font-size:16px;">🏢</span>
       <div>
         <div style="font-size:13px;font-weight:600;" id="file-bar-name">—</div>
         <div style="font-size:11px;color:var(--g3);font-family:var(--mono);" id="file-bar-info">—</div>
@@ -283,160 +341,203 @@ tr:hover td{background:rgba(139,92,246,.04);}
       </div>
     </div>
 
-    <!-- KPIs -->
-    <div class="sec-hd">
-      <div><div class="sec-lbl">Visão Geral</div><h2 class="sec-ttl">Resumo executivo</h2></div>
-    </div>
-    <div class="kpi-grid">
-      <div class="kpi kpi-purple">
-        <div class="kpi-icon">📋</div>
-        <div class="kpi-label">Total de Achados</div>
-        <div class="kpi-value" id="k-total">—</div>
-        <div class="kpi-sub" id="k-periodos">— período(s)</div>
-      </div>
-      <div class="kpi kpi-green">
-        <div class="kpi-icon">💰</div>
-        <div class="kpi-label">Oportunidades (crédito não aproveitado)</div>
-        <div class="kpi-value" id="k-oportunidades">—</div>
-        <div class="kpi-sub" id="k-oportunidades-n">— achados</div>
-      </div>
-      <div class="kpi kpi-red">
-        <div class="kpi-icon">⚠️</div>
-        <div class="kpi-label">Riscos Identificados</div>
-        <div class="kpi-value" id="k-riscos">—</div>
-        <div class="kpi-sub" id="k-riscos-n">— achados</div>
-      </div>
-      <div class="kpi kpi-yellow">
-        <div class="kpi-icon">🔎</div>
-        <div class="kpi-label">Inconsistências (Bloco M / 0111)</div>
-        <div class="kpi-value" id="k-inconsistencias">—</div>
-        <div class="kpi-sub" id="k-inconsistencias-n">— achados</div>
-      </div>
-      <div class="kpi kpi-blue">
-        <div class="kpi-icon">🏷️</div>
-        <div class="kpi-label">Severidade Alta</div>
-        <div class="kpi-value" id="k-alto">—</div>
-        <div class="kpi-sub">achados que merecem prioridade</div>
-      </div>
+    <!-- TABS NAV -->
+    <div class="tabs" id="result-tabs">
+      <button class="tab-btn active" data-tab="resumo" onclick="switchTab('resumo')">📊 Resumo</button>
+      <button class="tab-btn" data-tab="apuracao" onclick="switchTab('apuracao')">🧮 Apuração</button>
+      <button class="tab-btn" data-tab="G1" onclick="switchTab('G1')">⛽ G1 · Créditos A/C/F <span class="tab-badge" id="tab-count-G1">0</span></button>
+      <button class="tab-btn" data-tab="G2" onclick="switchTab('G2')">🚛 G2 · Ativo Imobilizado <span class="tab-badge" id="tab-count-G2">0</span></button>
+      <button class="tab-btn" data-tab="G3" onclick="switchTab('G3')">🧾 G3 · Bloco M <span class="tab-badge" id="tab-count-G3">0</span></button>
+      <button class="tab-btn" data-tab="G4" onclick="switchTab('G4')">🔁 G4 · Transposição <span class="tab-badge" id="tab-count-G4">0</span></button>
+      <button class="tab-btn" data-tab="G5" onclick="switchTab('G5')">⚖️ G5 · Rateio 0111 <span class="tab-badge" id="tab-count-G5">0</span></button>
+      <button class="tab-btn" data-tab="cfop" onclick="switchTab('cfop')">🔄 CFOP/CST</button>
+      <button class="tab-btn" data-tab="conclusao" onclick="switchTab('conclusao')">📝 Conclusão</button>
     </div>
 
-    <!-- INSIGHTS -->
-    <div class="sec-hd">
-      <div><div class="sec-lbl">Insights</div><h2 class="sec-ttl">Principais pontos de atenção</h2></div>
-    </div>
-    <div class="insights-grid" id="insights-grid"></div>
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!--  ABA RESUMO                                                        -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="tab-pane active" id="tab-resumo">
 
-    <!-- CHARTS -->
+      <div class="sec-hd">
+        <div><div class="sec-lbl">Visão Geral</div><h2 class="sec-ttl">Resumo executivo</h2></div>
+      </div>
+      <div class="kpi-grid">
+        <div class="kpi kpi-purple"><div class="kpi-icon">📋</div><div class="kpi-label">Total de Achados</div><div class="kpi-value" id="k-total">—</div><div class="kpi-sub" id="k-periodos">— período(s)</div></div>
+        <div class="kpi kpi-green"><div class="kpi-icon">💰</div><div class="kpi-label">Oportunidades</div><div class="kpi-value" id="k-oportunidades">—</div><div class="kpi-sub" id="k-oportunidades-n">— achados</div></div>
+        <div class="kpi kpi-red"><div class="kpi-icon">⚠️</div><div class="kpi-label">Riscos Identificados</div><div class="kpi-value" id="k-riscos">—</div><div class="kpi-sub" id="k-riscos-n">— achados</div></div>
+        <div class="kpi kpi-yellow"><div class="kpi-icon">🔎</div><div class="kpi-label">Inconsistências</div><div class="kpi-value" id="k-inconsistencias">—</div><div class="kpi-sub" id="k-inconsistencias-n">— achados</div></div>
+        <div class="kpi kpi-blue"><div class="kpi-icon">🏷️</div><div class="kpi-label">Severidade Alta</div><div class="kpi-value" id="k-alto">—</div><div class="kpi-sub">achados prioritários</div></div>
+      </div>
+
+      <div class="sec-hd">
+        <div><div class="sec-lbl">Insights</div><h2 class="sec-ttl">Principais pontos de atenção</h2></div>
+      </div>
+      <div class="insights-grid" id="insights-grid"></div>
+
+      <div class="dvd"></div>
+      <div class="sec-hd">
+        <div><div class="sec-lbl">Dashboards</div><h2 class="sec-ttl">Visualizações</h2></div>
+      </div>
+      <div class="chart-grid">
+        <div class="chart-card"><h3>Achados por Grupo de Regra</h3><div class="chart-wrap"><canvas id="chart-grupo"></canvas></div></div>
+        <div class="chart-card"><h3>Achados por Tipo</h3><div class="chart-wrap"><canvas id="chart-tipo"></canvas></div></div>
+        <div class="chart-card"><h3>Achados por Severidade</h3><div class="chart-wrap"><canvas id="chart-severidade"></canvas></div></div>
+        <div class="chart-card"><h3>Valor Envolvido por Tipo (R$)</h3><div class="chart-wrap"><canvas id="chart-valor"></canvas></div></div>
+      </div>
+
+      <div class="dvd"></div>
+      <div class="sec-hd">
+        <div><div class="sec-lbl">Períodos</div><h2 class="sec-ttl">Resumo por competência</h2></div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Competência</th><th>Arquivo</th>
+              <th style="text-align:right">Rec. Tributada MI</th>
+              <th style="text-align:right">Rec. Não Trib. MI</th>
+              <th style="text-align:right">Rec. Exportação</th>
+              <th style="text-align:right">Rec. Total</th>
+              <th style="text-align:right">Achados</th>
+            </tr>
+          </thead>
+          <tbody id="periodos-body"></tbody>
+        </table>
+      </div>
+
+      <div class="dvd"></div>
+      <div class="sec-hd">
+        <div><div class="sec-lbl">Detalhamento</div><h2 class="sec-ttl">Achados do motor de regras</h2></div>
+      </div>
+      <div class="table-toolbar">
+        <div class="search-box"><span class="search-icon">🔍</span><input type="text" placeholder="Buscar descrição, registro..." id="search-input" oninput="filtrarTabela()"/></div>
+        <select class="filter-sel" id="filter-grupo" onchange="filtrarTabela()">
+          <option value="">Todos — Grupo</option>
+          <option value="G1">G1 — Créditos A/C/F</option>
+          <option value="G2">G2 — Ativo Imobilizado</option>
+          <option value="G3">G3 — Bloco M</option>
+          <option value="G4">G4 — Transposição 1100/1500</option>
+          <option value="G5">G5 — Rateio 0111</option>
+        </select>
+        <select class="filter-sel" id="filter-tipo" onchange="filtrarTabela()">
+          <option value="">Todos — Tipo</option>
+          <option value="OPORTUNIDADE">💰 Oportunidade</option>
+          <option value="RISCO">⚠️ Risco</option>
+          <option value="INCONSISTENCIA">🔎 Inconsistência</option>
+          <option value="INFORMATIVO">ℹ️ Informativo</option>
+        </select>
+        <select class="filter-sel" id="filter-severidade" onchange="filtrarTabela()">
+          <option value="">Todas — Severidade</option>
+          <option value="ALTO">🔴 Alto</option>
+          <option value="MEDIO">🟡 Médio</option>
+          <option value="BAIXO">🟢 Baixo</option>
+        </select>
+      </div>
+      <div class="table-wrap">
+        <table id="main-table">
+          <thead>
+            <tr>
+              <th>Grupo</th><th>Tipo</th><th>Severidade</th><th>Competência</th><th>Registro</th><th>Descrição</th><th style="text-align:right">Valor (R$)</th><th style="width:24px"></th>
+            </tr>
+          </thead>
+          <tbody id="table-body"></tbody>
+        </table>
+      </div>
+      <div id="table-count" style="font-size:11px;color:var(--g4);font-family:var(--mono);margin-top:6px;text-align:right;"></div>
+
+    </div><!-- /tab-resumo -->
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!--  ABA APURAÇÃO                                                      -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="tab-pane" id="tab-apuracao">
+      <div class="sec-hd">
+        <div><div class="sec-lbl">Bloco M — M200 / M210 / M600 / M610</div><h2 class="sec-ttl">Totalização da apuração do período</h2></div>
+      </div>
+      <p style="font-size:13px;color:var(--g3);margin-bottom:24px;">Demonstrativo extraído dos registros M200/M210 (PIS) e M600/M610 (COFINS) do arquivo SPED Contribuições. Reflete os valores declarados pela empresa para a apuração do período, antes de qualquer ajuste consultivo.</p>
+      <div id="apuracao-body"></div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!--  ABAS G1-G5                                                        -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="tab-pane" id="tab-G1"><div id="group-info-G1"></div><div class="group-stats" id="group-stats-G1"></div><div id="group-list-G1"></div></div>
+    <div class="tab-pane" id="tab-G2"><div id="group-info-G2"></div><div class="group-stats" id="group-stats-G2"></div><div id="group-list-G2"></div></div>
+    <div class="tab-pane" id="tab-G3"><div id="group-info-G3"></div><div class="group-stats" id="group-stats-G3"></div><div id="group-list-G3"></div></div>
+    <div class="tab-pane" id="tab-G4"><div id="group-info-G4"></div><div class="group-stats" id="group-stats-G4"></div><div id="group-list-G4"></div></div>
+
+    <!-- G5 — rateio rico (gerado por JS) -->
+    <div class="tab-pane" id="tab-G5">
+      <div id="group-info-G5"></div>
+      <div id="rateio-dados"></div>
+      <div class="sec-hd" style="margin-top:28px;"><div><div class="sec-lbl">Achados do Motor</div><h2 class="sec-ttl">Pontos identificados — G5</h2></div></div>
+      <div class="group-stats" id="group-stats-G5"></div>
+      <div id="group-list-G5"></div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!--  ABA CFOP/CST                                                      -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="tab-pane" id="tab-cfop">
+      <div class="sec-hd">
+        <div><div class="sec-lbl">Registros C170 e A170</div><h2 class="sec-ttl">Visão por CFOP e CST — Entradas e Saídas</h2></div>
+      </div>
+      <p style="font-size:13px;color:var(--g3);margin-bottom:20px;">Totalização dos itens dos documentos fiscais (C170 — mercadorias; A170 — serviços) agrupados por CFOP e CST de PIS/COFINS, separando entradas e saídas.</p>
+      <div class="table-toolbar">
+        <div class="search-box"><span class="search-icon">🔍</span><input type="text" placeholder="Buscar CFOP, CST..." id="cfop-search" oninput="filtrarCfop()"/></div>
+        <select class="filter-sel" id="cfop-filter-oper" onchange="filtrarCfop()">
+          <option value="">Entrada e Saída</option>
+          <option value="Entrada">Apenas Entradas</option>
+          <option value="Saída">Apenas Saídas</option>
+        </select>
+        <select class="filter-sel" id="cfop-filter-orig" onchange="filtrarCfop()">
+          <option value="">Todas as Origens</option>
+          <option value="C170">C170 — Mercadorias</option>
+          <option value="A170">A170 — Serviços</option>
+        </select>
+        <select class="filter-sel" id="cfop-filter-per" onchange="filtrarCfop()">
+          <option value="">Todos os Períodos</option>
+        </select>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Competência</th><th>Orig.</th><th>Operação</th><th>CFOP</th>
+              <th>CST PIS</th><th>CST COFINS</th><th style="text-align:right">Qtd</th>
+              <th style="text-align:right">Vlr Item</th>
+              <th style="text-align:right">BC PIS</th><th style="text-align:right">PIS</th>
+              <th style="text-align:right">BC COFINS</th><th style="text-align:right">COFINS</th>
+            </tr>
+          </thead>
+          <tbody id="cfop-body"></tbody>
+        </table>
+      </div>
+      <div id="cfop-count" style="font-size:11px;color:var(--g4);font-family:var(--mono);margin-top:6px;text-align:right;"></div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!--  ABA CONCLUSÃO                                                     -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="tab-pane" id="tab-conclusao">
+      <div class="sec-hd">
+        <div><div class="sec-lbl">Consultivo</div><h2 class="sec-ttl">Conclusão e consolidação dos achados</h2></div>
+      </div>
+      <div id="conclusao-body"></div>
+    </div>
+
+    <!-- EXPORT & DISCLAIMER (sempre visível) -->
     <div class="dvd"></div>
-    <div class="sec-hd">
-      <div><div class="sec-lbl">Dashboards</div><h2 class="sec-ttl">Visualizações</h2></div>
-    </div>
-    <div class="chart-grid">
-      <div class="chart-card">
-        <h3>Achados por Grupo de Regra</h3>
-        <div class="chart-wrap"><canvas id="chart-grupo"></canvas></div>
-      </div>
-      <div class="chart-card">
-        <h3>Achados por Tipo</h3>
-        <div class="chart-wrap"><canvas id="chart-tipo"></canvas></div>
-      </div>
-      <div class="chart-card">
-        <h3>Achados por Severidade</h3>
-        <div class="chart-wrap"><canvas id="chart-severidade"></canvas></div>
-      </div>
-      <div class="chart-card">
-        <h3>Valor Envolvido por Tipo (R$)</h3>
-        <div class="chart-wrap"><canvas id="chart-valor"></canvas></div>
-      </div>
-    </div>
-
-    <!-- POR PERÍODO -->
-    <div class="dvd"></div>
-    <div class="sec-hd">
-      <div><div class="sec-lbl">Períodos</div><h2 class="sec-ttl">Resumo por competência</h2></div>
-    </div>
-    <div class="table-wrap" style="margin-bottom:40px;">
-      <table>
-        <thead>
-          <tr>
-            <th>Competência</th>
-            <th>Arquivo</th>
-            <th style="text-align:right">Receita Tributada MI</th>
-            <th style="text-align:right">Receita Não Trib. MI</th>
-            <th style="text-align:right">Receita Exportação</th>
-            <th style="text-align:right">Receita Total</th>
-            <th style="text-align:right">Achados</th>
-          </tr>
-        </thead>
-        <tbody id="periodos-body"></tbody>
-      </table>
-    </div>
-
-    <!-- ACHADOS -->
-    <div class="dvd"></div>
-    <div class="sec-hd">
-      <div><div class="sec-lbl">Detalhamento</div><h2 class="sec-ttl">Achados do motor de regras</h2></div>
-    </div>
-
-    <div class="table-toolbar">
-      <div class="search-box">
-        <span class="search-icon">🔍</span>
-        <input type="text" placeholder="Buscar descrição, registro ou recomendação..." id="search-input" oninput="filtrarTabela()"/>
-      </div>
-      <select class="filter-sel" id="filter-grupo" onchange="filtrarTabela()">
-        <option value="">Todos — Grupo</option>
-        <option value="G1">G1 — Créditos A/C/F</option>
-        <option value="G2">G2 — Ativo Imobilizado/Frota</option>
-        <option value="G3">G3 — Reconciliação Bloco M</option>
-        <option value="G4">G4 — Transposição 1100/1500</option>
-        <option value="G5">G5 — Rateio 0111</option>
-      </select>
-      <select class="filter-sel" id="filter-tipo" onchange="filtrarTabela()">
-        <option value="">Todos — Tipo</option>
-        <option value="OPORTUNIDADE">💰 Oportunidade</option>
-        <option value="RISCO">⚠️ Risco</option>
-        <option value="INCONSISTENCIA">🔎 Inconsistência</option>
-        <option value="INFORMATIVO">ℹ️ Informativo</option>
-      </select>
-      <select class="filter-sel" id="filter-severidade" onchange="filtrarTabela()">
-        <option value="">Todas — Severidade</option>
-        <option value="ALTO">🔴 Alto</option>
-        <option value="MEDIO">🟡 Médio</option>
-        <option value="BAIXO">🟢 Baixo</option>
-      </select>
-    </div>
-
-    <div class="table-wrap">
-      <table id="main-table">
-        <thead>
-          <tr>
-            <th>Grupo</th>
-            <th>Tipo</th>
-            <th>Severidade</th>
-            <th>Competência</th>
-            <th>Registro</th>
-            <th>Descrição</th>
-            <th style="text-align:right">Valor (R$)</th>
-            <th style="width:28px"></th>
-          </tr>
-        </thead>
-        <tbody id="table-body"></tbody>
-      </table>
-    </div>
-    <div id="table-count" style="font-size:11px;color:var(--g4);font-family:var(--mono);margin-top:8px;text-align:right;"></div>
-
-    <!-- EXPORT -->
     <div class="export-bar">
       <button class="btn btn-green" id="btn-excel" onclick="exportarExcel()">⬇ Baixar Excel</button>
       <button class="btn btn-ghost" onclick="window.print()">🖨 Imprimir / PDF</button>
     </div>
-
-    <!-- DISCLAIMER -->
     <div class="disclaimer">
       <span class="disc-icon">⚠️</span>
       <div>
         <div class="disc-title">Análise indicativa — validação especializada obrigatória</div>
-        <div class="disc-text" id="disc-text">Esta análise é automatizada e tem caráter indicativo. Os achados são pontos de atenção para revisão por especialista tributário, não constituindo posição definitiva sobre o aproveitamento de créditos.</div>
+        <div class="disc-text" id="disc-text">Esta análise é automatizada e tem caráter indicativo. Os achados são pontos de atenção para revisão por especialista tributário, não constituindo posição definitiva.</div>
       </div>
     </div>
 
@@ -448,6 +549,8 @@ const API = 'http://localhost:5000/api/sped-contribuicoes';
 let ARQUIVOS = [];
 let currentAnalysisId = null;
 let allAchados = [];
+let allPorPeriodo = [];
+let allCfopCst = [];
 let charts = {};
 
 const GRUPOS = {
@@ -458,39 +561,53 @@ const GRUPOS = {
   G5: 'G5 — Rateio Proporcional 0111',
 };
 
+const GRUPOS_INFO = {
+  G1: {
+    icon: '⛽',
+    titulo: 'Créditos A/C/F — Insumos de Transportadora',
+    desc: 'Cruza os registros A170 (serviços/ISS), C170 (mercadorias) e F100 (demais operações) com palavras-chave de insumos típicos do transporte — combustível, pneus, lubrificantes, manutenção, frete subcontratado, pedágio, seguro de carga, rastreamento e arrendamento de veículos — verificando o CST de PIS/COFINS aplicado a cada item.',
+    legal: 'Leis 10.637/2002 e 10.833/2003 (art. 3º) · IN RFB 2.121/2022 · Tema 779/STJ',
+  },
+  G2: {
+    icon: '🚛',
+    titulo: 'Ativo Imobilizado / Frota',
+    desc: 'Analisa os registros F120/F129 (crédito sobre encargos de depreciação) e F130/F139 (crédito sobre valor de aquisição) referentes à frota e demais bens do ativo imobilizado, verificando a consistência da base de cálculo e do parcelamento do crédito ao longo dos meses.',
+    legal: 'Lei 10.637/2002, art. 3º, §1º, III · Lei 10.833/2003, art. 3º, §1º, III · IN RFB 2.121/2022',
+  },
+  G3: {
+    icon: '🧾',
+    titulo: 'Reconciliação Bloco M',
+    desc: 'Compara os créditos apurados nos blocos A, C e F com os valores efetivamente lançados em M105/M110 (PIS) e M505/M510 (COFINS). Identifica diferenças entre crédito potencial e crédito declarado, e ajustes em M110/M510 sem contrapartida identificada.',
+    legal: 'Guia Prático EFD-Contribuições · IN RFB 2.121/2022',
+  },
+  G4: {
+    icon: '🔁',
+    titulo: 'Transposição de Saldo 1100/1500',
+    desc: 'Confere se o saldo final de créditos de ativo imobilizado declarado nos registros 1100 (PIS) e 1500 (COFINS) de uma competência corresponde ao saldo inicial da competência seguinte, identificando rupturas no controle de crédito parcelado entre períodos.',
+    legal: 'Guia Prático EFD-Contribuições — Registros 1100/1101/1102 e 1500/1501/1502',
+  },
+  G5: {
+    icon: '⚖️',
+    titulo: 'Rateio Proporcional — Registro 0111',
+    desc: 'Recalcula o percentual de rateio entre receitas tributadas, não tributadas e de exportação a partir do registro 0111 e compara com a forma como os créditos comuns foram rateados no Bloco M (M105/M505). O rateio determina que fração dos créditos de despesas comuns pode ser aproveitada.',
+    legal: 'Lei 10.637/2002, art. 3º, §§7º a 9º · Lei 10.833/2003, art. 3º, §§7º a 9º · IN RFB 2.121/2022',
+  },
+};
+
 // ── Drag & drop ──────────────────────────────────────────────────────────────
 const dz = document.getElementById('drop-zone');
 dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag'); });
 dz.addEventListener('dragleave', () => dz.classList.remove('drag'));
-dz.addEventListener('drop', e => {
-  e.preventDefault(); dz.classList.remove('drag');
-  hfiles(e.dataTransfer.files);
-});
-
-function handleFileSelect(e) {
-  hfiles(e.target.files);
-}
-
+dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('drag'); hfiles(e.dataTransfer.files); });
+function handleFileSelect(e) { hfiles(e.target.files); }
 function hfiles(files) {
   for (const f of files) {
-    if (f.name.toLowerCase().endsWith('.txt') && !ARQUIVOS.find(x => x.name === f.name)) {
-      ARQUIVOS.push(f);
-    }
+    if (f.name.toLowerCase().endsWith('.txt') && !ARQUIVOS.find(x => x.name === f.name)) ARQUIVOS.push(f);
   }
   renderFlist();
 }
-
-function remArq(i) {
-  ARQUIVOS.splice(i, 1);
-  renderFlist();
-}
-
-function limpar() {
-  ARQUIVOS = [];
-  document.getElementById('file-input').value = '';
-  renderFlist();
-}
-
+function remArq(i) { ARQUIVOS.splice(i, 1); renderFlist(); }
+function limpar() { ARQUIVOS = []; document.getElementById('file-input').value = ''; renderFlist(); }
 function renderFlist() {
   const el = document.getElementById('flist');
   el.innerHTML = ARQUIVOS.map((f, i) => `
@@ -503,19 +620,27 @@ function renderFlist() {
   document.getElementById('btn-analisar').disabled = ARQUIVOS.length === 0;
 }
 
+// ── Tabs ──────────────────────────────────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  const pane = document.getElementById(`tab-${name}`);
+  const btn = document.querySelector(`.tab-btn[data-tab="${name}"]`);
+  if (pane) pane.classList.add('active');
+  if (btn) btn.classList.add('active');
+}
+
 // ── Análise ───────────────────────────────────────────────────────────────────
 async function analisar() {
   if (!ARQUIVOS.length) return;
   document.getElementById('upload-section').style.display = 'none';
   document.getElementById('loading').style.display = 'block';
-
   const fd = new FormData();
   ARQUIVOS.forEach(f => fd.append('files', f));
-
   try {
     const res = await fetch(`${API}/upload`, { method: 'POST', body: fd });
     const data = await res.json();
-    if (!res.ok || data.error) throw new Error(data.error || (data.detalhes ? JSON.stringify(data.detalhes) : 'Erro ao processar arquivos'));
+    if (!res.ok || data.error) throw new Error(data.error || JSON.stringify(data.detalhes));
     renderResults(data);
   } catch (err) {
     document.getElementById('loading').style.display = 'none';
@@ -526,48 +651,56 @@ async function analisar() {
 
 // ── Formatação ───────────────────────────────────────────────────────────────
 function fmt(v) {
-  if (!v && v !== 0) return '—';
+  if (v === null || v === undefined) return '—';
   return 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 function fmtShort(v) {
-  const n = Number(v);
-  const a = Math.abs(n);
-  const s = n < 0 ? '-' : '';
+  const n = Number(v); const a = Math.abs(n); const s = n < 0 ? '-' : '';
   if (a >= 1e6) return s + 'R$ ' + (a / 1e6).toFixed(1) + 'M';
   if (a >= 1e3) return s + 'R$ ' + (a / 1e3).toFixed(0) + 'k';
   return fmt(n);
 }
 function fmtPct(v) {
-  if (!v && v !== 0) return '—';
+  if (v === null || v === undefined) return '—';
   return (Number(v) * 100).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%';
+}
+function fmtAliq(v) {
+  const n = Number(v);
+  if (!n) return '—';
+  return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) + '%';
 }
 
 // ── Render principal ─────────────────────────────────────────────────────────
 function renderResults(data) {
   currentAnalysisId = data.analysis_id;
   allAchados = data.achados || [];
-  const s = data.resumo;
+  allPorPeriodo = data.por_periodo || [];
+
+  // consolidar cfop_cst de todos os períodos com competência
+  allCfopCst = [];
+  allPorPeriodo.forEach(p => {
+    (p.cfop_cst || []).forEach(row => {
+      allCfopCst.push({ ...row, competencia: p.competencia });
+    });
+  });
 
   document.getElementById('loading').style.display = 'none';
   document.getElementById('results').style.display = 'block';
+  switchTab('resumo');
 
   if (data.aviso) document.getElementById('disc-text').textContent = data.aviso;
 
-  // Erros de processamento
   const errosBox = document.getElementById('erros-box');
   if (data.erros && data.erros.length) {
     errosBox.style.display = 'block';
     document.getElementById('erros-list').innerHTML = data.erros.map(e => `<li>${esc(e)}</li>`).join('');
-  } else {
-    errosBox.style.display = 'none';
-  }
+  } else { errosBox.style.display = 'none'; }
 
-  // Barra de empresa
+  const s = data.resumo;
   document.getElementById('file-bar-name').textContent = `${s.empresa || 'Empresa'} · CNPJ ${s.cnpj || '—'}`;
   document.getElementById('file-bar-info').textContent =
     `Competências analisadas: ${s.periodos_analisados.join(', ')} · Gerado em ${new Date().toLocaleString('pt-BR')}`;
 
-  // KPIs
   document.getElementById('k-total').textContent = s.total_achados;
   document.getElementById('k-periodos').textContent = `${s.periodos_analisados.length} período(s)`;
   document.getElementById('k-oportunidades').textContent = fmtShort(s.valor_total_oportunidades);
@@ -580,90 +713,50 @@ function renderResults(data) {
 
   renderInsights(allAchados, s);
   renderCharts(allAchados);
-  renderPeriodos(data.por_periodo || []);
+  renderPeriodos(allPorPeriodo);
   renderTable(allAchados);
+  renderApuracao(allPorPeriodo);
+  renderGroupPanes(allAchados, allPorPeriodo);
+  renderCfopCst(allCfopCst, allPorPeriodo);
+  renderConclusao(allAchados, s, allPorPeriodo);
 }
 
-// ── Insights (estilo cards de resultado) ───────────────────────────────────────
+// ── Insights ─────────────────────────────────────────────────────────────────
 function renderInsights(achados, resumo) {
   const el = document.getElementById('insights-grid');
   const oportunidades = achados.filter(a => a.tipo === 'OPORTUNIDADE').sort((a, b) => Math.abs(b.valor_envolvido) - Math.abs(a.valor_envolvido));
   const riscos = achados.filter(a => a.tipo === 'RISCO').sort((a, b) => Math.abs(b.valor_envolvido) - Math.abs(a.valor_envolvido));
   const inconsistencias = achados.filter(a => a.tipo === 'INCONSISTENCIA').sort((a, b) => Math.abs(b.valor_envolvido) - Math.abs(a.valor_envolvido));
-
   const cards = [];
-
   if (oportunidades.length) {
-    const top = oportunidades[0];
-    cards.push({
-      tag: 'Maior Oportunidade', tipo: 'b-sim',
-      headline: fmtShort(resumo.valor_total_oportunidades),
-      desc: `${oportunidades.length} oportunidade(s) de crédito não aproveitado. Destaque: ${top.descricao}`,
-      meta: `${top.competencia} · ${top.registro}`,
-    });
+    const t = oportunidades[0];
+    cards.push({ tag: 'Maior Oportunidade', tipo: 'b-sim', headline: fmtShort(resumo.valor_total_oportunidades), desc: `${oportunidades.length} oportunidade(s) de crédito não aproveitado. Destaque: ${t.descricao}`, meta: `${t.competencia} · ${t.registro}` });
   } else {
-    cards.push({
-      tag: 'Oportunidades', tipo: 'b-info',
-      headline: 'Nenhuma',
-      desc: 'Não foram identificados créditos típicos de transportadora sem aproveitamento nos blocos A/C/F.',
-      meta: '—',
-    });
+    cards.push({ tag: 'Oportunidades', tipo: 'b-info', headline: 'Nenhuma', desc: 'Não foram identificados créditos típicos de transportadora sem aproveitamento nos blocos A/C/F.', meta: '—' });
   }
-
   if (riscos.length) {
-    const top = riscos[0];
-    cards.push({
-      tag: 'Maior Risco', tipo: 'b-nao',
-      headline: fmtShort(resumo.valor_total_riscos),
-      desc: `${riscos.length} risco(s) identificado(s). Destaque: ${top.descricao}`,
-      meta: `${top.competencia} · ${top.registro}`,
-    });
+    const t = riscos[0];
+    cards.push({ tag: 'Maior Risco', tipo: 'b-nao', headline: fmtShort(resumo.valor_total_riscos), desc: `${riscos.length} risco(s) identificado(s). Destaque: ${t.descricao}`, meta: `${t.competencia} · ${t.registro}` });
   } else {
-    cards.push({
-      tag: 'Riscos', tipo: 'b-info',
-      headline: 'Nenhum',
-      desc: 'Não foram identificados créditos tomados sobre itens questionáveis à luz do Tema 779/STJ ou da legislação.',
-      meta: '—',
-    });
+    cards.push({ tag: 'Riscos', tipo: 'b-info', headline: 'Nenhum', desc: 'Nenhum crédito questionável identificado à luz do Tema 779/STJ ou da legislação.', meta: '—' });
   }
-
   if (inconsistencias.length) {
-    const top = inconsistencias[0];
-    cards.push({
-      tag: 'Maior Inconsistência', tipo: 'b-possivel',
-      headline: fmtShort(resumo.valor_total_inconsistencias),
-      desc: `${inconsistencias.length} inconsistência(s) entre os créditos apurados e o Bloco M / rateio 0111. Destaque: ${top.descricao}`,
-      meta: `${top.competencia} · ${top.registro}`,
-    });
+    const t = inconsistencias[0];
+    cards.push({ tag: 'Maior Inconsistência', tipo: 'b-possivel', headline: fmtShort(resumo.valor_total_inconsistencias), desc: `${inconsistencias.length} inconsistência(s) identificada(s). Destaque: ${t.descricao}`, meta: `${t.competencia} · ${t.registro}` });
   } else {
-    cards.push({
-      tag: 'Reconciliação Bloco M / 0111', tipo: 'b-info',
-      headline: 'OK',
-      desc: 'Os créditos apurados nos blocos A/C/F conferem com os valores lançados no Bloco M e o rateio do registro 0111 está consistente.',
-      meta: '—',
-    });
+    cards.push({ tag: 'Reconciliação Bloco M', tipo: 'b-info', headline: 'OK', desc: 'Créditos apurados conferem com Bloco M e rateio 0111 está consistente.', meta: '—' });
   }
-
   const g4 = achados.filter(a => a.grupo === 'G4' && (a.tipo === 'RISCO' || a.tipo === 'INCONSISTENCIA'));
   if (resumo.periodos_analisados.length >= 2) {
-    cards.push({
-      tag: 'Transposição 1100/1500', tipo: g4.length ? 'b-nao' : 'b-sim',
-      headline: g4.length ? `${g4.length} divergência(s)` : 'Sem divergências',
-      desc: g4.length
-        ? `Foram encontradas ${g4.length} divergência(s) na transposição de saldo de créditos de ativo imobilizado entre competências.`
-        : 'Os saldos de créditos de ativo imobilizado (1100/1500) foram transpostos corretamente entre as competências analisadas.',
-      meta: `${resumo.periodos_analisados.length} competências comparadas`,
-    });
+    cards.push({ tag: 'Transposição 1100/1500', tipo: g4.length ? 'b-nao' : 'b-sim', headline: g4.length ? `${g4.length} divergência(s)` : 'Sem divergências', desc: g4.length ? `${g4.length} divergência(s) na transposição de saldo de créditos de ativo imobilizado entre competências.` : 'Saldos de créditos de ativo imobilizado transpostos corretamente entre competências.', meta: `${resumo.periodos_analisados.length} competências comparadas` });
   }
-
   el.innerHTML = cards.map(c => `
     <div class="insight-card">
       <div class="insight-tag"><span class="badge ${c.tipo}" style="margin-right:6px;">●</span>${esc(c.tag)}</div>
       <div class="insight-headline">${esc(c.headline)}</div>
       <div class="insight-desc">${esc(c.desc)}</div>
       <div class="insight-meta">${esc(c.meta)}</div>
-    </div>
-  `).join('');
+    </div>`).join('');
 }
 
 // ── Charts ────────────────────────────────────────────────────────────────────
@@ -671,13 +764,10 @@ function makeChart(id, type, labels, datasets, opts = {}) {
   const ctx = document.getElementById(id).getContext('2d');
   if (charts[id]) charts[id].destroy();
   charts[id] = new Chart(ctx, {
-    type,
-    data: { labels, datasets },
+    type, data: { labels, datasets },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: {
-        legend: { labels: { color: '#A8B8CC', font: { size: 11 }, boxWidth: 12 } },
-      },
+      plugins: { legend: { labels: { color: '#A8B8CC', font: { size: 11 }, boxWidth: 12 } } },
       scales: type === 'bar' ? {
         x: { ticks: { color: '#6B7D94', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,.04)' } },
         y: { ticks: { color: '#6B7D94', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,.04)' }, beginAtZero: true }
@@ -686,70 +776,32 @@ function makeChart(id, type, labels, datasets, opts = {}) {
     }
   });
 }
-
-function countBy(arr, key) {
-  const out = {};
-  arr.forEach(a => { out[a[key]] = (out[a[key]] || 0) + 1; });
-  return out;
-}
-
+function countBy(arr, key) { const o = {}; arr.forEach(a => { o[a[key]] = (o[a[key]] || 0) + 1; }); return o; }
 function renderCharts(achados) {
-  // 1. Por grupo
   const byGrupo = countBy(achados, 'grupo');
-  const grupoKeys = Object.keys(GRUPOS).filter(g => byGrupo[g]);
-  makeChart('chart-grupo', 'bar', grupoKeys.map(g => g), [{
-    data: grupoKeys.map(g => byGrupo[g] || 0),
-    backgroundColor: '#8B5CF6', borderRadius: 6, borderSkipped: false,
-  }], { plugins: { legend: { display: false } } });
-
-  // 2. Por tipo
+  const gKeys = Object.keys(GRUPOS).filter(g => byGrupo[g]);
+  makeChart('chart-grupo', 'bar', gKeys, [{ data: gKeys.map(g => byGrupo[g] || 0), backgroundColor: '#8B5CF6', borderRadius: 6, borderSkipped: false }], { plugins: { legend: { display: false } } });
   const byTipo = countBy(achados, 'tipo');
-  const tipoLabels = ['OPORTUNIDADE', 'RISCO', 'INCONSISTENCIA', 'INFORMATIVO'].filter(t => byTipo[t]);
-  const tipoColors = { OPORTUNIDADE: '#22C55E', RISCO: '#EF4444', INCONSISTENCIA: '#F59E0B', INFORMATIVO: '#6B7D94' };
-  makeChart('chart-tipo', 'doughnut', tipoLabels, [{
-    data: tipoLabels.map(t => byTipo[t]),
-    backgroundColor: tipoLabels.map(t => tipoColors[t]), borderWidth: 0, hoverOffset: 8,
-  }], { cutout: '65%', plugins: { legend: { position: 'bottom' } } });
-
-  // 3. Por severidade
+  const tLabels = ['OPORTUNIDADE', 'RISCO', 'INCONSISTENCIA', 'INFORMATIVO'].filter(t => byTipo[t]);
+  const tColors = { OPORTUNIDADE: '#22C55E', RISCO: '#EF4444', INCONSISTENCIA: '#F59E0B', INFORMATIVO: '#6B7D94' };
+  makeChart('chart-tipo', 'doughnut', tLabels, [{ data: tLabels.map(t => byTipo[t]), backgroundColor: tLabels.map(t => tColors[t]), borderWidth: 0, hoverOffset: 8 }], { cutout: '65%', plugins: { legend: { position: 'bottom' } } });
   const bySev = countBy(achados, 'severidade');
-  const sevLabels = ['ALTO', 'MEDIO', 'BAIXO'].filter(s => bySev[s]);
-  const sevColors = { ALTO: '#EF4444', MEDIO: '#F59E0B', BAIXO: '#22C55E' };
-  makeChart('chart-severidade', 'doughnut', sevLabels, [{
-    data: sevLabels.map(s => bySev[s]),
-    backgroundColor: sevLabels.map(s => sevColors[s]), borderWidth: 0, hoverOffset: 8,
-  }], { cutout: '65%', plugins: { legend: { position: 'bottom' } } });
-
-  // 4. Valor envolvido por tipo
-  const valorPorTipo = {};
-  achados.forEach(a => { valorPorTipo[a.tipo] = (valorPorTipo[a.tipo] || 0) + Math.abs(a.valor_envolvido); });
-  const vLabels = ['OPORTUNIDADE', 'RISCO', 'INCONSISTENCIA', 'INFORMATIVO'].filter(t => valorPorTipo[t]);
-  makeChart('chart-valor', 'bar', vLabels, [{
-    data: vLabels.map(t => valorPorTipo[t]),
-    backgroundColor: vLabels.map(t => tipoColors[t]), borderRadius: 6, borderSkipped: false,
-  }], {
-    plugins: {
-      legend: { display: false },
-      tooltip: { callbacks: { label: ctx => ' ' + fmtShort(ctx.raw) } }
-    },
-    scales: {
-      x: { ticks: { color: '#6B7D94', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,.04)' } },
-      y: { ticks: { color: '#6B7D94', font: { size: 10 }, callback: v => fmtShort(v) }, grid: { color: 'rgba(255,255,255,.04)' } }
-    }
-  });
+  const sLabels = ['ALTO', 'MEDIO', 'BAIXO'].filter(s => bySev[s]);
+  const sColors = { ALTO: '#EF4444', MEDIO: '#F59E0B', BAIXO: '#22C55E' };
+  makeChart('chart-severidade', 'doughnut', sLabels, [{ data: sLabels.map(s => bySev[s]), backgroundColor: sLabels.map(s => sColors[s]), borderWidth: 0, hoverOffset: 8 }], { cutout: '65%', plugins: { legend: { position: 'bottom' } } });
+  const vPorTipo = {};
+  achados.forEach(a => { vPorTipo[a.tipo] = (vPorTipo[a.tipo] || 0) + Math.abs(a.valor_envolvido); });
+  const vLabels = ['OPORTUNIDADE', 'RISCO', 'INCONSISTENCIA', 'INFORMATIVO'].filter(t => vPorTipo[t]);
+  makeChart('chart-valor', 'bar', vLabels, [{ data: vLabels.map(t => vPorTipo[t]), backgroundColor: vLabels.map(t => tColors[t]), borderRadius: 6, borderSkipped: false }], { plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ' ' + fmtShort(ctx.raw) } } }, scales: { x: { ticks: { color: '#6B7D94', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,.04)' } }, y: { ticks: { color: '#6B7D94', font: { size: 10 }, callback: v => fmtShort(v) }, grid: { color: 'rgba(255,255,255,.04)' } } } });
 }
 
-// ── Por período ──────────────────────────────────────────────────────────────
+// ── Períodos ──────────────────────────────────────────────────────────────────
 function renderPeriodos(periodos) {
   const tbody = document.getElementById('periodos-body');
-  if (!periodos.length) {
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--g4);">Nenhum período processado.</td></tr>';
-    return;
-  }
+  if (!periodos.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--g4);">Nenhum período processado.</td></tr>'; return; }
   tbody.innerHTML = periodos.map(p => {
     const rb = p.receita_bruta || {};
-    return `
-    <tr>
+    return `<tr>
       <td class="td-mono">${esc(p.competencia)}</td>
       <td style="font-size:12px;">${esc(p.arquivo)}</td>
       <td class="td-valor">${fmt(rb.trib_mi)} <span style="color:var(--g4)">(${fmtPct(rb.pct_trib_mi)})</span></td>
@@ -761,36 +813,15 @@ function renderPeriodos(periodos) {
   }).join('');
 }
 
-// ── Tabela de achados ────────────────────────────────────────────────────────
-function tipoBadge(t) {
-  if (t === 'OPORTUNIDADE') return 'b-sim';
-  if (t === 'RISCO') return 'b-nao';
-  if (t === 'INCONSISTENCIA') return 'b-possivel';
-  return 'b-info';
-}
-function tipoIcon(t) {
-  if (t === 'OPORTUNIDADE') return '💰';
-  if (t === 'RISCO') return '⚠️';
-  if (t === 'INCONSISTENCIA') return '🔎';
-  return 'ℹ️';
-}
-function sevBadge(s) {
-  if (s === 'ALTO') return 'b-alto';
-  if (s === 'MEDIO') return 'b-medio';
-  return 'b-baixo';
-}
-
+// ── Tabela de achados ─────────────────────────────────────────────────────────
+function tipoBadge(t) { return t === 'OPORTUNIDADE' ? 'b-sim' : t === 'RISCO' ? 'b-nao' : t === 'INCONSISTENCIA' ? 'b-possivel' : 'b-info'; }
+function tipoIcon(t) { return t === 'OPORTUNIDADE' ? '💰' : t === 'RISCO' ? '⚠️' : t === 'INCONSISTENCIA' ? '🔎' : 'ℹ️'; }
+function sevBadge(s) { return s === 'ALTO' ? 'b-alto' : s === 'MEDIO' ? 'b-medio' : 'b-baixo'; }
 function renderTable(rows) {
   const tbody = document.getElementById('table-body');
-  if (!rows.length) {
-    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--g4);padding:24px;">Nenhum achado identificado.</td></tr>';
-    document.getElementById('table-count').textContent = '';
-    return;
-  }
+  if (!rows.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--g4);padding:24px;">Nenhum achado.</td></tr>'; document.getElementById('table-count').textContent = ''; return; }
   tbody.innerHTML = rows.map((r, i) => `
-    <tr class="data-row"
-        data-grupo="${esc(r.grupo)}" data-tipo="${esc(r.tipo)}" data-severidade="${esc(r.severidade)}"
-        data-search="${(r.descricao + ' ' + r.registro + ' ' + r.recomendacao + ' ' + r.competencia).toLowerCase()}">
+    <tr class="data-row" data-grupo="${esc(r.grupo)}" data-tipo="${esc(r.tipo)}" data-severidade="${esc(r.severidade)}" data-search="${(r.descricao+' '+r.registro+' '+r.recomendacao+' '+r.competencia).toLowerCase()}">
       <td class="td-mono td-toggle" onclick="toggleDetail(${i})">${esc(GRUPOS[r.grupo] || r.grupo)}</td>
       <td><span class="badge ${tipoBadge(r.tipo)}">${tipoIcon(r.tipo)} ${esc(r.tipo)}</span></td>
       <td><span class="badge ${sevBadge(r.severidade)}">${esc(r.severidade)}</span></td>
@@ -798,7 +829,7 @@ function renderTable(rows) {
       <td class="td-mono">${esc(r.bloco)}/${esc(r.registro)}</td>
       <td class="td-desc td-toggle" onclick="toggleDetail(${i})">${esc(r.descricao)}</td>
       <td class="td-valor">${fmt(r.valor_envolvido)}</td>
-      <td style="text-align:center;color:var(--g4);cursor:pointer;user-select:none;" onclick="toggleDetail(${i})" id="tog-${i}">▸</td>
+      <td style="text-align:center;color:var(--g4);cursor:pointer;" onclick="toggleDetail(${i})" id="tog-${i}">▸</td>
     </tr>
     <tr class="row-detail" id="detail-${i}">
       <td colspan="8">
@@ -807,11 +838,9 @@ function renderTable(rows) {
           <div style="margin-top:8px;font-size:11px;color:var(--g4);"><strong style="color:var(--g2)">Base legal:</strong> ${esc(r.base_legal)}</div>
         </div>
       </td>
-    </tr>
-  `).join('');
+    </tr>`).join('');
   atualizarContador(rows.length, rows.length);
 }
-
 function toggleDetail(i) {
   const det = document.getElementById(`detail-${i}`);
   const tog = document.getElementById(`tog-${i}`);
@@ -819,7 +848,6 @@ function toggleDetail(i) {
   det.style.display = open ? 'none' : 'table-row';
   tog.textContent = open ? '▸' : '▾';
 }
-
 function filtrarTabela() {
   const q = document.getElementById('search-input').value.toLowerCase();
   const fg = document.getElementById('filter-grupo').value;
@@ -828,11 +856,7 @@ function filtrarTabela() {
   const rows = document.querySelectorAll('.data-row');
   let visible = 0;
   rows.forEach(row => {
-    const matchQ = !q || row.dataset.search.includes(q);
-    const matchG = !fg || row.dataset.grupo === fg;
-    const matchT = !ft || row.dataset.tipo === ft;
-    const matchS = !fs || row.dataset.severidade === fs;
-    const show = matchQ && matchG && matchT && matchS;
+    const show = (!q || row.dataset.search.includes(q)) && (!fg || row.dataset.grupo === fg) && (!ft || row.dataset.tipo === ft) && (!fs || row.dataset.severidade === fs);
     row.style.display = show ? '' : 'none';
     const detId = row.querySelector('[id^="tog-"]')?.id?.replace('tog-', '');
     if (detId) document.getElementById(`detail-${detId}`).style.display = 'none';
@@ -840,41 +864,309 @@ function filtrarTabela() {
   });
   atualizarContador(visible, rows.length);
 }
+function atualizarContador(vis, tot) { document.getElementById('table-count').textContent = `Exibindo ${vis} de ${tot} achados`; }
 
-function atualizarContador(vis, tot) {
-  document.getElementById('table-count').textContent = `Exibindo ${vis} de ${tot} achados`;
+// ── Apuração ──────────────────────────────────────────────────────────────────
+function renderApuracao(periodos) {
+  const el = document.getElementById('apuracao-body');
+  if (!periodos.length) { el.innerHTML = '<div class="achado-empty">Nenhum período processado.</div>'; return; }
+  el.innerHTML = periodos.map(p => {
+    const ap = p.apuracao || {};
+    const pis = ap.pis || {};
+    const cof = ap.cofins || {};
+    function apCard(lbl, contrib) {
+      const tot = contrib.total_contribuicao_periodo || 0;
+      const cred = contrib.total_creditos_descontados || 0;
+      const dev = contrib.contribuicao_devida || 0;
+      const rec = contrib.valor_a_recolher || 0;
+      const rows_cst = (contrib.por_cst || []).map(c => `
+        <tr>
+          <td class="td-mono">${esc(c.cod_cont)}</td>
+          <td style="font-size:12px;color:var(--g2);">${esc(c.descricao)}</td>
+          <td class="td-valor">${fmt(c.vl_rec_brt)}</td>
+          <td class="td-valor">${fmt(c.vl_bc_cont)}</td>
+          <td class="td-valor">${fmtAliq(c.aliq)}</td>
+          <td class="td-valor" style="color:var(--purple);font-weight:700;">${fmt(c.vl_cont_apur)}</td>
+        </tr>`).join('');
+      return `
+        <div class="apur-card">
+          <div class="apur-card-hd">${esc(lbl)}</div>
+          <div class="apur-row"><span class="apur-lbl">(+) Contribuição apurada no período</span><span class="apur-val">${fmt(tot)}</span></div>
+          <div class="apur-row"><span class="apur-lbl">(-) Créditos descontados</span><span class="apur-val" style="color:var(--green)">${fmt(cred)}</span></div>
+          <div class="apur-row total"><span class="apur-lbl">(=) Contribuição devida</span><span class="apur-val">${fmt(dev)}</span></div>
+          <div class="apur-row recolher"><span class="apur-lbl">(=) Valor a recolher</span><span class="apur-val">${fmt(rec)}</span></div>
+          ${rows_cst ? `<div class="table-wrap" style="margin:0;border-radius:0;border:none;">
+            <table>
+              <thead><tr><th>Cód.</th><th>Descrição</th><th style="text-align:right">Rec. Bruta</th><th style="text-align:right">Base de Cálculo</th><th style="text-align:right">Alíquota</th><th style="text-align:right">Contribuição Apurada</th></tr></thead>
+              <tbody>${rows_cst}</tbody>
+            </table>
+          </div>` : ''}
+        </div>`;
+    }
+    return `<div class="apur-periodo">
+      <div class="apur-periodo-hd">📅 Competência: ${esc(p.competencia)} &nbsp;·&nbsp; ${esc(p.arquivo)}</div>
+      <div class="apur-grid">
+        ${apCard('PIS — Apuração (M200 / M210)', pis)}
+        ${apCard('COFINS — Apuração (M600 / M610)', cof)}
+      </div>
+    </div>`;
+  }).join('<div class="dvd"></div>');
+}
+
+// ── Group Panes (G1-G5) ───────────────────────────────────────────────────────
+function renderGroupPanes(achados, periodos) {
+  ['G1','G2','G3','G4','G5'].forEach(g => {
+    const info = GRUPOS_INFO[g];
+    const items = achados.filter(a => a.grupo === g).sort((a, b) => {
+      const o = { ALTO: 0, MEDIO: 1, BAIXO: 2 };
+      return (o[a.severidade] - o[b.severidade]) || (Math.abs(b.valor_envolvido) - Math.abs(a.valor_envolvido));
+    });
+
+    document.getElementById(`tab-count-${g}`).textContent = items.length;
+
+    document.getElementById(`group-info-${g}`).innerHTML = `
+      <div class="group-info">
+        <div class="group-info-icon">${info.icon}</div>
+        <div>
+          <div class="group-info-title">${esc(info.titulo)}</div>
+          <div class="group-info-desc">${esc(info.desc)}</div>
+          <div class="group-info-legal">Base legal: ${esc(info.legal)}</div>
+        </div>
+      </div>`;
+
+    const valorOp = items.filter(a => a.tipo === 'OPORTUNIDADE').reduce((s, a) => s + Math.abs(a.valor_envolvido), 0);
+    const valorRi = items.filter(a => a.tipo === 'RISCO').reduce((s, a) => s + Math.abs(a.valor_envolvido), 0);
+    const valorInc = items.filter(a => a.tipo === 'INCONSISTENCIA').reduce((s, a) => s + Math.abs(a.valor_envolvido), 0);
+    document.getElementById(`group-stats-${g}`).innerHTML = `
+      <div class="group-stat"><div class="group-stat-label">Total achados</div><div class="group-stat-value">${items.length}</div></div>
+      <div class="group-stat"><div class="group-stat-label">💰 Oportunidades</div><div class="group-stat-value" style="color:var(--green)">${fmtShort(valorOp)}</div></div>
+      <div class="group-stat"><div class="group-stat-label">⚠️ Riscos</div><div class="group-stat-value" style="color:var(--red)">${fmtShort(valorRi)}</div></div>
+      <div class="group-stat"><div class="group-stat-label">🔎 Inconsistências</div><div class="group-stat-value" style="color:var(--yellow)">${fmtShort(valorInc)}</div></div>`;
+
+    const listEl = document.getElementById(`group-list-${g}`);
+    if (g !== 'G5') {
+      listEl.innerHTML = items.length ? items.map(r => achadoCard(r)).join('') : '<div class="achado-empty">✅ Nenhum achado identificado neste grupo para os períodos analisados.</div>';
+    } else {
+      // G5 achados listados abaixo da seção rateio (renderG5Rateio cuida disso)
+      listEl.innerHTML = items.length ? items.map(r => achadoCard(r)).join('') : '<div class="achado-empty">✅ Nenhum achado de rateio identificado. Percentuais declarados conferem com os créditos apurados.</div>';
+    }
+  });
+
+  renderG5Rateio(periodos);
+}
+
+function achadoCard(r) {
+  return `
+    <div class="achado-card">
+      <div class="achado-card-head">
+        <span class="badge ${tipoBadge(r.tipo)}">${tipoIcon(r.tipo)} ${esc(r.tipo)}</span>
+        <span class="badge ${sevBadge(r.severidade)}">${esc(r.severidade)}</span>
+        <span class="td-mono" style="font-size:11px;color:var(--g3);">${esc(r.competencia)} · ${esc(r.bloco)}/${esc(r.registro)}</span>
+        <span class="achado-card-meta">${fmt(r.valor_envolvido)}</span>
+      </div>
+      <div class="achado-card-desc">${esc(r.descricao)}</div>
+      <div class="achado-card-action"><strong>O que fazer</strong>${esc(r.recomendacao)}</div>
+      <div class="achado-card-legal"><strong style="color:var(--g2)">Base legal:</strong> ${esc(r.base_legal)}</div>
+    </div>`;
+}
+
+// ── G5 — Rateio Proporcional enriquecido ────────────────────────────────────
+function renderG5Rateio(periodos) {
+  const el = document.getElementById('rateio-dados');
+  if (!periodos.length) { el.innerHTML = ''; return; }
+
+  const COLORS_RB = ['#8B5CF6', '#22C55E', '#3B82F6', '#F59E0B'];
+  const LABELS_RB = [
+    { key: 'trib_mi', pct: 'pct_trib_mi', label: 'Receita Tributada MI', color: '#8B5CF6', desc: 'Base para aproveitamento integral de créditos comuns no regime não cumulativo.' },
+    { key: 'nt_mi', pct: 'pct_nt_mi', label: 'Receita Não Tributada MI', color: '#F59E0B', desc: 'Receita de operações não sujeitas ao PIS/COFINS não-cumulativo (ex: receitas isentas). Reduz o crédito aproveitável.' },
+    { key: 'exp', pct: 'pct_exp', label: 'Receita de Exportação', color: '#22C55E', desc: 'Receita de exportação de serviços. Créditos atrelados podem ser ressarcidos ou compensados (Lei 10.833/2003, art. 5º).' },
+    { key: 'cum', pct: 'pct_cum', label: 'Receita Cumulativa', color: '#3B82F6', desc: 'Receita sujeita ao regime cumulativo (alíquotas 0,65%/3%). Não gera crédito não-cumulativo.' },
+  ];
+
+  el.innerHTML = `
+    <div class="sec-hd" style="margin-bottom:14px;">
+      <div><div class="sec-lbl">Registro 0111 — Dados Inputados</div><h2 class="sec-ttl">Rateio proporcional por competência</h2></div>
+    </div>
+    <p style="font-size:13px;color:var(--g3);margin-bottom:20px;">O registro 0111 declarado pela empresa define os percentuais de rateio das despesas comuns entre as categorias de receita. Os créditos de PIS/COFINS sobre itens comuns (CST 56/66) devem ser proporcionalizados conforme estes percentuais ao serem lançados no Bloco M.</p>
+    ${periodos.map(p => {
+      const rb = p.receita_bruta || {};
+      const total = rb.total || 0;
+      const rows = LABELS_RB.map(item => {
+        const val = rb[item.key] || 0;
+        const pct = rb[item.pct] || 0;
+        const pctNum = Math.round(pct * 1000) / 10;
+        return `
+          <div class="rateio-row">
+            <div style="min-width:200px;">
+              <div class="rateio-lbl" style="margin-bottom:4px;">${esc(item.label)}</div>
+              <div style="font-size:11px;color:var(--g4);line-height:1.4;">${esc(item.desc)}</div>
+            </div>
+            <div class="rateio-pct-wrap">
+              <div class="rateio-pct-bar" style="background:rgba(255,255,255,.07);position:relative;">
+                <div class="rateio-pct-bar" style="width:${pctNum}%;background:${item.color};position:absolute;top:0;left:0;height:100%;"></div>
+              </div>
+            </div>
+            <div style="text-align:right;min-width:80px;">
+              <div class="rateio-val" style="color:${item.color};">${fmtPct(pct)}</div>
+              <div style="font-size:11px;color:var(--g4);font-family:var(--mono);">${fmt(val)}</div>
+            </div>
+          </div>`;
+      }).join('');
+      const pctTrib = rb.pct_trib_mi || 0;
+      const pctExp = rb.pct_exp || 0;
+      return `
+        <div class="rateio-card" style="margin-bottom:16px;">
+          <div class="rateio-card-hd">📅 ${esc(p.competencia)} · ${esc(p.arquivo)}</div>
+          <div class="rateio-row" style="margin-bottom:8px;">
+            <span class="rateio-lbl" style="font-weight:700;">Receita Total (Base)</span>
+            <span class="rateio-val" style="color:var(--white);font-size:16px;">${fmt(total)}</span>
+          </div>
+          ${rows}
+        </div>
+        <div class="rateio-reflex">
+          <div class="rateio-reflex-hd">⚡ Reflexo no aproveitamento de créditos comuns (CST 56 / CST 66)</div>
+          <div style="font-size:13px;color:var(--g2);line-height:1.7;">
+            Para despesas comuns (ex: combustível rateado entre fretes tributados e não tributados), somente <strong style="color:var(--purple);">${fmtPct(pctTrib)}</strong> do crédito é aproveitável diretamente — proporção equivalente à receita tributada MI.
+            ${pctExp > 0 ? `A parcela de <strong style="color:var(--green);">${fmtPct(pctExp)}</strong> vinculada a exportações pode ser objeto de ressarcimento ou compensação (Lei 10.833/2003, art. 5º).` : ''}
+            Créditos em CST 56/66 devem refletir estes percentuais no campo PERC_RAT_CRED dos registros M105/M505.
+          </div>
+        </div>`;
+    }).join('<div class="dvd"></div>')}`;
+}
+
+// ── CFOP/CST ─────────────────────────────────────────────────────────────────
+let _cfopRows = [];
+function renderCfopCst(rows, periodos) {
+  _cfopRows = rows;
+  // preenche filtro de período
+  const selPer = document.getElementById('cfop-filter-per');
+  const periods = [...new Set(rows.map(r => r.competencia))].sort();
+  selPer.innerHTML = '<option value="">Todos os Períodos</option>' + periods.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('');
+  filtrarCfop();
+}
+function filtrarCfop() {
+  const q = document.getElementById('cfop-search').value.toLowerCase();
+  const fo = document.getElementById('cfop-filter-oper').value;
+  const fr = document.getElementById('cfop-filter-orig').value;
+  const fp = document.getElementById('cfop-filter-per').value;
+  const filtered = _cfopRows.filter(r => {
+    const match = (!q || `${r.cfop} ${r.cst_pis} ${r.cst_cofins} ${r.ind_oper} ${r.origem} ${r.competencia}`.toLowerCase().includes(q));
+    return match && (!fo || r.ind_oper === fo) && (!fr || r.origem === fr) && (!fp || r.competencia === fp);
+  });
+  const tbody = document.getElementById('cfop-body');
+  if (!filtered.length) {
+    tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;color:var(--g4);padding:24px;">Nenhum registro encontrado.</td></tr>';
+    document.getElementById('cfop-count').textContent = '';
+    return;
+  }
+  tbody.innerHTML = filtered.map(r => `
+    <tr>
+      <td class="td-mono">${esc(r.competencia)}</td>
+      <td><span class="badge b-info">${esc(r.origem)}</span></td>
+      <td><span class="badge ${r.ind_oper === 'Entrada' ? 'b-sim' : 'b-possivel'}">${esc(r.ind_oper)}</span></td>
+      <td class="td-mono" style="font-size:12px;">${esc(r.cfop)}</td>
+      <td class="td-mono">${esc(r.cst_pis)}</td>
+      <td class="td-mono">${esc(r.cst_cofins)}</td>
+      <td class="td-valor">${r.qtd_itens}</td>
+      <td class="td-valor">${fmt(r.vl_item)}</td>
+      <td class="td-valor">${fmt(r.vl_bc_pis)}</td>
+      <td class="td-valor">${fmt(r.vl_pis)}</td>
+      <td class="td-valor">${fmt(r.vl_bc_cofins)}</td>
+      <td class="td-valor">${fmt(r.vl_cofins)}</td>
+    </tr>`).join('');
+  document.getElementById('cfop-count').textContent = `Exibindo ${filtered.length} de ${_cfopRows.length} linhas`;
+}
+
+// ── Conclusão ─────────────────────────────────────────────────────────────────
+function renderConclusao(achados, resumo, periodos) {
+  const el = document.getElementById('conclusao-body');
+  const totalAch = resumo.total_achados;
+  const nOp = resumo.contagem_por_tipo['OPORTUNIDADE'] || 0;
+  const nRi = resumo.contagem_por_tipo['RISCO'] || 0;
+  const nInc = resumo.contagem_por_tipo['INCONSISTENCIA'] || 0;
+  const nAlto = resumo.contagem_por_severidade['ALTO'] || 0;
+  const vOp = resumo.valor_total_oportunidades;
+  const vRi = resumo.valor_total_riscos;
+  const vInc = resumo.valor_total_inconsistencias;
+
+  const execText = `A análise dos ${periodos.length} período(s) de ${resumo.empresa || 'Empresa'} (CNPJ ${resumo.cnpj}) identificou ${totalAch} achado(s) distribuídos em ${nOp} oportunidade(s) de crédito não aproveitado (${fmt(vOp)}), ${nRi} risco(s) de crédito questionável (${fmt(vRi)}) e ${nInc} inconsistência(s) entre créditos apurados e Bloco M/0111 (${fmt(vInc)}). Há ${nAlto} achado(s) de severidade ALTA que demandam atenção prioritária. Este relatório deve ser revisado por especialista tributário antes de qualquer ação fiscal.`;
+
+  // Consolidação por grupo
+  const gruposHtml = Object.entries(GRUPOS_INFO).map(([g, info]) => {
+    const items = achados.filter(a => a.grupo === g);
+    const nAltoG = items.filter(a => a.severidade === 'ALTO').length;
+    const hasRisco = items.some(a => a.tipo === 'RISCO' || a.tipo === 'INCONSISTENCIA');
+    const hasOp = items.some(a => a.tipo === 'OPORTUNIDADE');
+    const statusBadge = !items.length ? '<span class="badge b-sim">✅ Regular</span>' : hasRisco ? '<span class="badge b-nao">⚠️ Atenção</span>' : hasOp ? '<span class="badge b-possivel">💡 Oportunidade</span>' : '<span class="badge b-info">ℹ️ Informativo</span>';
+    const recsUniq = [...new Set(items.map(a => a.recomendacao).filter(Boolean))];
+    const bodyText = items.length
+      ? `${items.length} achado(s): ${items.filter(a=>a.tipo==='OPORTUNIDADE').length} oportunidade(s), ${items.filter(a=>a.tipo==='RISCO').length} risco(s), ${items.filter(a=>a.tipo==='INCONSISTENCIA').length} inconsistência(s).${nAltoG > 0 ? ` <strong style="color:var(--red);">${nAltoG} com severidade ALTA.</strong>` : ''}`
+      : 'Nenhum achado identificado neste grupo — parâmetros dentro do esperado para o(s) período(s) analisado(s).';
+    const acaoHtml = recsUniq.length ? `<div class="conclusao-acao"><strong style="font-size:10px;color:var(--purple);display:block;margin-bottom:4px;font-family:var(--mono);letter-spacing:.06em;">INSTRUÇÕES CONSULTIVAS</strong>${recsUniq.map(r => `<div style="margin-bottom:4px;">→ ${esc(r)}</div>`).join('')}</div>` : '';
+    return `
+      <div class="conclusao-grupo">
+        <div class="conclusao-grupo-hd">
+          <span style="font-size:18px;">${info.icon}</span>
+          <div class="conclusao-grupo-title">${esc(info.titulo)}</div>
+          <div class="conclusao-grupo-status">${statusBadge}</div>
+        </div>
+        <div class="conclusao-grupo-body">${bodyText}</div>
+        ${acaoHtml}
+        <div style="font-size:11px;color:var(--g4);font-family:var(--mono);margin-top:6px;">Base legal: ${esc(info.legal)}</div>
+      </div>`;
+  }).join('');
+
+  // Plano de ação: ALTO primeiro, depois por tipo (RISCO > INCONSISTENCIA > OPORTUNIDADE)
+  const sevOrder = { ALTO: 0, MEDIO: 1, BAIXO: 2 };
+  const tipoOrder = { RISCO: 0, INCONSISTENCIA: 1, OPORTUNIDADE: 2, INFORMATIVO: 3 };
+  const prioritarios = [...achados]
+    .filter(a => a.tipo !== 'INFORMATIVO' || a.severidade === 'ALTO')
+    .sort((a, b) => (sevOrder[a.severidade] - sevOrder[b.severidade]) || (tipoOrder[a.tipo] - tipoOrder[b.tipo]) || (Math.abs(b.valor_envolvido) - Math.abs(a.valor_envolvido)))
+    .slice(0, 15);
+
+  const planoHtml = prioritarios.length ? prioritarios.map((a, i) => `
+    <div class="pa-item">
+      <div class="pa-num">${i + 1}</div>
+      <div class="pa-body">
+        <div class="pa-title"><span class="badge ${tipoBadge(a.tipo)}" style="margin-right:6px;">${tipoIcon(a.tipo)} ${esc(a.tipo)}</span><span class="badge ${sevBadge(a.severidade)}">${esc(a.severidade)}</span> &nbsp;${esc(GRUPOS[a.grupo] || a.grupo)} · ${esc(a.competencia)}</div>
+        <div class="pa-desc">${esc(a.descricao)}</div>
+        <div class="pa-desc" style="margin-top:4px;color:var(--purple);">→ ${esc(a.recomendacao)}</div>
+      </div>
+    </div>`).join('') : '<div class="achado-empty">Nenhum ponto de ação prioritário identificado.</div>';
+
+  el.innerHTML = `
+    <div class="conclusao-exec">
+      <div class="conclusao-exec-hd">📋 Síntese executiva</div>
+      <div class="conclusao-exec-text">${esc(execText)}</div>
+    </div>
+    <div class="sec-hd" style="margin-bottom:16px;"><div><div class="sec-lbl">Por Grupo de Regra</div><h2 class="sec-ttl">Consolidação e instruções consultivas</h2></div></div>
+    ${gruposHtml}
+    <div class="dvd"></div>
+    <div class="sec-hd" style="margin-bottom:16px;"><div><div class="sec-lbl">Priorizados por Severidade</div><h2 class="sec-ttl">Plano de ação recomendado</h2></div></div>
+    <div class="plano-acao">${planoHtml}</div>`;
 }
 
 // ── Export ────────────────────────────────────────────────────────────────────
 async function exportarExcel() {
   if (!currentAnalysisId) return;
   const btn = document.getElementById('btn-excel');
-  btn.textContent = '⏳ Gerando...';
-  btn.disabled = true;
+  btn.textContent = '⏳ Gerando...'; btn.disabled = true;
   try {
     const res = await fetch(`${API}/download/excel/${currentAnalysisId}`);
     if (!res.ok) throw new Error('Erro ao gerar Excel');
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
+    const a = document.createElement('a'); a.href = url;
     a.download = `analise_sped_contribuicoes_${new Date().toISOString().slice(0, 10)}.xlsx`;
-    a.click();
-    URL.revokeObjectURL(url);
-  } catch (e) {
-    alert('Erro ao exportar: ' + e.message);
-  } finally {
-    btn.textContent = '⬇ Baixar Excel';
-    btn.disabled = false;
-  }
+    a.click(); URL.revokeObjectURL(url);
+  } catch (e) { alert('Erro ao exportar: ' + e.message); }
+  finally { btn.textContent = '⬇ Baixar Excel'; btn.disabled = false; }
 }
 
-// ── Reset ─────────────────────────────────────────────────────────────────────
+// ── Reset ──────────────────────────────────────────────────────────────────────
 function resetar() {
-  currentAnalysisId = null;
-  allAchados = [];
-  ARQUIVOS = [];
-  document.getElementById('file-input').value = '';
+  currentAnalysisId = null; allAchados = []; allPorPeriodo = []; allCfopCst = [];
+  ARQUIVOS = []; document.getElementById('file-input').value = '';
   document.getElementById('flist').innerHTML = '';
   document.getElementById('btn-analisar').disabled = true;
   document.getElementById('results').style.display = 'none';
@@ -882,7 +1174,6 @@ function resetar() {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
 function esc(s) {
   if (s === null || s === undefined) return '';
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');

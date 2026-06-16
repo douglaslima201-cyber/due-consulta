@@ -156,12 +156,13 @@ def _g1_creditos_acf(dfs: dict[str, pd.DataFrame], header: dict, item_map: dict,
                     f"Crédito de PIS/COFINS tomado sobre item classificado como pedágio "
                     f"('{descr_item or cod_item}', conta '{nome_cta or cod_cta}'), CST {cst_pis}.",
                     vl_pis + vl_cofins, BASE_LEGAL_PEDAGIO,
-                    "O Vale-Pedágio obrigatório (Lei 10.209/2001) não integra o preço do "
-                    "frete e, em regra, não compõe a base de cálculo de crédito de "
-                    "PIS/COFINS. Revisar se este valor refere-se efetivamente a pedágio "
-                    "pago pelo embarcador (vale-pedágio) ou a despesa própria de "
-                    "pedágio/estacionamento da transportadora — apenas esta última "
-                    "comporia eventual base de crédito como insumo.",
+                    "O Vale-Pedágio obrigatório (Lei 10.209/2001) não integra o preço do frete "
+                    "e não compõe base de crédito de PIS/COFINS. Solução: (1) Se o valor é "
+                    "pedágio pago pelo embarcador (vale-pedágio), estornar o crédito via "
+                    "ajuste de redução em M110/M510 (código RD_070 ou similar) e retificar "
+                    "o SPED. (2) Se é despesa própria de pedágio/estacionamento da "
+                    "transportadora, o item pode ser mantido como insumo — retificar o CST "
+                    "para 50 e recalcular o crédito corretamente.",
                 ))
                 continue
 
@@ -187,9 +188,12 @@ def _g1_creditos_acf(dfs: dict[str, pd.DataFrame], header: dict, item_map: dict,
                     f"'{descr_item or cod_item}' (conta '{nome_cta or cod_cta}', CST {cst_pis}) "
                     "que não se encaixa nas categorias típicas de insumo de transportadoras.",
                     vl_pis + vl_cofins, BASE_LEGAL_INSUMO,
-                    "Verificar o enquadramento deste item como insumo (essencialidade/"
-                    "relevância à atividade de transporte de cargas, conforme critério "
-                    "fixado no Tema 779/STJ) antes de manter o crédito apurado.",
+                    "Verificar o enquadramento como insumo (essencialidade à atividade de "
+                    "transporte, conforme Tema 779/STJ). Solução: se não caracterizado como "
+                    "insumo, estornar o crédito via ajuste de redução em M110/M510 "
+                    "(código RD_070) com retificação do SPED. Se o item for confirmado "
+                    "como insumo por parecer jurídico, documenter o enquadramento para "
+                    "suportar eventual questionamento fiscal.",
                 ))
 
     # F100: demais operações (frete subcontratado PF/PJ, arrendamento, etc.)
@@ -224,12 +228,12 @@ def _g1_creditos_acf(dfs: dict[str, pd.DataFrame], header: dict, item_map: dict,
                         + (f", com alíquotas reduzidas (PIS {aliq_pis}% / COFINS {aliq_cofins}%)" if aliq_padrao else "")
                         + ".",
                         vl_oper - vl_bc_pis, BASE_LEGAL_FRETE_SUBCONTRATADO,
-                        "Confirmar com a área tributária se o percentual da base de "
-                        "cálculo e as alíquotas aplicadas ao frete subcontratado "
-                        "(pessoa física/jurídica) estão corretos conforme a legislação "
-                        "vigente, e se a parcela do valor pago que não compõe a base "
-                        "de crédito está corretamente justificada (ex.: repasse de "
-                        "vale-pedágio, diferença de regime tributário do subcontratado).",
+                        "Solução: (1) Se a base reduzida é justificada por repasse de "
+                        "vale-pedágio ao subcontratado, documentar o valor excluído e "
+                        "manter o lançamento atual. (2) Caso contrário, retificar o "
+                        "registro F100 ajustando vl_bc_pis/vl_bc_cofins para o valor "
+                        "total do frete contratado. Recalcular PIS/COFINS e refletir nos "
+                        "registros M100/M500 via acréscimo M110/M510 ou retificação do SPED.",
                         severidade=_severidade_por_valor(vl_oper - vl_bc_pis),
                     ))
                 continue
@@ -284,10 +288,12 @@ def _g2_ativo_imobilizado(dfs: dict[str, pd.DataFrame], header: dict, conta_map:
                     f"diverge do valor esperado para o método de 1/48 sobre "
                     f"R$ {vl_bc_cred:,.2f} (R$ {parcela_esperada:,.2f}).",
                     vl_bc_pis - parcela_esperada, BASE_LEGAL_ATIVO_IMOB,
-                    "Conferir se o crédito sobre o bem do ativo imobilizado está sendo "
-                    "apropriado corretamente em 48 parcelas mensais (ou se há regra "
-                    "específica aplicável, como apropriação integral ou em prazo "
-                    "diferente) e se o valor da parcela está calculado corretamente.",
+                    "Solução: (1) Verificar o valor de aquisição do bem e o método de "
+                    "apropriação (1/48 ou prazo diferente por normativa específica). "
+                    "(2) Retificar o registro F130 ajustando vl_bc_pis/vl_bc_cofins para "
+                    "o valor correto da parcela mensal. (3) Refletir a correção em M100/"
+                    "M500 — se o crédito foi sub-aproveitado, incluir acréscimo em M110/"
+                    "M510; se foi super-aproveitado, incluir redução.",
                 ))
 
         if eh_frota and cst_pis in CST_RATEIO:
@@ -380,9 +386,13 @@ def _g3_reconciliacao_m(dfs: dict[str, pd.DataFrame], header: dict) -> list[dict
                 f"{registro_m} (R$ {total_declarado:,.2f}). Diferença: "
                 f"R$ {diferenca:,.2f}.",
                 diferenca, BASE_LEGAL_NAO_CUMULATIVO,
-                f"Conferir se há ajustes de acréscimo/redução (registros M110/M115 "
-                f"ou M510/M515) ou créditos extemporâneos que expliquem a diferença "
-                f"entre os blocos A/C/F e o {registro_m}.",
+                f"Solução: (1) Verificar os registros M110/M510 (ajustes de acréscimo/"
+                f"redução) para identificar a origem da diferença. (2) Se a diferença "
+                f"é favorável ao contribuinte (sub-aproveitamento), apropriar o saldo "
+                f"via crédito extemporâneo no M100/M500 da competência atual com ajuste "
+                f"M110 (código AC_XXX). (3) Se desfavorável (excesso), retificar o SPED "
+                f"reduzindo o crédito declarado em {registro_m} e providenciar o "
+                f"recolhimento da diferença com SELIC, se aplicável.",
             ))
         else:
             achados.append(_achado(
@@ -464,9 +474,13 @@ def gerar_achados_transposicao(periodos: list[tuple[dict, dict[str, pd.DataFrame
                         f"{cod_cred}, R$ {vl_a:,.2f} em {comp_a}) não aparece mais no "
                         f"{registro} de {comp_b}.",
                         vl_a, base_legal,
-                        "Verificar se houve baixa/alienação do bem que justifique a "
-                        "interrupção do crédito, ou se houve descontinuidade indevida "
-                        "no aproveitamento do crédito de ativo imobilizado.",
+                        "Solução: (1) Se houve alienação/baixa do bem, documentar com "
+                        "nota fiscal de saída e registrar ajuste de encerramento do "
+                        "crédito no M100/M500 (código de redução RD_XXX). (2) Se não "
+                        "houve alienação, o crédito foi omitido indevidamente: retificar "
+                        "o SPED incluindo a linha do período de origem no registro "
+                        "1100/1500 e apropriar os créditos não aproveitados via acréscimo "
+                        "em M110/M510 (crédito extemporâneo, sujeito a SELIC em favor do contribuinte).",
                     ))
                 else:
                     vl_b = mapa_b[chave]
@@ -477,9 +491,12 @@ def gerar_achados_transposicao(periodos: list[tuple[dict, dict[str, pd.DataFrame
                             f"{cod_cred}) variou de R$ {vl_a:,.2f} em {comp_a} para "
                             f"R$ {vl_b:,.2f} em {comp_b} sem justificativa aparente.",
                             vl_b - vl_a, base_legal,
-                            "Conferir se a variação do valor da parcela está correta "
-                            "(ex.: reajuste, correção de erro de período anterior) ou "
-                            "se há erro de transposição entre os arquivos.",
+                            "Solução: (1) Identificar a competência onde a variação foi "
+                            "originada (reajuste, baixa parcial ou erro de digitação). "
+                            "(2) Retificar o SPED daquela competência corrigindo o saldo "
+                            "no registro 1100/1500. (3) Propagar a correção para as "
+                            "competências subsequentes, ajustando M100/M500 via acréscimo "
+                            "ou redução conforme a diferença apurada.",
                         ))
 
     return achados
@@ -531,9 +548,12 @@ def _g5_rateio(dfs: dict[str, pd.DataFrame], header: dict) -> list[dict]:
             "(ind_apro_cred = 1), mas a empresa possui receita em mais de uma "
             "categoria (tributada / não tributada / exportação) no registro 0111.",
             receita_bruta["total"], BASE_LEGAL_RATEIO,
-            "Verificar se a empresa não deveria estar utilizando o método de "
-            "rateio proporcional (ou método misto) para os créditos comuns, "
-            "conforme art. 3º, §§ 8º e 9º das Leis 10.637/2002 e 10.833/2003.",
+            "Solução: (1) Avaliar com a área tributária se o método mais adequado "
+            "é o proporcional (0110 com ind_apro_cred = 2 ou 3). (2) Se confirmado, "
+            "retificar o registro 0110 e recalcular os créditos comuns em M105/M505 "
+            "com os percentuais corretos do 0111. (3) As competências em aberto devem "
+            "ser retificadas; créditos sub-aproveitados podem ser recuperados via "
+            "crédito extemporâneo no mês atual.",
         ))
 
     if not rateio_indicado:
@@ -565,9 +585,15 @@ def _g5_rateio(dfs: dict[str, pd.DataFrame], header: dict) -> list[dict]:
                     f"{pct_esperado * 100:.2f}% (R$ {vl_bc_esperado:,.2f}), mas o valor "
                     f"declarado após rateio foi R$ {vl_bc_declarado:,.2f}.",
                     vl_bc_declarado - vl_bc_esperado, BASE_LEGAL_RATEIO,
-                    f"Recalcular o percentual de rateio aplicado a este crédito comum "
-                    f"de {label} com base na receita bruta do registro 0111 e "
-                    "confirmar se o valor declarado em M105/M505 está correto.",
+                    f"Solução: (1) Recalcular o campo PERC_RAT_CRED do registro "
+                    f"{registro_m105} usando os percentuais exatos do 0111 (receita "
+                    f"tributada MI + exportação ÷ receita total). (2) Retificar o SPED "
+                    f"ajustando o campo {base_col} com o valor correto após rateio. "
+                    f"(3) Se houve sub-aproveitamento de {label}, a diferença pode ser "
+                    f"recuperada como crédito extemporâneo via M110/M510 (acréscimo) "
+                    f"na competência atual, com incidência de SELIC em favor do contribuinte. "
+                    f"(4) Se houve aproveitamento a maior, recolher a diferença com DARF "
+                    f"e SELIC antes de notificação fiscal.",
                 ))
 
     return achados

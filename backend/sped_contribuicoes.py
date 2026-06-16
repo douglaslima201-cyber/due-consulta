@@ -16,7 +16,9 @@ from datetime import datetime
 import pandas as pd
 from flask import Blueprint, jsonify, request, send_file
 
-from sped_contribuicoes_parser import parse_sped_file, extract_header
+from sped_contribuicoes_parser import (
+    parse_sped_file, extract_header, extract_apuracao, extract_cfop_cst,
+)
 from sped_contribuicoes_regras import gerar_achados, gerar_achados_transposicao
 
 bp = Blueprint("sped_contribuicoes", __name__, url_prefix="/api/sped-contribuicoes")
@@ -113,6 +115,8 @@ def upload():
             "cnpj": header.get("cnpj", ""),
             "receita_bruta": header.get("receita_bruta"),
             "total_achados": len(achados),
+            "apuracao": extract_apuracao(dfs),
+            "cfop_cst": extract_cfop_cst(dfs),
         })
 
     if len(periodos_dfs) >= 2:

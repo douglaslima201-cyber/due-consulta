@@ -200,6 +200,30 @@ CST_COM_CREDITO = {"50", "51", "52", "53", "54", "55", "56", "60", "61", "62", "
 CST_RATEIO = {"56", "66"}
 CST_SEM_CREDITO = {"70", "71", "72", "73", "74", "75", "98", "99"}
 
+# Colunas extras injetadas durante o parse para manter contexto do registro-pai
+_EXTRA_COLS: dict[str, list[str]] = {
+    "C170": ["_ind_oper"],
+    "A170": ["_ind_oper"],
+}
+
+# Labels para IND_OPER (C100/A100)
+_IND_OPER_LABEL = {"0": "Entrada", "1": "Saída"}
+
+# Mapa cod_cont M210/M610 → descrição legível (SPED Contribuições Guia Prático)
+COD_CONT_LABEL: dict[str, str] = {
+    "01": "Operação Tributável (Alíquota Básica 0,65% / 3%)",
+    "02": "Operação Tributável (Alíquota Diferenciada)",
+    "03": "Operação Tributável (Alíquota por Unidade de Produto)",
+    "04": "Operação Tributável (Mono. / ST — Antecipação)",
+    "05": "Operação Tributável (Substituição Tributária)",
+    "06": "Operação Tributável (Alíquota Zero / Isenta)",
+    "07": "Operação Isenta da Contribuição",
+    "08": "Operação sem Incidência (Não-Tributável)",
+    "09": "Operação com Suspensão",
+    "49": "Outras Operações de Saída",
+    "99": "Outras Operações",
+}
+
 
 # ─── 2. UTILITÁRIOS ────────────────────────────────────────────────────────────
 
@@ -239,36 +263,61 @@ def competencia_from_ddmmyyyy(data: str) -> str:
 
 def parse_sped_file(content: bytes) -> dict[str, pd.DataFrame]:
     """Lê o conteúdo de um arquivo SPED Contribuições e retorna um DataFrame
-    por registro encontrado, indexado pelo código do registro (ex.: 'C170')."""
+    por registro encontrado, indexado pelo código do registro (ex.: 'C170').
+
+    Após a construção dos DataFrames, injeta a coluna ``_ind_oper`` em C170
+    (derivada do C100 pai) e em A170 (derivada do A100 pai), permitindo
+    identificar entradas vs saídas sem desalinhar os outros campos."""
     text = _decode(content)
 
     registros: dict[str, list[list[str]]] = defaultdict(list)
+    # Armazena, por linha, o valor de _ind_oper a ser anexado depois
+    _ind_oper_extra: dict[str, list[str]] = {"C170": [], "A170": []}
+    _cur_ind_oper: dict[str, str] = {}
+
     for linha in text.splitlines():
         linha = linha.strip("\r\n").strip()
         if not linha.startswith("|"):
             continue
         campos = linha.split("|")
-        # remove o elemento vazio antes do primeiro '|' e depois do último '|'
         campos = campos[1:-1] if len(campos) >= 2 else campos
         if not campos:
             continue
         reg = campos[0].strip()
         if not reg:
             continue
-        registros[reg].append(campos[1:])
+        valores = campos[1:]
+
+        if reg in ("C100", "A100"):
+            _cur_ind_oper[reg] = valores[0] if valores else ""
+        elif reg == "C170":
+            _ind_oper_extra["C170"].append(_cur_ind_oper.get("C100", ""))
+        elif reg == "A170":
+            _ind_oper_extra["A170"].append(_cur_ind_oper.get("A100", ""))
+
+        registros[reg].append(valores)
 
     dfs: dict[str, pd.DataFrame] = {}
     for reg, linhas in registros.items():
         max_len = max(len(l) for l in linhas)
-        cols = REGISTROS.get(reg)
-        if cols is None:
-            cols = [f"campo_{i + 1}" for i in range(max_len)]
-        elif len(cols) < max_len:
-            cols = cols + [f"campo_extra_{i + 1}" for i in range(max_len - len(cols))]
+        base_cols = REGISTROS.get(reg)
+
+        if base_cols is None:
+            cols: list[str] = [f"campo_{i + 1}" for i in range(max_len)]
+        else:
+            cols = list(base_cols)
+            needed = max_len - len(cols)
+            if needed > 0:
+                cols = cols + [f"campo_extra_{i + 1}" for i in range(needed)]
 
         n = len(cols)
         linhas_padded = [l + [""] * (n - len(l)) if len(l) < n else l[:n] for l in linhas]
         dfs[reg] = pd.DataFrame(linhas_padded, columns=cols)
+
+    # Injeta _ind_oper como coluna extra (após construção, sem desalinhar outros campos)
+    for reg, extra_vals in _ind_oper_extra.items():
+        if reg in dfs and extra_vals:
+            dfs[reg]["_ind_oper"] = extra_vals
 
     return dfs
 
@@ -338,3 +387,128 @@ def build_participante_map(dfs: dict[str, pd.DataFrame]) -> dict[str, str]:
     if df is None or df.empty:
         return {}
     return dict(zip(df["cod_part"], df["nome"]))
+
+
+# ─── 5. EXTRATORES COMPLEMENTARES ─────────────────────────────────────────────
+
+def extract_apuracao(dfs: dict[str, pd.DataFrame]) -> dict:
+    """Extrai a totalização da apuração do Bloco M:
+    - M200 (PIS totais) + M210 (PIS por código de contribuição / CST)
+    - M600 (COFINS totais) + M610 (COFINS por código de contribuição)
+    Retorna dict com sub-dicts 'pis' e 'cofins'."""
+
+    def _totais(df_tot, df_det, campo_aliq: str) -> dict:
+        out: dict = {
+            "total_contribuicao_periodo": 0.0,
+            "total_creditos_descontados": 0.0,
+            "contribuicao_devida": 0.0,
+            "valor_a_recolher": 0.0,
+            "por_cst": [],
+        }
+        if df_tot is not None and not df_tot.empty:
+            r = df_tot.iloc[0]
+            out["total_contribuicao_periodo"] = parse_decimal(r.get("vl_tot_cont_nc_per", "0"))
+            out["total_creditos_descontados"] = parse_decimal(r.get("vl_tot_cred_desc", "0"))
+            out["contribuicao_devida"] = parse_decimal(r.get("vl_tot_cont_nc_dev", "0"))
+            ret = parse_decimal(r.get("vl_ret_nc", "0"))
+            ded = parse_decimal(r.get("vl_out_ded_nc", "0"))
+            declared = parse_decimal(r.get("vl_cont_nc_rec", "0"))
+            computed = out["contribuicao_devida"] - ret - ded
+            out["valor_a_recolher"] = declared if declared > 0 else max(computed, 0.0)
+
+        if df_det is not None and not df_det.empty:
+            for _, row in df_det.iterrows():
+                cod = str(row.get("cod_cont", "")).strip()
+                out["por_cst"].append({
+                    "cod_cont": cod,
+                    "descricao": COD_CONT_LABEL.get(cod, f"Código {cod}"),
+                    "vl_rec_brt": parse_decimal(row.get("vl_rec_brt", "0")),
+                    "vl_bc_cont": parse_decimal(row.get("vl_bc_cont", "0")),
+                    "aliq": parse_decimal(row.get(campo_aliq, "0")),
+                    "vl_cont_apur": parse_decimal(row.get("vl_cont_apur", "0")),
+                })
+        return out
+
+    return {
+        "pis": _totais(dfs.get("M200"), dfs.get("M210"), "aliq_pis"),
+        "cofins": _totais(dfs.get("M600"), dfs.get("M610"), "aliq_cofins"),
+    }
+
+
+def extract_cfop_cst(dfs: dict[str, pd.DataFrame]) -> list[dict]:
+    """Agrega os valores de PIS/COFINS por CFOP e CST, separando entradas e
+    saídas, a partir dos registros C170 (mercadorias) e A170 (serviços)."""
+    linhas: list[dict] = []
+
+    numeric_cols = ("vl_item", "vl_bc_pis", "vl_pis", "vl_bc_cofins", "vl_cofins")
+
+    df_c170 = dfs.get("C170")
+    if df_c170 is not None and not df_c170.empty and "_ind_oper" in df_c170.columns:
+        df = df_c170.copy()
+        for col in numeric_cols:
+            if col in df.columns:
+                df[col] = df[col].map(parse_decimal)
+            else:
+                df[col] = 0.0
+        grp_cols = ["_ind_oper", "cfop", "cst_pis", "cst_cofins"]
+        grp_cols = [c for c in grp_cols if c in df.columns]
+        grouped = df.groupby(grp_cols, dropna=False).agg(
+            qtd_itens=("vl_item", "size"),
+            vl_item=("vl_item", "sum"),
+            vl_bc_pis=("vl_bc_pis", "sum"),
+            vl_pis=("vl_pis", "sum"),
+            vl_bc_cofins=("vl_bc_cofins", "sum"),
+            vl_cofins=("vl_cofins", "sum"),
+        ).reset_index()
+        for _, row in grouped.iterrows():
+            io = str(row.get("_ind_oper", "")).strip()
+            linhas.append({
+                "origem": "C170",
+                "ind_oper": _IND_OPER_LABEL.get(io, io or "—"),
+                "cfop": str(row.get("cfop", "")).strip() or "—",
+                "cst_pis": str(row.get("cst_pis", "")).strip(),
+                "cst_cofins": str(row.get("cst_cofins", "")).strip(),
+                "qtd_itens": int(row.get("qtd_itens", 0)),
+                "vl_item": round(float(row.get("vl_item", 0)), 2),
+                "vl_bc_pis": round(float(row.get("vl_bc_pis", 0)), 2),
+                "vl_pis": round(float(row.get("vl_pis", 0)), 2),
+                "vl_bc_cofins": round(float(row.get("vl_bc_cofins", 0)), 2),
+                "vl_cofins": round(float(row.get("vl_cofins", 0)), 2),
+            })
+
+    df_a170 = dfs.get("A170")
+    if df_a170 is not None and not df_a170.empty and "_ind_oper" in df_a170.columns:
+        df = df_a170.copy()
+        for col in numeric_cols:
+            if col in df.columns:
+                df[col] = df[col].map(parse_decimal)
+            else:
+                df[col] = 0.0
+        grp_cols = ["_ind_oper", "cst_pis", "cst_cofins"]
+        grp_cols = [c for c in grp_cols if c in df.columns]
+        grouped = df.groupby(grp_cols, dropna=False).agg(
+            qtd_itens=("vl_item", "size"),
+            vl_item=("vl_item", "sum"),
+            vl_bc_pis=("vl_bc_pis", "sum"),
+            vl_pis=("vl_pis", "sum"),
+            vl_bc_cofins=("vl_bc_cofins", "sum"),
+            vl_cofins=("vl_cofins", "sum"),
+        ).reset_index()
+        for _, row in grouped.iterrows():
+            io = str(row.get("_ind_oper", "")).strip()
+            linhas.append({
+                "origem": "A170",
+                "ind_oper": _IND_OPER_LABEL.get(io, io or "—"),
+                "cfop": "—",
+                "cst_pis": str(row.get("cst_pis", "")).strip(),
+                "cst_cofins": str(row.get("cst_cofins", "")).strip(),
+                "qtd_itens": int(row.get("qtd_itens", 0)),
+                "vl_item": round(float(row.get("vl_item", 0)), 2),
+                "vl_bc_pis": round(float(row.get("vl_bc_pis", 0)), 2),
+                "vl_pis": round(float(row.get("vl_pis", 0)), 2),
+                "vl_bc_cofins": round(float(row.get("vl_bc_cofins", 0)), 2),
+                "vl_cofins": round(float(row.get("vl_cofins", 0)), 2),
+            })
+
+    linhas.sort(key=lambda r: (r["ind_oper"], r["cfop"], r["cst_pis"]))
+    return linhas
