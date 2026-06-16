@@ -483,8 +483,55 @@ body.light .table-wrap::after{background:linear-gradient(to right,transparent,rg
     <!-- ═══════════════════════════════════════════════════════════════════ -->
     <div class="tab-pane active" id="tab-resumo">
 
+      <!-- Executive one-pager -->
+      <div id="exec-onepage" style="display:none;margin-bottom:28px;">
+        <!-- header strip -->
+        <div id="exec-header" style="background:linear-gradient(135deg,rgba(27,58,92,.7),rgba(15,32,52,.9));border:1px solid rgba(255,255,255,.08);border-radius:var(--r);padding:16px 20px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+          <div>
+            <div style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--g3);margin-bottom:4px;">Análise EFD-PIS/COFINS (SPED Contribuições)</div>
+            <div id="exec-empresa" style="font-size:17px;font-weight:700;color:var(--g1);"></div>
+            <div id="exec-cnpj" style="font-size:12px;color:var(--g3);margin-top:2px;"></div>
+          </div>
+          <div style="text-align:right;">
+            <div id="exec-periodos" style="font-size:13px;font-weight:600;color:var(--orange);"></div>
+            <div id="exec-gerado" style="font-size:11px;color:var(--g4);margin-top:3px;"></div>
+          </div>
+        </div>
+
+        <!-- 3-column financial grid -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px;">
+          <!-- col 1: tributação -->
+          <div class="card" style="padding:16px 18px;">
+            <div style="font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--g4);margin-bottom:10px;">Tributação do Período</div>
+            <div id="exec-contrib" style=""></div>
+          </div>
+          <!-- col 2: créditos -->
+          <div class="card" style="padding:16px 18px;">
+            <div style="font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--g4);margin-bottom:10px;">Créditos e PERDCOMP</div>
+            <div id="exec-creds" style=""></div>
+          </div>
+          <!-- col 3: diagnóstico -->
+          <div class="card" style="padding:16px 18px;">
+            <div style="font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--g4);margin-bottom:10px;">Diagnóstico</div>
+            <div id="exec-diag" style=""></div>
+          </div>
+        </div>
+
+        <!-- rateio 0111 bar -->
+        <div class="card" style="padding:16px 18px;margin-bottom:14px;" id="exec-rateio-card">
+          <div style="font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--g4);margin-bottom:10px;">Rateio de Receitas — Registro 0111</div>
+          <div id="exec-rateio"></div>
+        </div>
+
+        <!-- top findings -->
+        <div class="card" style="padding:16px 18px;" id="exec-findings-card">
+          <div style="font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--g4);margin-bottom:10px;">Principais Pontos de Atenção</div>
+          <div id="exec-findings"></div>
+        </div>
+      </div>
+
       <div class="sec-hd">
-        <div><div class="sec-lbl">Visão Geral</div><h2 class="sec-ttl">Resumo executivo</h2></div>
+        <div><div class="sec-lbl">Visão Geral</div><h2 class="sec-ttl">KPIs e Insights</h2></div>
       </div>
       <div class="kpi-grid">
         <div class="kpi kpi-orange"><div class="kpi-icon">📋</div><div class="kpi-label">Total de Achados</div><div class="kpi-value" id="k-total">—</div><div class="kpi-sub" id="k-periodos">— período(s)</div></div>
@@ -860,6 +907,7 @@ function renderResults(data) {
   document.getElementById('k-inconsistencias-n').textContent = `${s.contagem_por_tipo['INCONSISTENCIA'] || 0} achados`;
   document.getElementById('k-alto').textContent = s.contagem_por_severidade['ALTO'] || 0;
 
+  renderExecOnepage(data, allAchados, allPorPeriodo);
   renderInsights(allAchados, s);
   renderCharts(allAchados);
   renderPeriodos(allPorPeriodo);
@@ -870,6 +918,162 @@ function renderResults(data) {
   renderPerdcomp(allPorPeriodo);
   renderConclusao(allAchados, s, allPorPeriodo);
   setTimeout(updateTableScrollIndicators, 100);
+}
+
+// ── Executive one-pager ───────────────────────────────────────────────────────
+function renderExecOnepage(data, allAchados, allPorPeriodo) {
+  const el = document.getElementById('exec-onepage');
+  if (!el) return;
+  const s = data.resumo;
+
+  // Header
+  document.getElementById('exec-empresa').textContent = s.empresa || '—';
+  document.getElementById('exec-cnpj').textContent = `CNPJ: ${s.cnpj || '—'}`;
+  document.getElementById('exec-periodos').textContent =
+    s.periodos_analisados.length === 1
+      ? `Competência: ${s.periodos_analisados[0]}`
+      : `Competências: ${s.periodos_analisados.join(' / ')}`;
+  document.getElementById('exec-gerado').textContent =
+    `Gerado em: ${new Date().toLocaleString('pt-BR')}`;
+
+  // Aggregate apuração + perdcomp across all periods
+  let pisContrib = 0, cofinsContrib = 0, pisDesc = 0, cofinsDesc = 0;
+  let pisRecolher = 0, cofinsRecolher = 0, pisPA = 0, cofinsPA = 0;
+  let pisPerdcomp = 0, cofinsPerdcomp = 0;
+  let pisS100 = 0, pisS200 = 0, cofinsS100 = 0, cofinsS200 = 0;
+  let rbTrib = 0, rbNT = 0, rbExp = 0, rbTotal = 0;
+
+  for (const p of allPorPeriodo) {
+    const ap = p.apuracao || {};
+    const ap_pis = ap.pis || {};
+    const ap_cof = ap.cofins || {};
+    pisContrib  += ap_pis.total_contribuicao_periodo || 0;
+    cofinsContrib += ap_cof.total_contribuicao_periodo || 0;
+    pisDesc     += ap_pis.total_creditos_descontados || 0;
+    cofinsDesc  += ap_cof.total_creditos_descontados || 0;
+    pisRecolher += ap_pis.valor_a_recolher || 0;
+    cofinsRecolher += ap_cof.valor_a_recolher || 0;
+    pisPA       += ap_pis.creditos_periodos_anteriores || 0;
+    cofinsPA    += ap_cof.creditos_periodos_anteriores || 0;
+
+    const pp = p.perdcomp_previa || {};
+    pisPerdcomp   += (pp.pis || {}).total_perdcomp_disponivel || 0;
+    cofinsPerdcomp += (pp.cofins || {}).total_perdcomp_disponivel || 0;
+    pisS100  += (pp.pis || {}).total_creditos_100 || 0;
+    pisS200  += (pp.pis || {}).total_creditos_200 || 0;
+    cofinsS100 += (pp.cofins || {}).total_creditos_100 || 0;
+    cofinsS200 += (pp.cofins || {}).total_creditos_200 || 0;
+
+    const rb = p.receita_bruta || {};
+    rbTrib  += rb.trib_mi || 0;
+    rbNT    += rb.nt_mi || 0;
+    rbExp   += rb.exp || 0;
+    rbTotal += rb.total || 0;
+  }
+
+  const totalContrib = pisContrib + cofinsContrib;
+  const totalRecolher = pisRecolher + cofinsRecolher;
+  const totalPerdcomp = pisPerdcomp + cofinsPerdcomp;
+  const totalPA = pisPA + cofinsPA;
+
+  // Col 1 — tributação
+  const execRow = (lbl, val, color) =>
+    `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.05);">
+      <span style="font-size:12px;color:var(--g3);">${lbl}</span>
+      <span style="font-size:13px;font-weight:600;font-family:var(--mono);color:${color || 'var(--g1)'};">${fmt(val)}</span>
+    </div>`;
+  document.getElementById('exec-contrib').innerHTML = [
+    execRow('PIS apurado', pisContrib),
+    execRow('COFINS apurado', cofinsContrib),
+    execRow('Total apurado', totalContrib, 'var(--g1)'),
+    execRow('Créditos descontados', pisDesc + cofinsDesc, 'var(--green)'),
+    totalPA > 0 ? execRow('↩ Créditos p. anteriores', totalPA, 'var(--purple)') : '',
+    execRow('Saldo a recolher', totalRecolher, totalRecolher > 0 ? 'var(--red)' : 'var(--green)'),
+  ].join('');
+
+  // Col 2 — créditos
+  document.getElementById('exec-creds').innerHTML = [
+    execRow('Série 100 — PIS', pisS100, 'var(--blue-l)'),
+    execRow('Série 100 — COFINS', cofinsS100, 'var(--blue-l)'),
+    execRow('Série 200 — PIS', pisS200, 'var(--orange)'),
+    execRow('Série 200 — COFINS', cofinsS200, 'var(--orange)'),
+    `<div style="padding:8px 0 4px;margin-top:4px;border-top:1px solid rgba(255,255,255,.1);display:flex;justify-content:space-between;align-items:center;">
+      <span style="font-size:12px;font-weight:600;color:var(--g2);">Saldo PERDCOMP</span>
+      <span style="font-size:15px;font-weight:700;font-family:var(--mono);color:${totalPerdcomp > 0 ? 'var(--orange)' : 'var(--g4)'};">${fmt(totalPerdcomp)}</span>
+    </div>`,
+  ].join('');
+
+  // Col 3 — diagnóstico
+  const nOp = s.contagem_por_tipo['OPORTUNIDADE'] || 0;
+  const nRi = s.contagem_por_tipo['RISCO'] || 0;
+  const nInc = s.contagem_por_tipo['INCONSISTENCIA'] || 0;
+  const nAlto = s.contagem_por_severidade['ALTO'] || 0;
+  const nMed = s.contagem_por_severidade['MEDIO'] || 0;
+  const diagItem = (cor, ico, lbl, val, valColor) =>
+    `<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.05);">
+      <span style="font-size:12px;color:var(--g3);">${ico} ${lbl}</span>
+      <span style="font-size:13px;font-weight:600;color:${valColor || 'var(--g1)'};">${val}</span>
+    </div>`;
+  document.getElementById('exec-diag').innerHTML = [
+    diagItem('', '📋', 'Total de achados', s.total_achados),
+    diagItem('', '💰', 'Oportunidades', `${nOp} (${fmt(s.valor_total_oportunidades)})`, 'var(--green)'),
+    diagItem('', '⚠️', 'Riscos', `${nRi} (${fmt(s.valor_total_riscos)})`, nRi > 0 ? 'var(--red)' : 'var(--g4)'),
+    diagItem('', '🔎', 'Inconsistências', nInc, nInc > 0 ? 'var(--yellow)' : 'var(--g4)'),
+    diagItem('', '🔴', 'Severidade ALTA', nAlto, nAlto > 0 ? 'var(--red)' : 'var(--g4)'),
+    diagItem('', '🟡', 'Severidade MÉDIA', nMed, nMed > 0 ? 'var(--yellow)' : 'var(--g4)'),
+  ].join('');
+
+  // Rateio 0111
+  if (rbTotal > 0) {
+    const pTrib = (rbTrib / rbTotal * 100).toFixed(1);
+    const pNT   = (rbNT  / rbTotal * 100).toFixed(1);
+    const pExp  = (rbExp  / rbTotal * 100).toFixed(1);
+    document.getElementById('exec-rateio').innerHTML = `
+      <div style="display:flex;border-radius:4px;overflow:hidden;height:20px;margin-bottom:8px;">
+        <div style="width:${pTrib}%;background:var(--blue-l);"></div>
+        <div style="width:${pNT}%;background:var(--orange);"></div>
+        <div style="width:${pExp}%;background:var(--green);"></div>
+      </div>
+      <div style="display:flex;gap:20px;flex-wrap:wrap;">
+        <span style="font-size:12px;color:var(--g2);"><span style="display:inline-block;width:10px;height:10px;background:var(--blue-l);border-radius:2px;margin-right:5px;vertical-align:middle;"></span>Trib. MI: <strong>${pTrib}%</strong> (${fmtShort(rbTrib)})</span>
+        <span style="font-size:12px;color:var(--g2);"><span style="display:inline-block;width:10px;height:10px;background:var(--orange);border-radius:2px;margin-right:5px;vertical-align:middle;"></span>NT MI: <strong>${pNT}%</strong> (${fmtShort(rbNT)})</span>
+        <span style="font-size:12px;color:var(--g2);"><span style="display:inline-block;width:10px;height:10px;background:var(--green);border-radius:2px;margin-right:5px;vertical-align:middle;"></span>Exportação: <strong>${pExp}%</strong> (${fmtShort(rbExp)})</span>
+        <span style="font-size:12px;color:var(--g3);">Total: ${fmtShort(rbTotal)}</span>
+      </div>`;
+    document.getElementById('exec-rateio-card').style.display = '';
+  } else {
+    document.getElementById('exec-rateio-card').style.display = 'none';
+  }
+
+  // Top findings
+  const sevOrder = { ALTO: 0, MEDIO: 1, BAIXO: 2 };
+  const sevColor = { ALTO: 'var(--red)', MEDIO: 'var(--yellow)', BAIXO: 'var(--green)' };
+  const tipoColor = { OPORTUNIDADE: 'var(--green)', RISCO: 'var(--red)', INCONSISTENCIA: 'var(--yellow)', INFORMATIVO: 'var(--g4)' };
+  const topAchs = [...allAchados]
+    .filter(a => a.tipo !== 'INFORMATIVO')
+    .sort((a, b) => (sevOrder[a.severidade] ?? 9) - (sevOrder[b.severidade] ?? 9) || Math.abs(b.valor_envolvido) - Math.abs(a.valor_envolvido))
+    .slice(0, 6);
+  if (topAchs.length) {
+    document.getElementById('exec-findings').innerHTML = topAchs.map((a, i) =>
+      `<div style="display:flex;align-items:flex-start;gap:12px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05);">
+        <span style="min-width:22px;height:22px;background:rgba(255,255,255,.05);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--g3);">${i+1}</span>
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;gap:6px;align-items:center;margin-bottom:3px;">
+            <span style="font-size:10px;font-weight:700;color:${sevColor[a.severidade] || 'var(--g4)'};">${a.severidade}</span>
+            <span style="font-size:10px;color:${tipoColor[a.tipo] || 'var(--g4)'};">· ${a.tipo}</span>
+            <span style="font-size:10px;color:var(--g4);">· ${a.competencia} · ${a.registro}</span>
+          </div>
+          <div style="font-size:12px;color:var(--g2);line-height:1.5;">${esc(a.descricao)}</div>
+        </div>
+        <span style="font-size:13px;font-weight:700;font-family:var(--mono);color:${tipoColor[a.tipo] || 'var(--g1)'};white-space:nowrap;">${a.valor_envolvido ? fmt(Math.abs(a.valor_envolvido)) : '—'}</span>
+      </div>`
+    ).join('');
+    document.getElementById('exec-findings-card').style.display = '';
+  } else {
+    document.getElementById('exec-findings-card').style.display = 'none';
+  }
+
+  el.style.display = '';
 }
 
 // ── Insights ─────────────────────────────────────────────────────────────────
@@ -1386,16 +1590,21 @@ function renderPerdcomp(periodos) {
     const t200 = side.total_creditos_200 || 0;
     const totalPerdcomp = side.total_perdcomp_disponivel || 0;
     const credApuracao = side.creditos_descontados_apuracao || 0;
-    const contrib100 = side.contrib_apos_100 || 0;
+    const credPA = side.total_cred_periodo_anterior || 0;
     const isPIS = side.tributo === 'PIS';
 
     const rows = (side.steps || []).map(s => {
       const is200 = s.serie === '200';
-      const hasPerdcomp = s.valor_perdcomp > 0;
+      const hasPerdcomp = (s.valor_perdcomp || 0) > 0;
       const hasCarry = (s.valor_carry_fwd || 0) > 0;
-      const barPct = s.valor_disponivel > 0
-        ? Math.round(((is200 ? s.valor_perdcomp : s.valor_usado_desconto) / s.valor_disponivel) * 100)
-        : 0;
+      const hasDesc = (s.valor_usado_desconto || 0) > 0;
+      const hasAnt = (s.vl_per_anterior || 0) > 0;
+      const disponivel = s.valor_disponivel || 0;
+      const descPct  = disponivel > 0 ? Math.round(((s.valor_usado_desconto||0) / disponivel) * 100) : 0;
+      const perdPct  = disponivel > 0 ? Math.round(((s.valor_perdcomp||0) / disponivel) * 100) : 0;
+      const antBadge = hasAnt
+        ? `<br><span style="font-size:9px;color:var(--purple);font-weight:600;">↩ Ant: ${fmt(s.vl_per_anterior)}</span>`
+        : '';
       return `
         <tr class="${hasPerdcomp ? 'perdcomp-highlight' : ''} perdcomp-serie-${s.serie}">
           <td class="td-mono" style="color:${is200 ? 'var(--orange)' : 'var(--blue-l)'};">${esc(s.cod_cred)}</td>
@@ -1403,13 +1612,14 @@ function renderPerdcomp(periodos) {
           <td style="text-align:center;">
             <span class="badge ${is200 ? 'b-possivel' : 'b-info'}" style="font-size:9px;">${is200 ? '200 — Presumido' : '100 — Básico'}</span>
           </td>
-          <td class="td-valor">${fmt(s.valor_disponivel)}</td>
-          <td class="td-valor" style="color:${is200 ? 'var(--g4)' : 'var(--green)'};">${is200 ? '—' : fmt(s.valor_usado_desconto)}</td>
+          <td class="td-valor">${fmt(disponivel)}${antBadge}</td>
+          <td class="td-valor" style="color:${hasDesc ? 'var(--green)' : 'var(--g4)'};">${hasDesc ? fmt(s.valor_usado_desconto) : '—'}</td>
           <td class="td-valor" style="color:${hasCarry ? 'var(--yellow)' : 'var(--g4)'};">${hasCarry ? fmt(s.valor_carry_fwd) : '—'}</td>
           <td class="td-valor" style="color:${hasPerdcomp ? 'var(--orange)' : 'var(--g4)'};font-weight:${hasPerdcomp ? '700' : '400'};">${hasPerdcomp ? fmt(s.valor_perdcomp) : '—'}</td>
           <td style="padding:9px 14px;">
-            <div class="perdcomp-bar-wrap">
-              <div class="${is200 ? 'perdcomp-bar-perdcomp' : 'perdcomp-bar-desc'}" style="width:${barPct}%;"></div>
+            <div class="perdcomp-bar-wrap" style="position:relative;">
+              <div class="perdcomp-bar-desc"    style="width:${descPct}%;position:absolute;left:0;top:0;height:100%;"></div>
+              <div class="perdcomp-bar-perdcomp" style="width:${perdPct}%;position:absolute;left:${descPct}%;top:0;height:100%;"></div>
             </div>
           </td>
         </tr>`;
@@ -1430,15 +1640,19 @@ function renderPerdcomp(periodos) {
               <div class="perdcomp-stat-val">${fmt(contrib)}</div>
             </div>
             <div class="perdcomp-stat">
-              <div class="perdcomp-stat-lbl">Série 100 (disponível)</div>
+              <div class="perdcomp-stat-lbl">Série 100</div>
               <div class="perdcomp-stat-val" style="color:var(--blue-l);">${fmt(t100)}</div>
             </div>
             <div class="perdcomp-stat">
-              <div class="perdcomp-stat-lbl">Série 200 (ressarcível)</div>
+              <div class="perdcomp-stat-lbl">Série 200</div>
               <div class="perdcomp-stat-val" style="color:var(--orange);">${fmt(t200)}</div>
             </div>
+            ${credPA > 0 ? `<div class="perdcomp-stat">
+              <div class="perdcomp-stat-lbl">↩ P. Anteriores</div>
+              <div class="perdcomp-stat-val" style="color:var(--purple);">${fmt(credPA)}</div>
+            </div>` : ''}
             <div class="perdcomp-stat">
-              <div class="perdcomp-stat-lbl">Saldo p/ PERDCOMP</div>
+              <div class="perdcomp-stat-lbl">Saldo PERDCOMP</div>
               <div class="perdcomp-stat-val" style="color:${totalPerdcomp > 0 ? 'var(--orange)' : 'var(--g4)'};">${fmt(totalPerdcomp)}</div>
             </div>
           </div>
@@ -1461,24 +1675,24 @@ function renderPerdcomp(periodos) {
             <div class="perdcomp-sumbox-val">${fmt(contrib)}</div>
           </div>
           <div class="perdcomp-sumbox">
-            <div class="perdcomp-sumbox-lbl">Descontado na Apuração (M200)</div>
-            <div class="perdcomp-sumbox-val" style="color:var(--green);">${fmt(credApuracao)}</div>
-          </div>
-          <div class="perdcomp-sumbox">
-            <div class="perdcomp-sumbox-lbl">Série 100 (desconto)</div>
+            <div class="perdcomp-sumbox-lbl">Série 100 (período atual)</div>
             <div class="perdcomp-sumbox-val" style="color:var(--blue-l);">${fmt(t100)}</div>
           </div>
           <div class="perdcomp-sumbox">
-            <div class="perdcomp-sumbox-lbl">Série 200 (ressarcível)</div>
+            <div class="perdcomp-sumbox-lbl">Série 200 (período atual)</div>
             <div class="perdcomp-sumbox-val" style="color:var(--orange);">${fmt(t200)}</div>
+          </div>
+          <div class="perdcomp-sumbox" style="background:rgba(139,92,246,.06);border:1px solid rgba(139,92,246,.18);">
+            <div class="perdcomp-sumbox-lbl">↩ Saldo Períodos Anteriores</div>
+            <div class="perdcomp-sumbox-val" style="color:var(--purple);">${fmt(credPA)}</div>
+          </div>
+          <div class="perdcomp-sumbox">
+            <div class="perdcomp-sumbox-lbl">Total Créditos (sim.)</div>
+            <div class="perdcomp-sumbox-val">${fmt(t100 + t200)}</div>
           </div>
           <div class="perdcomp-sumbox ${totalPerdcomp > 0 ? 'destaque' : ''}">
             <div class="perdcomp-sumbox-lbl">Saldo p/ PERDCOMP</div>
             <div class="perdcomp-sumbox-val">${fmt(totalPerdcomp)}</div>
-          </div>
-          <div class="perdcomp-sumbox" style="background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.18);">
-            <div class="perdcomp-sumbox-lbl">Contrib. após Série 100</div>
-            <div class="perdcomp-sumbox-val" style="color:var(--blue-l);">${fmt(contrib100)}</div>
           </div>
         </div>
         ${avisoHtml}` : '<div style="padding:16px;font-size:12px;color:var(--g4);">Nenhum crédito encontrado nos registros M100/M500 para este período.</div>'}
