@@ -10,10 +10,10 @@
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 :root{
-  --db1:#060D1A;--db2:#0C1625;--db3:#122035;--db4:#1A2E48;--db5:#243D5E;
+  --db1:#0F172A;--db2:#1E293B;--db3:#263248;--db4:#334155;--db5:#475569;
   --blue:#1D4ED8;--blue-l:#3B82F6;
   --orange:#F97316;--orange-l:#FB923C;--orange-d:#EA580C;
-  --white:#FFFFFF;--g1:#E8EDF5;--g2:#A8B8CC;--g3:#6B7D94;--g4:#3D5068;
+  --white:#F8FAFC;--g1:#E2E8F0;--g2:#94A3B8;--g3:#64748B;--g4:#475569;
   --green:#22C55E;--green-d:#16A34A;
   --yellow:#F59E0B;--red:#EF4444;--purple:#8B5CF6;
   --mono:'JetBrains Mono',monospace;--sans:'Inter',sans-serif;
@@ -26,7 +26,7 @@ body{font-family:var(--sans);background:var(--db1);color:var(--white);overflow-x
 ::-webkit-scrollbar-thumb{background:rgba(249,115,22,.35);border-radius:3px;}
 
 /* NAV */
-nav{position:fixed;top:0;left:0;right:0;z-index:200;height:64px;display:flex;align-items:center;padding:0 48px;background:rgba(6,13,26,.92);backdrop-filter:blur(24px);border-bottom:1px solid rgba(249,115,22,.15);}
+nav{position:fixed;top:0;left:0;right:0;z-index:200;height:64px;display:flex;align-items:center;padding:0 48px;background:rgba(15,23,42,.92);backdrop-filter:blur(24px);border-bottom:1px solid rgba(249,115,22,.15);}
 .nav-brand{display:flex;align-items:center;gap:12px;}
 .nav-icon{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--orange),var(--orange-d));display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 4px 16px rgba(249,115,22,.35);}
 .nav-name{font-size:15px;font-weight:700;letter-spacing:-.02em;}
@@ -276,6 +276,74 @@ tr:hover td{background:rgba(249,115,22,.03);}
 .perdcomp-aviso{background:rgba(34,197,94,.05);border:1px solid rgba(34,197,94,.2);border-radius:var(--r);padding:10px 14px;font-size:12px;color:var(--g2);line-height:1.6;margin:0 16px 16px;}
 .perdcomp-aviso-zero{background:rgba(107,125,148,.06);border:1px solid rgba(107,125,148,.15);border-radius:var(--r);padding:10px 14px;font-size:12px;color:var(--g3);line-height:1.6;margin:0 16px 16px;}
 
+/* ── BOTÃO MODO ──────────────────────────────────────────────────────────────── */
+.btn-theme-toggle{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:var(--r);width:34px;height:34px;display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;transition:all .2s;flex-shrink:0;}
+.btn-theme-toggle:hover{background:rgba(255,255,255,.14);transform:scale(1.08);}
+
+/* ── MODO CLARO ──────────────────────────────────────────────────────────────── */
+body.light{
+  --db1:#EFF3F8;--db2:#FFFFFF;--db3:#F1F5FA;--db4:#E3EAF4;--db5:#CAD5E2;
+  --white:#0D1B2E;--g1:#1E293B;--g2:#334155;--g3:#64748B;--g4:#94A3B8;
+}
+body.light nav{background:rgba(239,243,248,.96);}
+body.light .btn-theme-toggle{background:rgba(0,0,0,.06);border-color:rgba(0,0,0,.1);}
+body.light .btn-theme-toggle:hover{background:rgba(0,0,0,.12);}
+body.light .nav-tag{background:rgba(0,0,0,.04);border-color:rgba(0,0,0,.1);}
+body.light .nav-back:hover{color:var(--g1);}
+body.light .hero-bg{background:radial-gradient(ellipse 80% 60% at 20% 20%,rgba(29,78,216,.04) 0%,transparent 60%),radial-gradient(ellipse 60% 50% at 80% 80%,rgba(249,115,22,.04) 0%,transparent 60%);}
+body.light .hero-grid{background-image:linear-gradient(rgba(0,0,0,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(0,0,0,.025) 1px,transparent 1px);}
+body.light ::-webkit-scrollbar-thumb{background:rgba(249,115,22,.4);}
+
+/* superfícies: bordas rgba(255,255,255,.07) viram rgba(0,0,0,.08) */
+body.light .kpi,
+body.light .chart-card,
+body.light .table-wrap,
+body.light .fitem,
+body.light .group-stat,
+body.light .apur-card,
+body.light .rateio-card,
+body.light .rateio-reflex,
+body.light .conclusao-grupo,
+body.light .pa-item,
+body.light .perdcomp-tributo{border-color:rgba(0,0,0,.08);}
+
+/* tabelas */
+body.light thead{background:var(--db3);}
+body.light th{border-bottom-color:rgba(0,0,0,.07);}
+body.light td{border-bottom-color:rgba(0,0,0,.05);}
+body.light tr:hover td{background:rgba(249,115,22,.04);}
+
+/* inputs / selects */
+body.light .search-box input,
+body.light .filter-sel{background:var(--db3);border-color:rgba(0,0,0,.1);color:var(--white);}
+body.light .search-box input::placeholder{color:var(--g4);}
+
+/* botões ghost */
+body.light .btn-ghost{background:rgba(0,0,0,.05);border-color:rgba(0,0,0,.1);color:var(--g2);}
+body.light .btn-ghost:hover{background:rgba(0,0,0,.1);color:var(--g1);}
+
+/* info grid wrapper no upload */
+body.light .info-grid{background:rgba(0,0,0,.04)!important;border-color:rgba(0,0,0,.08)!important;}
+
+/* tabs */
+body.light .tabs{border-bottom-color:rgba(0,0,0,.1);}
+body.light .tab-btn{color:var(--g3);}
+body.light .tab-btn:hover{color:var(--g1);}
+body.light .tab-badge{background:rgba(249,115,22,.1);}
+
+/* dvd */
+body.light .dvd{background:linear-gradient(90deg,transparent,rgba(0,0,0,.08),transparent);}
+
+/* file-bar */
+body.light #file-bar{border-color:rgba(249,115,22,.25);}
+
+/* disclaimer */
+body.light .disclaimer{background:rgba(245,158,11,.05);border-color:rgba(245,158,11,.2);}
+body.light .alert-err{background:rgba(239,68,68,.04);border-color:rgba(239,68,68,.2);}
+
+/* spinner (mantém laranja) */
+body.light .spinner{border-color:rgba(249,115,22,.2);border-top-color:var(--orange);}
+
 /* PRINT */
 @media print{
   nav,.export-bar,.table-toolbar,.upload-zone,#loading,.hero-bg,.hero-grid,.tabs{display:none!important;}
@@ -285,11 +353,36 @@ tr:hover td{background:rgba(249,115,22,.03);}
   .kpi-value,.sec-ttl,.chart-card h3,.insight-headline,.achado-card-desc,.group-info-title,.conclusao-grupo-title{color:#000;}
 }
 
+/* Tabelas largas: indicação visual de scroll horizontal */
+.table-wrap{position:relative;}
+.table-wrap::after{content:'';position:absolute;top:0;right:0;bottom:0;width:24px;background:linear-gradient(to right,transparent,rgba(6,13,26,.4));pointer-events:none;border-radius:0 var(--r2) var(--r2) 0;opacity:0;transition:opacity .2s;}
+.table-wrap.has-scroll::after{opacity:1;}
+body.light .table-wrap::after{background:linear-gradient(to right,transparent,rgba(239,243,248,.6));}
+
 @media(max-width:900px){
-  nav{padding:0 20px;}
-  .page{padding:80px 20px 40px;}
+  nav{padding:0 16px;}
+  .nav-tag{display:none;}
+  .nav-back{font-size:12px;}
+  .page{padding:72px 16px 40px;}
   .chart-grid,.apur-grid,.rateio-grid{grid-template-columns:1fr;}
-  .tab-btn{padding:10px 10px;font-size:11px;}
+  .tab-btn{padding:9px 10px;font-size:11px;gap:5px;}
+  .kpi-grid{grid-template-columns:repeat(2,1fr);}
+  .insights-grid{grid-template-columns:1fr;}
+  .perdcomp-summary{flex-direction:column;}
+  .perdcomp-tributo-stats{gap:10px;flex-wrap:wrap;}
+  .perdcomp-stat-val{font-size:12px;}
+  .group-stats{flex-direction:column;}
+  /* oculta colunas secundárias nas tabelas largas */
+  .td-hide-mobile{display:none;}
+  th.th-hide-mobile{display:none;}
+  .table-wrap{-webkit-overflow-scrolling:touch;}
+}
+@media(max-width:600px){
+  .tab-btn{padding:8px 7px;font-size:10px;}
+  nav .nav-name{font-size:13px;}
+  .kpi-grid{grid-template-columns:1fr;}
+  .sec-ttl{font-size:17px;}
+  h1.pg-title{font-size:clamp(22px,6vw,36px);}
 }
 </style>
 </head>
@@ -304,6 +397,7 @@ tr:hover td{background:rgba(249,115,22,.03);}
     <div class="nav-name">SPED Contribuições <span>EFD-PIS/COFINS</span></div>
   </div>
   <div class="nav-right">
+    <button class="btn-theme-toggle" id="btn-theme" onclick="toggleTheme()" title="Alternar modo claro / escuro">☀️</button>
     <a class="nav-back" href="portal.html">← Portal</a>
     <span class="nav-tag">Transportadoras · Regime Não Cumulativo</span>
   </div>
@@ -333,7 +427,7 @@ tr:hover td{background:rgba(249,115,22,.03);}
       <button class="btn btn-orange" id="btn-analisar" onclick="analisar()" disabled>🔍 Analisar SPED</button>
       <button class="btn btn-ghost btn-sm" onclick="limpar()">✕ Limpar</button>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1px;background:rgba(255,255,255,.05);border-radius:var(--r2);overflow:hidden;border:1px solid rgba(255,255,255,.06);">
+    <div class="info-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1px;background:rgba(255,255,255,.05);border-radius:var(--r2);overflow:hidden;border:1px solid rgba(255,255,255,.06);">
       <div style="background:var(--db2);padding:20px;display:flex;align-items:flex-start;gap:10px;"><span style="font-size:16px;flex-shrink:0;margin-top:2px;">📋</span><div><div style="font-size:13px;font-weight:600;margin-bottom:3px;">Formato aceito</div><div style="font-size:12px;color:var(--g3);line-height:1.5;">Arquivo(s) .txt no leiaute SPED Contribuições (EFD-PIS/COFINS)</div></div></div>
       <div style="background:var(--db2);padding:20px;display:flex;align-items:flex-start;gap:10px;"><span style="font-size:16px;flex-shrink:0;margin-top:2px;">⚖️</span><div><div style="font-size:13px;font-weight:600;margin-bottom:3px;">Base jurídica</div><div style="font-size:12px;color:var(--g3);line-height:1.5;">Leis 10.637/2002 e 10.833/2003, Guia Prático e IN RFB 2.121/2022</div></div></div>
       <div style="background:var(--db2);padding:20px;display:flex;align-items:flex-start;gap:10px;"><span style="font-size:16px;flex-shrink:0;margin-top:2px;">🔒</span><div><div style="font-size:13px;font-weight:600;margin-bottom:3px;">Dados locais</div><div style="font-size:12px;color:var(--g3);line-height:1.5;">Processamento via backend local. Nenhum dado enviado externamente</div></div></div>
@@ -511,9 +605,9 @@ tr:hover td{background:rgba(249,115,22,.03);}
     <!-- ═══════════════════════════════════════════════════════════════════ -->
     <div class="tab-pane" id="tab-cfop">
       <div class="sec-hd">
-        <div><div class="sec-lbl">Registros C170 e A170</div><h2 class="sec-ttl">Visão por CFOP e CST — Entradas e Saídas</h2></div>
+        <div><div class="sec-lbl">Registros C170, A170 e D190</div><h2 class="sec-ttl">Visão por CFOP e CST — Entradas e Saídas</h2></div>
       </div>
-      <p style="font-size:13px;color:var(--g3);margin-bottom:20px;">Totalização dos itens dos documentos fiscais (C170 — mercadorias; A170 — serviços) agrupados por CFOP e CST de PIS/COFINS, separando entradas e saídas.</p>
+      <p style="font-size:13px;color:var(--g3);margin-bottom:20px;">Totalização por CFOP e CST de PIS/COFINS de C170 (mercadorias), A170 (serviços ISS) e D190 (CT-e / NFST — serviços de transporte prestados, Bloco D). As saídas do Bloco D representam a receita da transportadora.</p>
       <div class="table-toolbar">
         <div class="search-box"><span class="search-icon">🔍</span><input type="text" placeholder="Buscar CFOP, CST..." id="cfop-search" oninput="filtrarCfop()"/></div>
         <select class="filter-sel" id="cfop-filter-oper" onchange="filtrarCfop()">
@@ -525,6 +619,7 @@ tr:hover td{background:rgba(249,115,22,.03);}
           <option value="">Todas as Origens</option>
           <option value="C170">C170 — Mercadorias</option>
           <option value="A170">A170 — Serviços</option>
+          <option value="D190">D190 — CT-e/NFST</option>
         </select>
         <select class="filter-sel" id="cfop-filter-per" onchange="filtrarCfop()">
           <option value="">Todos os Períodos</option>
@@ -535,10 +630,10 @@ tr:hover td{background:rgba(249,115,22,.03);}
           <thead>
             <tr>
               <th>Competência</th><th>Orig.</th><th>Operação</th><th>CFOP</th>
-              <th>CST PIS</th><th>CST COFINS</th><th style="text-align:right">Qtd</th>
+              <th>CST PIS</th><th>CST COFINS</th><th class="th-hide-mobile" style="text-align:right">Qtd</th>
               <th style="text-align:right">Vlr Item</th>
-              <th style="text-align:right">BC PIS</th><th style="text-align:right">PIS</th>
-              <th style="text-align:right">BC COFINS</th><th style="text-align:right">COFINS</th>
+              <th class="th-hide-mobile" style="text-align:right">BC PIS</th><th style="text-align:right">PIS</th>
+              <th class="th-hide-mobile" style="text-align:right">BC COFINS</th><th style="text-align:right">COFINS</th>
             </tr>
           </thead>
           <tbody id="cfop-body"></tbody>
@@ -768,6 +863,7 @@ function renderResults(data) {
   renderCfopCst(allCfopCst, allPorPeriodo);
   renderPerdcomp(allPorPeriodo);
   renderConclusao(allAchados, s, allPorPeriodo);
+  setTimeout(updateTableScrollIndicators, 100);
 }
 
 // ── Insights ─────────────────────────────────────────────────────────────────
@@ -1116,11 +1212,11 @@ function filtrarCfop() {
       <td class="td-mono" style="font-size:12px;">${esc(r.cfop)}</td>
       <td class="td-mono">${esc(r.cst_pis)}</td>
       <td class="td-mono">${esc(r.cst_cofins)}</td>
-      <td class="td-valor">${r.qtd_itens}</td>
+      <td class="td-valor td-hide-mobile">${r.qtd_itens}</td>
       <td class="td-valor">${fmt(r.vl_item)}</td>
-      <td class="td-valor">${fmt(r.vl_bc_pis)}</td>
+      <td class="td-valor td-hide-mobile">${fmt(r.vl_bc_pis)}</td>
       <td class="td-valor">${fmt(r.vl_pis)}</td>
-      <td class="td-valor">${fmt(r.vl_bc_cofins)}</td>
+      <td class="td-valor td-hide-mobile">${fmt(r.vl_bc_cofins)}</td>
       <td class="td-valor">${fmt(r.vl_cofins)}</td>
     </tr>`).join('');
   document.getElementById('cfop-count').textContent = `Exibindo ${filtered.length} de ${_cfopRows.length} linhas`;
@@ -1138,6 +1234,8 @@ function renderPerdcomp(periodos) {
     const t200 = side.total_creditos_200 || 0;
     const restante = side.contrib_restante || 0;
     const totalPerdcomp = side.total_perdcomp_disponivel || 0;
+    const credApuracao = side.creditos_descontados_apuracao || 0;
+    const diff = side.diff_m100_vs_apuracao || 0;
     const isPIS = side.tributo === 'PIS';
     const color = isPIS ? 'var(--blue-l)' : 'var(--orange)';
 
@@ -1211,15 +1309,19 @@ function renderPerdcomp(periodos) {
             <div class="perdcomp-sumbox-val">${fmt(contrib)}</div>
           </div>
           <div class="perdcomp-sumbox">
-            <div class="perdcomp-sumbox-lbl">Total Série 100 (não ressarcível)</div>
+            <div class="perdcomp-sumbox-lbl">Créditos Descontados (M200/M600)</div>
+            <div class="perdcomp-sumbox-val" style="color:var(--green);">${fmt(credApuracao)}</div>
+          </div>
+          <div class="perdcomp-sumbox">
+            <div class="perdcomp-sumbox-lbl">Total M100/M500 (série 100+200)</div>
+            <div class="perdcomp-sumbox-val" style="color:${Math.abs(diff) > 0.05 ? 'var(--yellow)' : 'var(--g1)'};">${fmt(t100 + t200)}</div>
+          </div>
+          <div class="perdcomp-sumbox">
+            <div class="perdcomp-sumbox-lbl">Série 100 — Não Ressarcível</div>
             <div class="perdcomp-sumbox-val" style="color:var(--blue-l);">${fmt(t100)}</div>
           </div>
           <div class="perdcomp-sumbox">
-            <div class="perdcomp-sumbox-lbl">Saldo após Série 100</div>
-            <div class="perdcomp-sumbox-val">${fmt(side.contrib_apos_100)}</div>
-          </div>
-          <div class="perdcomp-sumbox">
-            <div class="perdcomp-sumbox-lbl">Total Série 200 (ressarcível)</div>
+            <div class="perdcomp-sumbox-lbl">Série 200 — Ressarcível</div>
             <div class="perdcomp-sumbox-val" style="color:var(--orange);">${fmt(t200)}</div>
           </div>
           <div class="perdcomp-sumbox ${totalPerdcomp > 0 ? 'destaque' : ''}">
@@ -1231,6 +1333,7 @@ function renderPerdcomp(periodos) {
             <div class="perdcomp-sumbox-val" style="color:var(--red);">${fmt(restante)}</div>
           </div>
         </div>
+        ${Math.abs(diff) > 0.05 ? `<div style="background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.2);border-radius:var(--r);padding:10px 14px;font-size:12px;color:var(--g2);line-height:1.6;margin:0 16px 16px;">⚠️ Divergência de <strong>${fmt(Math.abs(diff))}</strong> entre o total de créditos disponíveis em M100/M500 (<strong>${fmt(t100+t200)}</strong>) e o valor descontado na apuração M200/M600 (<strong>${fmt(credApuracao)}</strong>). Verifique se há créditos acumulados de períodos anteriores (vl_cred_desc_ant &gt; 0) ou uso via DCOMP (vl_cred_dcomp) nas linhas do registro M100/M500.</div>` : ''}
         ${avisoHtml}` : '<div style="padding:16px;font-size:12px;color:var(--g4);">Nenhum crédito encontrado nos registros M100/M500 para este período.</div>'}
       </div>`;
   }
@@ -1360,6 +1463,27 @@ function esc(s) {
   if (s === null || s === undefined) return '';
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
+
+// ── Indicador de scroll horizontal em tabelas ─────────────────────────────────
+function updateTableScrollIndicators() {
+  document.querySelectorAll('.table-wrap').forEach(el => {
+    el.classList.toggle('has-scroll', el.scrollWidth > el.clientWidth + 2);
+  });
+}
+window.addEventListener('resize', updateTableScrollIndicators);
+
+// ── Modo claro / escuro ────────────────────────────────────────────────────────
+function toggleTheme() {
+  const isLight = document.body.classList.toggle('light');
+  document.getElementById('btn-theme').textContent = isLight ? '🌙' : '☀️';
+  localStorage.setItem('sped-theme', isLight ? 'light' : 'dark');
+}
+(function() {
+  if (localStorage.getItem('sped-theme') === 'light') {
+    document.body.classList.add('light');
+    document.getElementById('btn-theme').textContent = '🌙';
+  }
+})();
 </script>
 </body>
 </html>

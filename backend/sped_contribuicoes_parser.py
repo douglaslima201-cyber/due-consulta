@@ -91,6 +91,12 @@ REGISTROS: dict[str, list[str]] = {
         "chv_cte_ref", "vl_doc", "vl_desc", "ind_frt", "vl_serv",
         "vl_bc_icms", "vl_icms", "vl_nt", "cod_inf", "cod_cta",
     ],
+    # D190 — consolidação por CST/CFOP (filho de D100, análogo ao C170)
+    "D190": [
+        "cst_pis", "cst_cofins", "cfop", "vl_item",
+        "vl_bc_pis", "quant_bc_pis", "aliq_pis", "aliq_pis_quant", "vl_pis",
+        "vl_bc_cofins", "quant_bc_cofins", "aliq_cofins", "aliq_cofins_quant", "vl_cofins",
+    ],
     "D200": [
         "ind_oper", "ind_doc", "qtd_doc", "cfop", "vl_doc", "vl_desc",
         "vl_bc_icms", "vl_icms", "vl_nt", "cod_cta",
@@ -272,7 +278,7 @@ def parse_sped_file(content: bytes) -> dict[str, pd.DataFrame]:
 
     registros: dict[str, list[list[str]]] = defaultdict(list)
     # Armazena, por linha, o valor de _ind_oper a ser anexado depois
-    _ind_oper_extra: dict[str, list[str]] = {"C170": [], "A170": []}
+    _ind_oper_extra: dict[str, list[str]] = {"C170": [], "A170": [], "D190": []}
     _cur_ind_oper: dict[str, str] = {}
 
     for linha in text.splitlines():
@@ -288,12 +294,14 @@ def parse_sped_file(content: bytes) -> dict[str, pd.DataFrame]:
             continue
         valores = campos[1:]
 
-        if reg in ("C100", "A100"):
+        if reg in ("C100", "A100", "D100"):
             _cur_ind_oper[reg] = valores[0] if valores else ""
         elif reg == "C170":
             _ind_oper_extra["C170"].append(_cur_ind_oper.get("C100", ""))
         elif reg == "A170":
             _ind_oper_extra["A170"].append(_cur_ind_oper.get("A100", ""))
+        elif reg == "D190":
+            _ind_oper_extra["D190"].append(_cur_ind_oper.get("D100", ""))
 
         registros[reg].append(valores)
 
@@ -451,7 +459,8 @@ def extract_apuracao(dfs: dict[str, pd.DataFrame]) -> dict:
 
 def extract_cfop_cst(dfs: dict[str, pd.DataFrame]) -> list[dict]:
     """Agrega os valores de PIS/COFINS por CFOP e CST, separando entradas e
-    saídas, a partir dos registros C170 (mercadorias) e A170 (serviços)."""
+    saídas, a partir dos registros C170 (mercadorias), A170 (serviços) e
+    D190 (CT-e/NFST — serviços de transporte, saídas do Bloco D)."""
     linhas: list[dict] = []
 
     numeric_cols = ("vl_item", "vl_bc_pis", "vl_pis", "vl_bc_cofins", "vl_cofins")
@@ -514,6 +523,40 @@ def extract_cfop_cst(dfs: dict[str, pd.DataFrame]) -> list[dict]:
                 "origem": "A170",
                 "ind_oper": _IND_OPER_LABEL.get(io, io or "—"),
                 "cfop": "—",
+                "cst_pis": str(row.get("cst_pis", "")).strip(),
+                "cst_cofins": str(row.get("cst_cofins", "")).strip(),
+                "qtd_itens": int(row.get("qtd_itens", 0)),
+                "vl_item": round(float(row.get("vl_item", 0)), 2),
+                "vl_bc_pis": round(float(row.get("vl_bc_pis", 0)), 2),
+                "vl_pis": round(float(row.get("vl_pis", 0)), 2),
+                "vl_bc_cofins": round(float(row.get("vl_bc_cofins", 0)), 2),
+                "vl_cofins": round(float(row.get("vl_cofins", 0)), 2),
+            })
+
+    df_d190 = dfs.get("D190")
+    if df_d190 is not None and not df_d190.empty and "_ind_oper" in df_d190.columns:
+        df = df_d190.copy()
+        for col in numeric_cols:
+            if col in df.columns:
+                df[col] = df[col].map(parse_decimal)
+            else:
+                df[col] = 0.0
+        grp_cols = ["_ind_oper", "cfop", "cst_pis", "cst_cofins"]
+        grp_cols = [c for c in grp_cols if c in df.columns]
+        grouped = df.groupby(grp_cols, dropna=False).agg(
+            qtd_itens=("vl_item", "size"),
+            vl_item=("vl_item", "sum"),
+            vl_bc_pis=("vl_bc_pis", "sum"),
+            vl_pis=("vl_pis", "sum"),
+            vl_bc_cofins=("vl_bc_cofins", "sum"),
+            vl_cofins=("vl_cofins", "sum"),
+        ).reset_index()
+        for _, row in grouped.iterrows():
+            io = str(row.get("_ind_oper", "")).strip()
+            linhas.append({
+                "origem": "D190",
+                "ind_oper": _IND_OPER_LABEL.get(io, io or "—"),
+                "cfop": str(row.get("cfop", "")).strip() or "—",
                 "cst_pis": str(row.get("cst_pis", "")).strip(),
                 "cst_cofins": str(row.get("cst_cofins", "")).strip(),
                 "qtd_itens": int(row.get("qtd_itens", 0)),
@@ -589,9 +632,11 @@ def extract_perdcomp_previa(dfs: dict[str, pd.DataFrame]) -> dict:
                     creditos_raw[cod] = creditos_raw.get(cod, 0.0) + val
 
         contrib_periodo = 0.0
+        creditos_descontados_apuracao = 0.0
         if df_tot is not None and not df_tot.empty:
             r = df_tot.iloc[0]
             contrib_periodo = parse_decimal(r.get("vl_tot_cont_nc_per", "0"))
+            creditos_descontados_apuracao = parse_decimal(r.get("vl_tot_cred_desc", "0"))
 
         creditos_100 = [(c, v) for c, v in creditos_raw.items()
                         if c.isdigit() and 100 <= int(c) <= 199]
@@ -632,14 +677,18 @@ def extract_perdcomp_previa(dfs: dict[str, pd.DataFrame]) -> dict:
 
         total_100 = round(sum(v for _, v in creditos_100), 2)
         total_200 = round(sum(v for _, v in creditos_200), 2)
+        total_m100 = round(total_100 + total_200, 2)
         total_perdcomp = round(sum(s["valor_perdcomp"] for s in steps), 2)
+        diff = round(total_m100 - creditos_descontados_apuracao, 2)
 
         return {
             "tributo": tributo,
             "contrib_periodo": round(contrib_periodo, 2),
+            "creditos_descontados_apuracao": round(creditos_descontados_apuracao, 2),
             "total_creditos_100": total_100,
             "total_creditos_200": total_200,
-            "total_creditos": round(total_100 + total_200, 2),
+            "total_creditos": total_m100,
+            "diff_m100_vs_apuracao": diff,
             "contrib_apos_100": round(max(0.0, contrib_periodo - total_100), 2),
             "contrib_restante": round(max(0.0, contrib_periodo - total_100 - total_200), 2),
             "total_perdcomp_disponivel": total_perdcomp,
