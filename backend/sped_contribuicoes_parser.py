@@ -424,14 +424,18 @@ def extract_apuracao(dfs: dict[str, pd.DataFrame]) -> dict:
     - M600 (COFINS totais) + M610 (COFINS por código de contribuição)
     Retorna dict com sub-dicts 'pis' e 'cofins'."""
 
-    def _totais(df_tot, df_det, campo_aliq: str) -> dict:
+    def _totais(df_tot, df_det, df_m100, df_controle, campo_aliq: str) -> dict:
         out: dict = {
             "total_contribuicao_periodo": 0.0,
-            "total_creditos_descontados": 0.0,
+            "total_creditos_descontados": 0.0,   # M200/M600 — créditos M100/M500 aplicados no período
+            "creditos_periodos_anteriores": 0.0,  # 1100/1500 vl_cred_desc_pa — créditos de meses anteriores usados agora
             "contribuicao_devida": 0.0,
-            "valor_a_recolher": 0.0,
+            "valor_a_recolher": 0.0,             # após descontar também os créditos de períodos anteriores
+            "credito_total_mes": 0.0,            # soma M100/M500 vl_cred_apur — créditos apurados no mês
+            "sobra_mes": 0.0,                    # crédito_total_mes − total_creditos_descontados
             "por_cst": [],
         }
+        ret = 0.0
         if df_tot is not None and not df_tot.empty:
             r = df_tot.iloc[0]
             out["total_contribuicao_periodo"] = parse_decimal(r.get("vl_tot_cont_nc_per", "0"))
@@ -439,9 +443,32 @@ def extract_apuracao(dfs: dict[str, pd.DataFrame]) -> dict:
             out["contribuicao_devida"] = parse_decimal(r.get("vl_tot_cont_nc_dev", "0"))
             ret = parse_decimal(r.get("vl_ret_nc", "0"))
             ded = parse_decimal(r.get("vl_out_ded_nc", "0"))
-            declared = parse_decimal(r.get("vl_cont_nc_rec", "0"))
-            computed = out["contribuicao_devida"] - ret - ded
-            out["valor_a_recolher"] = declared if declared > 0 else max(computed, 0.0)
+            ret += ded
+
+        # Créditos de períodos anteriores: soma de vl_cred_desc_pa em 1100/1500
+        if df_controle is not None and not df_controle.empty and "vl_cred_desc_pa" in df_controle.columns:
+            out["creditos_periodos_anteriores"] = round(
+                df_controle["vl_cred_desc_pa"].apply(parse_decimal).sum(), 2
+            )
+
+        # Saldo a pagar = contribuição − créditos do período − créditos de períodos anteriores − retenções
+        out["valor_a_recolher"] = round(
+            max(0.0, out["total_contribuicao_periodo"]
+                - out["total_creditos_descontados"]
+                - out["creditos_periodos_anteriores"]
+                - ret), 2
+        )
+
+        # Crédito total do mês = soma de vl_cred_apur em M100/M500
+        if df_m100 is not None and not df_m100.empty and "vl_cred_apur" in df_m100.columns:
+            out["credito_total_mes"] = round(
+                df_m100["vl_cred_apur"].apply(parse_decimal).sum(), 2
+            )
+
+        # Sobra = créditos apurados no mês que não foram usados para quitar a contribuição
+        out["sobra_mes"] = round(
+            max(0.0, out["credito_total_mes"] - out["total_creditos_descontados"]), 2
+        )
 
         if df_det is not None and not df_det.empty:
             for _, row in df_det.iterrows():
@@ -478,8 +505,8 @@ def extract_apuracao(dfs: dict[str, pd.DataFrame]) -> dict:
         return result
 
     return {
-        "pis": _totais(dfs.get("M200"), dfs.get("M210"), "aliq_pis"),
-        "cofins": _totais(dfs.get("M600"), dfs.get("M610"), "aliq_cofins"),
+        "pis": _totais(dfs.get("M200"), dfs.get("M210"), dfs.get("M100"), dfs.get("1100"), "aliq_pis"),
+        "cofins": _totais(dfs.get("M600"), dfs.get("M610"), dfs.get("M500"), dfs.get("1500"), "aliq_cofins"),
         "saldos_pis_1100": _saldos_controle(dfs.get("1100")),
         "saldos_cofins_1500": _saldos_controle(dfs.get("1500")),
     }

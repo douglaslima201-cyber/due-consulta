@@ -1022,10 +1022,15 @@ function renderApuracao(periodos) {
     const pis = ap.pis || {};
     const cof = ap.cofins || {};
     function apCard(lbl, contrib) {
-      const tot = contrib.total_contribuicao_periodo || 0;
-      const cred = contrib.total_creditos_descontados || 0;
-      const dev = contrib.contribuicao_devida || 0;
-      const rec = contrib.valor_a_recolher || 0;
+      const tot  = contrib.total_contribuicao_periodo   || 0;
+      const cred = contrib.total_creditos_descontados   || 0;  // créditos M100 do período
+      const ant  = contrib.creditos_periodos_anteriores || 0;  // créditos 1100/1500 de períodos anteriores
+      const rec  = contrib.valor_a_recolher             || 0;
+      const ctm  = contrib.credito_total_mes            || 0;
+      const sob  = contrib.sobra_mes                    || 0;
+      const antRow = ant > 0
+        ? `<div class="apur-row"><span class="apur-lbl">(-) Créditos de períodos anteriores (1100/1500)</span><span class="apur-val" style="color:var(--blue-l)">(${fmt(ant)})</span></div>`
+        : `<div class="apur-row"><span class="apur-lbl">(-) Créditos de períodos anteriores (1100/1500)</span><span class="apur-val" style="color:var(--g4)">—</span></div>`;
       const rows_cst = (contrib.por_cst || []).map(c => `
         <tr>
           <td class="td-mono">${esc(c.cod_cont)}</td>
@@ -1039,9 +1044,12 @@ function renderApuracao(periodos) {
         <div class="apur-card">
           <div class="apur-card-hd">${esc(lbl)}</div>
           <div class="apur-row"><span class="apur-lbl">(+) Contribuição apurada no período</span><span class="apur-val">${fmt(tot)}</span></div>
-          <div class="apur-row"><span class="apur-lbl">(-) Créditos descontados</span><span class="apur-val" style="color:var(--green)">${fmt(cred)}</span></div>
-          <div class="apur-row total"><span class="apur-lbl">(=) Contribuição devida</span><span class="apur-val">${fmt(dev)}</span></div>
-          <div class="apur-row recolher"><span class="apur-lbl">(=) Valor a recolher</span><span class="apur-val">${fmt(rec)}</span></div>
+          <div class="apur-row"><span class="apur-lbl">(-) Créditos descontados (período atual)</span><span class="apur-val" style="color:var(--green)">(${fmt(cred)})</span></div>
+          ${antRow}
+          <div class="apur-row total"><span class="apur-lbl">(=) Saldo a pagar do mês</span><span class="apur-val" style="color:${rec > 0 ? 'var(--orange)' : 'var(--green)'}">${rec > 0 ? fmt(rec) : '—'}</span></div>
+          <div style="border-top:1px solid rgba(255,255,255,.07);margin:8px 0;"></div>
+          <div class="apur-row"><span class="apur-lbl">Crédito total do mês (M100/M500)</span><span class="apur-val" style="color:var(--blue-l)">${fmt(ctm)}</span></div>
+          <div class="apur-row recolher"><span class="apur-lbl">Sobra do mês (a transportar / PERDCOMP)</span><span class="apur-val" style="color:${sob > 0 ? 'var(--blue-l)' : 'var(--g4)'}">${sob > 0 ? fmt(sob) : '—'}</span></div>
           ${rows_cst ? `<div class="table-wrap" style="margin:0;border-radius:0;border:none;">
             <table>
               <thead><tr><th>Cód.</th><th>Descrição</th><th style="text-align:right">Rec. Bruta</th><th style="text-align:right">Base de Cálculo</th><th style="text-align:right">Alíquota</th><th style="text-align:right">Contribuição Apurada</th></tr></thead>
