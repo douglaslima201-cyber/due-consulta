@@ -858,12 +858,15 @@ def extract_perdcomp_previa(dfs: dict[str, pd.DataFrame]) -> dict:
          o excesso sobre o saldo devedor é o saldo para PERDCOMP/ressarcimento."""
 
     def _build(df_cred, df_tot, df_controle, tributo: str) -> dict:
-        # Créditos do período atual: M100/M500 vl_cred_disp
+        # Créditos do período atual: M100/M500 vl_cred_apur (crédito gerado no período)
+        # Usar vl_cred_apur (e NÃO vl_cred_disp) porque quando o total de créditos
+        # excede a contribuição, vl_cred_disp da série 100 fica zerado (já aplicado
+        # contra a contribuição) e a simulação ficaria errada.
         creditos_per: dict[str, float] = {}
         if df_cred is not None and not df_cred.empty:
             for _, row in df_cred.iterrows():
                 cod = str(row.get("cod_cred", "")).strip()
-                val = parse_decimal(row.get("vl_cred_disp", "0"))
+                val = parse_decimal(row.get("vl_cred_apur", "0"))
                 if cod and val > 0:
                     creditos_per[cod] = creditos_per.get(cod, 0.0) + val
 

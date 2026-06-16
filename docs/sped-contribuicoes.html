@@ -939,6 +939,7 @@ function renderExecOnepage(data, allAchados, allPorPeriodo) {
   // Aggregate apuração + perdcomp across all periods
   let pisContrib = 0, cofinsContrib = 0, pisDesc = 0, cofinsDesc = 0;
   let pisRecolher = 0, cofinsRecolher = 0, pisPA = 0, cofinsPA = 0;
+  let pisSobra = 0, cofinsSobra = 0;
   let pisPerdcomp = 0, cofinsPerdcomp = 0;
   let pisS100 = 0, pisS200 = 0, cofinsS100 = 0, cofinsS200 = 0;
   let rbTrib = 0, rbNT = 0, rbExp = 0, rbTotal = 0;
@@ -947,48 +948,57 @@ function renderExecOnepage(data, allAchados, allPorPeriodo) {
     const ap = p.apuracao || {};
     const ap_pis = ap.pis || {};
     const ap_cof = ap.cofins || {};
-    pisContrib  += ap_pis.total_contribuicao_periodo || 0;
-    cofinsContrib += ap_cof.total_contribuicao_periodo || 0;
-    pisDesc     += ap_pis.total_creditos_descontados || 0;
-    cofinsDesc  += ap_cof.total_creditos_descontados || 0;
-    pisRecolher += ap_pis.valor_a_recolher || 0;
-    cofinsRecolher += ap_cof.valor_a_recolher || 0;
-    pisPA       += ap_pis.creditos_periodos_anteriores || 0;
-    cofinsPA    += ap_cof.creditos_periodos_anteriores || 0;
+    pisContrib    += ap_pis.total_contribuicao_periodo   || 0;
+    cofinsContrib += ap_cof.total_contribuicao_periodo   || 0;
+    pisDesc       += ap_pis.total_creditos_descontados   || 0;
+    cofinsDesc    += ap_cof.total_creditos_descontados   || 0;
+    pisRecolher   += ap_pis.valor_a_recolher             || 0;
+    cofinsRecolher += ap_cof.valor_a_recolher            || 0;
+    pisPA         += ap_pis.creditos_periodos_anteriores || 0;
+    cofinsPA      += ap_cof.creditos_periodos_anteriores || 0;
+    pisSobra      += ap_pis.sobra_mes                   || 0;
+    cofinsSobra   += ap_cof.sobra_mes                   || 0;
 
     const pp = p.perdcomp_previa || {};
-    pisPerdcomp   += (pp.pis || {}).total_perdcomp_disponivel || 0;
+    pisPerdcomp    += (pp.pis   || {}).total_perdcomp_disponivel || 0;
     cofinsPerdcomp += (pp.cofins || {}).total_perdcomp_disponivel || 0;
-    pisS100  += (pp.pis || {}).total_creditos_100 || 0;
-    pisS200  += (pp.pis || {}).total_creditos_200 || 0;
+    pisS100    += (pp.pis   || {}).total_creditos_100 || 0;
+    pisS200    += (pp.pis   || {}).total_creditos_200 || 0;
     cofinsS100 += (pp.cofins || {}).total_creditos_100 || 0;
     cofinsS200 += (pp.cofins || {}).total_creditos_200 || 0;
 
     const rb = p.receita_bruta || {};
     rbTrib  += rb.trib_mi || 0;
-    rbNT    += rb.nt_mi || 0;
-    rbExp   += rb.exp || 0;
-    rbTotal += rb.total || 0;
+    rbNT    += rb.nt_mi   || 0;
+    rbExp   += rb.exp     || 0;
+    rbTotal += rb.total   || 0;
   }
 
   const totalContrib = pisContrib + cofinsContrib;
   const totalRecolher = pisRecolher + cofinsRecolher;
   const totalPerdcomp = pisPerdcomp + cofinsPerdcomp;
   const totalPA = pisPA + cofinsPA;
+  const totalSobra = pisSobra + cofinsSobra;
 
-  // Col 1 — tributação
+  // Col 1 — tributação (segue lógica da aba Apuração)
   const execRow = (lbl, val, color) =>
     `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.05);">
       <span style="font-size:12px;color:var(--g3);">${lbl}</span>
       <span style="font-size:13px;font-weight:600;font-family:var(--mono);color:${color || 'var(--g1)'};">${fmt(val)}</span>
     </div>`;
+  const saldoFinalRow = totalRecolher > 0
+    ? execRow('(=) Saldo a recolher', totalRecolher, 'var(--red)')
+    : `<div style="display:flex;justify-content:space-between;padding:6px 0;border-top:1px solid rgba(255,255,255,.1);margin-top:2px;">
+        <span style="font-size:12px;font-weight:700;color:var(--g2);">(=) Saldo credor (sem pagamento)</span>
+        <span style="font-size:14px;font-weight:700;font-family:var(--mono);color:var(--green);">R$0,00</span>
+      </div>`;
   document.getElementById('exec-contrib').innerHTML = [
-    execRow('PIS apurado', pisContrib),
-    execRow('COFINS apurado', cofinsContrib),
-    execRow('Total apurado', totalContrib, 'var(--g1)'),
-    execRow('Créditos descontados', pisDesc + cofinsDesc, 'var(--green)'),
-    totalPA > 0 ? execRow('↩ Créditos p. anteriores', totalPA, 'var(--purple)') : '',
-    execRow('Saldo a recolher', totalRecolher, totalRecolher > 0 ? 'var(--red)' : 'var(--green)'),
+    execRow('(+) PIS — contrib. período', pisContrib),
+    execRow('(+) COFINS — contrib. período', cofinsContrib),
+    execRow('(−) Créditos descontados (M200/M600)', pisDesc + cofinsDesc, 'var(--blue-l)'),
+    totalPA > 0 ? execRow('(−) Créditos p. anteriores (1100/1500)', totalPA, 'var(--purple)') : '',
+    saldoFinalRow,
+    totalSobra > 0 ? execRow('Sobra do mês (créditos > contrib.)', totalSobra, 'var(--orange)') : '',
   ].join('');
 
   // Col 2 — créditos
@@ -1625,9 +1635,92 @@ function renderPerdcomp(periodos) {
         </tr>`;
     });
 
+    // ── Visão consolidada por tipo (agrupa 101+201, 102+202, 107+207…) ─────────
+    const tipoGroups = {};
+    for (const s of (side.steps || [])) {
+      const cod = parseInt(s.cod_cred, 10);
+      if (!cod) continue;
+      const base = cod >= 200 ? cod - 100 : cod;   // 201 → 101, 207 → 107, etc.
+      if (!tipoGroups[base]) tipoGroups[base] = { desc: s.descricao.replace(/\s*[\(\[].*(100|200|série).*/i,'').trim(), s100_disp:0, s200_disp:0, s100_desc:0, s200_desc:0, s100_carry:0, s200_perdcomp:0 };
+      const g = tipoGroups[base];
+      if (s.serie === '100') {
+        g.s100_disp   += s.valor_disponivel || 0;
+        g.s100_desc   += s.valor_usado_desconto || 0;
+        g.s100_carry  += s.valor_carry_fwd || 0;
+      } else {
+        g.s200_disp      += s.valor_disponivel || 0;
+        g.s200_desc      += s.valor_usado_desconto || 0;
+        g.s200_perdcomp  += s.valor_perdcomp || 0;
+      }
+    }
+    const tipoRows = Object.entries(tipoGroups).sort((a,b) => parseInt(a[0])-parseInt(b[0])).map(([base, g]) => {
+      const total = g.s100_disp + g.s200_disp;
+      return `<tr>
+        <td class="td-mono" style="color:var(--g3);font-size:11px;">${base}/${base+100}</td>
+        <td style="font-size:12px;color:var(--g2);">${esc(g.desc)}</td>
+        <td class="td-valor">${fmt(total)}</td>
+        <td class="td-valor" style="color:var(--blue-l);">${fmt(g.s100_disp)}</td>
+        <td class="td-valor" style="color:var(--orange);">${fmt(g.s200_disp)}</td>
+        <td class="td-valor" style="color:${g.s100_carry>0?'var(--yellow)':'var(--g4)'};">${g.s100_carry>0?fmt(g.s100_carry):'—'}</td>
+        <td class="td-valor" style="color:${g.s200_perdcomp>0?'var(--orange)':'var(--g4)'};font-weight:${g.s200_perdcomp>0?700:400};">${g.s200_perdcomp>0?fmt(g.s200_perdcomp):'—'}</td>
+      </tr>`;
+    }).join('');
+
+    const totalS100desc = (side.steps||[]).filter(s=>s.serie==='100').reduce((a,s)=>a+(s.valor_usado_desconto||0),0);
+    const totalS100carry = (side.steps||[]).filter(s=>s.serie==='100').reduce((a,s)=>a+(s.valor_carry_fwd||0),0);
+    const totalS200desc  = (side.steps||[]).filter(s=>s.serie==='200').reduce((a,s)=>a+(s.valor_usado_desconto||0),0);
+
+    const consolidadoHtml = tipoRows ? `
+      <div style="margin:0 0 16px;">
+        <div style="font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--g4);margin-bottom:8px;padding:0 16px;">Saldos de Crédito por Tipo</div>
+        <table class="perdcomp-table">
+          <thead><tr>
+            <th>Cód.</th><th>Tipo</th>
+            <th style="text-align:right">Total</th>
+            <th style="text-align:right">TRIB MI (s.100)</th>
+            <th style="text-align:right">NT MI (s.200)</th>
+            <th style="text-align:right">Carry-fwd s.100</th>
+            <th style="text-align:right">PERDCOMP s.200</th>
+          </tr></thead>
+          <tbody>${tipoRows}
+            <tr style="font-weight:700;border-top:1px solid rgba(255,255,255,.12);">
+              <td colspan="2" style="font-size:12px;color:var(--g2);">TOTAL</td>
+              <td class="td-valor">${fmt(t100+t200)}</td>
+              <td class="td-valor" style="color:var(--blue-l);">${fmt(t100)}</td>
+              <td class="td-valor" style="color:var(--orange);">${fmt(t200)}</td>
+              <td class="td-valor" style="color:var(--yellow);">${totalS100carry>0?fmt(totalS100carry):'—'}</td>
+              <td class="td-valor" style="color:var(--orange);">${totalPerdcomp>0?fmt(totalPerdcomp):'—'}</td>
+            </tr>
+          </tbody>
+        </table>
+        <table class="perdcomp-table" style="margin-top:12px;">
+          <thead><tr>
+            <th colspan="2"></th>
+            <th style="text-align:right">TRIB MI (Série 100)</th>
+            <th style="text-align:right">NT MI (Série 200)</th>
+          </tr></thead>
+          <tbody>
+            <tr><td colspan="2" style="font-size:12px;color:var(--g2);">Valor total do crédito</td>
+              <td class="td-valor" style="color:var(--blue-l);">${fmt(t100)}</td>
+              <td class="td-valor" style="color:var(--orange);">${fmt(t200)}</td></tr>
+            <tr><td colspan="2" style="font-size:12px;color:var(--g2);">Valor Débito (contribuição)</td>
+              <td class="td-valor" style="color:var(--g3);">(${fmt(contrib)})</td>
+              <td class="td-valor" style="color:var(--g4);">—</td></tr>
+            <tr><td colspan="2" style="font-size:12px;color:var(--g2);">Valor usado do crédito</td>
+              <td class="td-valor" style="color:var(--green);">(${fmt(totalS100desc)})</td>
+              <td class="td-valor" style="color:${totalS200desc>0?'var(--green)':'var(--g4)'};">${totalS200desc>0?'('+fmt(totalS200desc)+')':'—'}</td></tr>
+            <tr style="font-weight:700;">
+              <td colspan="2" style="font-size:12px;color:var(--g1);">Saldo do crédito</td>
+              <td class="td-valor" style="color:${totalS100carry>0?'var(--yellow)':'var(--g4)'};">${totalS100carry>0?fmt(totalS100carry):'—'}</td>
+              <td class="td-valor" style="color:${totalPerdcomp>0?'var(--orange)':'var(--g4)'};font-size:14px;">${totalPerdcomp>0?fmt(totalPerdcomp):'—'}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>` : '';
+
     const avisoHtml = totalPerdcomp > 0
-      ? `<div class="perdcomp-aviso">✅ <strong style="color:var(--green)">R$ ${totalPerdcomp.toLocaleString('pt-BR', {minimumFractionDigits:2})}</strong> disponíveis para PERDCOMP / ressarcimento (créditos presumidos série 200). Habilite o crédito para PER/DCOMP conforme art. 16 da Lei 11.116/2005.</div>`
-      : `<div class="perdcomp-aviso-zero">ℹ️ Nenhum crédito série 200 (presumido) neste período — nenhum saldo para PERDCOMP identificado.</div>`;
+      ? `<div class="perdcomp-aviso">✅ <strong style="color:var(--orange)">R$ ${totalPerdcomp.toLocaleString('pt-BR', {minimumFractionDigits:2})}</strong> disponíveis para PERDCOMP / ressarcimento (saldo NT MI — créditos série 200). ${totalS100carry>0?`Carry-forward TRIB MI: <strong style="color:var(--yellow)">R$ ${totalS100carry.toLocaleString('pt-BR',{minimumFractionDigits:2})}</strong> (não ressarcível, a transportar para o próximo período).`:''}</div>`
+      : `<div class="perdcomp-aviso-zero">ℹ️ Nenhum saldo NT MI (série 200) disponível neste período — nenhum saldo ressarcível para PERDCOMP identificado.</div>`;
 
     return `
       <div class="perdcomp-tributo">
@@ -1695,6 +1788,7 @@ function renderPerdcomp(periodos) {
             <div class="perdcomp-sumbox-val">${fmt(totalPerdcomp)}</div>
           </div>
         </div>
+        ${consolidadoHtml}
         ${avisoHtml}` : '<div style="padding:16px;font-size:12px;color:var(--g4);">Nenhum crédito encontrado nos registros M100/M500 para este período.</div>'}
       </div>`;
   }
