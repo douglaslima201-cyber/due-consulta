@@ -607,7 +607,7 @@ body.light .table-wrap::after{background:linear-gradient(to right,transparent,rg
       <div class="sec-hd">
         <div><div class="sec-lbl">Registros C170, A170, D100, D101, D105</div><h2 class="sec-ttl">Visão por CFOP e CST — Entradas e Saídas</h2></div>
       </div>
-      <p style="font-size:13px;color:var(--g3);margin-bottom:20px;">Totalização por CFOP e CST de PIS/COFINS de C170 (mercadorias), A170 (serviços ISS) e Bloco D: D100 (documentos CT-e/NFST — valor total da prestação), D101 (crédito presumido PIS) e D105 (crédito presumido COFINS). Saídas D100 representam a receita de transporte da transportadora.</p>
+      <p style="font-size:13px;color:var(--g3);margin-bottom:20px;">Totalização por CFOP e CST de PIS/COFINS de C170 (mercadorias), A170 (serviços ISS) e Bloco D: D100 (CT-e/NFST individuais), D200 (consolidação de NF de serviços de transporte — <strong>saídas com CFOP</strong>), D101/D201 (crédito presumido PIS) e D105/D205 (crédito presumido COFINS). D200 é o registro onde transportadoras que consolidam emissões declaram a receita por CFOP.</p>
       <div class="table-toolbar">
         <div class="search-box"><span class="search-icon">🔍</span><input type="text" placeholder="Buscar CFOP, CST..." id="cfop-search" oninput="filtrarCfop()"/></div>
         <select class="filter-sel" id="cfop-filter-oper" onchange="filtrarCfop()">
@@ -619,9 +619,12 @@ body.light .table-wrap::after{background:linear-gradient(to right,transparent,rg
           <option value="">Todas as Origens</option>
           <option value="C170">C170 — Mercadorias</option>
           <option value="A170">A170 — Serviços ISS</option>
+          <option value="D200">D200 — Consolidação Saídas Transporte</option>
           <option value="D100">D100 — CT-e/NFST (valor)</option>
-          <option value="D101">D101 — Créd. Presumido PIS</option>
-          <option value="D105">D105 — Créd. Presumido COFINS</option>
+          <option value="D101">D101 — Créd. Presumido PIS (D100)</option>
+          <option value="D105">D105 — Créd. Presumido COFINS (D100)</option>
+          <option value="D201">D201 — Créd. Presumido PIS (D200)</option>
+          <option value="D205">D205 — Créd. Presumido COFINS (D200)</option>
         </select>
         <select class="filter-sel" id="cfop-filter-per" onchange="filtrarCfop()">
           <option value="">Todos os Períodos</option>
@@ -1169,13 +1172,63 @@ function renderG5Rateio(periodos) {
   const el = document.getElementById('rateio-dados');
   if (!periodos.length) { el.innerHTML = ''; return; }
 
-  const COLORS_RB = ['#F97316', '#22C55E', '#3B82F6', '#F59E0B'];
   const LABELS_RB = [
     { key: 'trib_mi', pct: 'pct_trib_mi', label: 'Receita Tributada MI', color: '#F97316', desc: 'Base para aproveitamento integral de créditos comuns no regime não cumulativo.' },
     { key: 'nt_mi', pct: 'pct_nt_mi', label: 'Receita Não Tributada MI', color: '#F59E0B', desc: 'Receita de operações não sujeitas ao PIS/COFINS não-cumulativo (ex: receitas isentas). Reduz o crédito aproveitável.' },
     { key: 'exp', pct: 'pct_exp', label: 'Receita de Exportação', color: '#22C55E', desc: 'Receita de exportação de serviços. Créditos atrelados podem ser ressarcidos ou compensados (Lei 10.833/2003, art. 5º).' },
     { key: 'cum', pct: 'pct_cum', label: 'Receita Cumulativa', color: '#3B82F6', desc: 'Receita sujeita ao regime cumulativo (alíquotas 0,65%/3%). Não gera crédito não-cumulativo.' },
   ];
+
+  function creditBreakdown(steps, titulo, rb) {
+    if (!steps || !steps.length) return '';
+    const pctTrib = rb.pct_trib_mi || 0;
+    const pctNT   = rb.pct_nt_mi  || 0;
+    const pctExp  = rb.pct_exp    || 0;
+    const totalV  = steps.reduce((s, st) => s + (st.valor_disponivel || 0), 0);
+    const rows = steps.map(s => {
+      const v = s.valor_disponivel || 0;
+      const is200 = s.serie === '200';
+      return `
+        <tr>
+          <td class="td-mono" style="color:${is200 ? 'var(--orange)' : 'var(--blue-l)'};">${esc(s.cod_cred)}</td>
+          <td style="font-size:11px;color:var(--g2);">${esc(s.descricao)}</td>
+          <td class="td-valor">${fmt(v)}</td>
+          <td class="td-valor" style="color:var(--orange);">${fmt(v * pctTrib)}</td>
+          <td class="td-valor" style="color:var(--yellow);">${fmt(v * pctNT)}</td>
+          <td class="td-valor" style="color:var(--green);">${pctExp > 0 ? fmt(v * pctExp) : '—'}</td>
+          <td style="text-align:center;"><span class="badge ${is200 ? 'b-possivel' : 'b-info'}" style="font-size:9px;padding:2px 7px;">${is200 ? 'Ressarcível' : 'Não Ressar.'}</span></td>
+        </tr>`;
+    }).join('');
+    return `
+      <div style="margin-top:20px;">
+        <div style="font-size:12px;font-weight:700;color:var(--g2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">📊 ${titulo} — Divisão dos créditos pelo rateio</div>
+        <p style="font-size:12px;color:var(--g3);margin-bottom:10px;">
+          Créditos proporcionalizados pelo rateio do 0111. Série 100 = descontáveis da contribuição (não ressarcíveis). Série 200 = créditos presumidos, elegíveis ao PERDCOMP.
+          A coluna "Trib. MI" mostra o quanto cada crédito pode ser aproveitado diretamente; "NT MI" indica a parcela cujo aproveitamento é limitado (apenas desconto, não ressarcimento).
+        </p>
+        <div class="table-wrap" style="margin:0;">
+          <table>
+            <thead><tr>
+              <th>Cód.</th><th>Descrição</th>
+              <th style="text-align:right">Total (R$)</th>
+              <th style="text-align:right;color:var(--orange)">Trib. MI<br><small style="font-weight:400;color:var(--g3);">${fmtPct(pctTrib)}</small></th>
+              <th style="text-align:right;color:var(--yellow)">NT MI<br><small style="font-weight:400;color:var(--g3);">${fmtPct(pctNT)}</small></th>
+              <th style="text-align:right;color:var(--green)">Exportação<br><small style="font-weight:400;color:var(--g3);">${fmtPct(pctExp)}</small></th>
+              <th>Ressarcível?</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+            <tfoot><tr style="background:rgba(255,255,255,.04);">
+              <td colspan="2" style="font-size:12px;font-weight:700;color:var(--g1);padding:8px 14px;">TOTAL</td>
+              <td class="td-valor" style="font-weight:700;">${fmt(totalV)}</td>
+              <td class="td-valor" style="color:var(--orange);font-weight:700;">${fmt(totalV * pctTrib)}</td>
+              <td class="td-valor" style="color:var(--yellow);font-weight:700;">${fmt(totalV * pctNT)}</td>
+              <td class="td-valor" style="color:var(--green);font-weight:700;">${pctExp > 0 ? fmt(totalV * pctExp) : '—'}</td>
+              <td></td>
+            </tr></tfoot>
+          </table>
+        </div>
+      </div>`;
+  }
 
   el.innerHTML = `
     <div class="sec-hd" style="margin-bottom:14px;">
@@ -1207,7 +1260,11 @@ function renderG5Rateio(periodos) {
           </div>`;
       }).join('');
       const pctTrib = rb.pct_trib_mi || 0;
-      const pctExp = rb.pct_exp || 0;
+      const pctNT   = rb.pct_nt_mi  || 0;
+      const pctExp  = rb.pct_exp    || 0;
+      const pc = p.perdcomp_previa || {};
+      const pSteps = (pc.pis   || {}).steps || [];
+      const cSteps = (pc.cofins || {}).steps || [];
       return `
         <div class="rateio-card" style="margin-bottom:16px;">
           <div class="rateio-card-hd">📅 ${esc(p.competencia)} · ${esc(p.arquivo)}</div>
@@ -1224,7 +1281,9 @@ function renderG5Rateio(periodos) {
             ${pctExp > 0 ? `A parcela de <strong style="color:var(--green);">${fmtPct(pctExp)}</strong> vinculada a exportações pode ser objeto de ressarcimento ou compensação (Lei 10.833/2003, art. 5º).` : ''}
             Créditos em CST 56/66 devem refletir estes percentuais no campo PERC_RAT_CRED dos registros M105/M505.
           </div>
-        </div>`;
+        </div>
+        ${creditBreakdown(pSteps, 'PIS (M100)', rb)}
+        ${creditBreakdown(cSteps, 'COFINS (M500)', rb)}`;
     }).join('<div class="dvd"></div>')}`;
 }
 
@@ -1315,6 +1374,12 @@ function renderPerdcomp(periodos) {
     const avisoHtml = totalPerdcomp > 0
       ? `<div class="perdcomp-aviso">✅ <strong style="color:var(--green)">R$ ${totalPerdcomp.toLocaleString('pt-BR', {minimumFractionDigits:2})}</strong> disponíveis para PERDCOMP (PER/DCOMP) após consumo ótimo dos créditos série 200. Priorize a habilitação do crédito código 201 como base do pedido de compensação ou ressarcimento.</div>`
       : `<div class="perdcomp-aviso-zero">ℹ️ Nenhum saldo série 200 restante para PERDCOMP neste período — créditos 200-série foram integralmente absorvidos pela contribuição devida.</div>`;
+    const notaRateioHtml = `
+      <div style="background:rgba(139,92,246,.07);border:1px solid rgba(139,92,246,.2);border-radius:var(--r);padding:12px 16px;font-size:12px;color:var(--g2);line-height:1.7;margin:0 16px 12px;">
+        <strong style="color:var(--purple)">ℹ️ Sobre o rateio e o valor ressarcível:</strong><br>
+        A proporção de receita <em>não tributada MI</em> (definida no 0111) <strong>não</strong> converte créditos da série 100 em ressarcíveis. Ela apenas limita o quanto desses créditos pode ser aproveitado (desconto na contribuição). Créditos série 100 vinculados a NT MI acumulam como saldo, mas <strong>não</strong> são elegíveis ao PERDCOMP/ressarcimento.<br>
+        O valor ressarcível vem exclusivamente dos <strong>créditos série 200 (presumidos)</strong> — para transportadoras, principalmente o <em>cod_cred 201</em> (crédito presumido do art. 2° da Lei 10.485/2002 ou crédito vinculado a exportações conforme art. 5° da Lei 10.833/2003). Se o valor ressarcível parece baixo para o porte da empresa, verifique se os créditos presumidos (D101/D101/D105/D205) estão sendo declarados corretamente com cod_cred na série 200.
+      </div>`;
 
     return `
       <div class="perdcomp-tributo">
@@ -1393,9 +1458,15 @@ function renderPerdcomp(periodos) {
     const cof = pc.cofins || {};
     const totalPisPerdcomp = pis.total_perdcomp_disponivel || 0;
     const totalCofPerdcomp = cof.total_perdcomp_disponivel || 0;
+    const notaRateio = `
+      <div style="background:rgba(139,92,246,.07);border:1px solid rgba(139,92,246,.2);border-radius:var(--r);padding:12px 16px;font-size:12px;color:var(--g2);line-height:1.7;margin-bottom:16px;">
+        <strong style="color:var(--purple)">ℹ️ Sobre rateio e valor ressarcível:</strong><br>
+        A proporção de receita <em>não tributada MI</em> (0111) <strong>não</strong> converte créditos série 100 em ressarcíveis — ela apenas limita o aproveitamento desses créditos (desconto na contribuição). O valor ressarcível vem exclusivamente dos <strong>créditos série 200 (presumidos)</strong>: para transportadoras, principalmente o <em>cod_cred 201</em> (crédito presumido do art. 2° da Lei 10.485/2002) e créditos vinculados a exportações (art. 5° da Lei 10.833/2003). Se o valor ressarcível parece baixo, verifique se os créditos presumidos (D101/D105/D201/D205) estão sendo declarados com cod_cred na série 200 nos registros M100/M500.
+      </div>`;
     return `
       <div class="apur-periodo">
         <div class="apur-periodo-hd">📅 Competência: ${esc(p.competencia)} &nbsp;·&nbsp; ${esc(p.arquivo)}</div>
+        ${notaRateio}
         ${buildTributo(pis)}
         <div style="height:16px;"></div>
         ${buildTributo(cof)}

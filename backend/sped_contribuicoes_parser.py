@@ -104,7 +104,15 @@ REGISTROS: dict[str, list[str]] = {
         "ind_oper", "ind_doc", "qtd_doc", "cfop", "vl_doc", "vl_desc",
         "vl_bc_icms", "vl_icms", "vl_nt", "cod_cta",
     ],
-    "D205": ["dt_doc_ini", "dt_doc_fim", "vl_doc", "vl_desc"],
+    # D201/D205 — crédito presumido PIS/COFINS (filhos de D200, análogos a D101/D105)
+    "D201": [
+        "nat_bc_cred", "cst_pis", "vl_item_nc", "vl_bc_cred",
+        "aliq_pis", "vl_cred", "cod_cta", "cod_ccus",
+    ],
+    "D205": [
+        "nat_bc_cred", "cst_cofins", "vl_item_nc", "vl_bc_cred",
+        "aliq_cofins", "vl_cred", "cod_cta", "cod_ccus",
+    ],
 
     # Bloco F — Demais operações com incidência de PIS/COFINS
     "F100": [
@@ -281,7 +289,9 @@ def parse_sped_file(content: bytes) -> dict[str, pd.DataFrame]:
 
     registros: dict[str, list[list[str]]] = defaultdict(list)
     # Armazena, por linha, o valor de _ind_oper a ser anexado depois
-    _ind_oper_extra: dict[str, list[str]] = {"C170": [], "A170": [], "D101": [], "D105": []}
+    _ind_oper_extra: dict[str, list[str]] = {
+        "C170": [], "A170": [], "D101": [], "D105": [], "D201": [], "D205": [],
+    }
     _cur_ind_oper: dict[str, str] = {}
 
     for linha in text.splitlines():
@@ -297,7 +307,7 @@ def parse_sped_file(content: bytes) -> dict[str, pd.DataFrame]:
             continue
         valores = campos[1:]
 
-        if reg in ("C100", "A100", "D100"):
+        if reg in ("C100", "A100", "D100", "D200"):
             _cur_ind_oper[reg] = valores[0] if valores else ""
         elif reg == "C170":
             _ind_oper_extra["C170"].append(_cur_ind_oper.get("C100", ""))
@@ -307,6 +317,10 @@ def parse_sped_file(content: bytes) -> dict[str, pd.DataFrame]:
             _ind_oper_extra["D101"].append(_cur_ind_oper.get("D100", ""))
         elif reg == "D105":
             _ind_oper_extra["D105"].append(_cur_ind_oper.get("D100", ""))
+        elif reg == "D201":
+            _ind_oper_extra["D201"].append(_cur_ind_oper.get("D200", ""))
+        elif reg == "D205":
+            _ind_oper_extra["D205"].append(_cur_ind_oper.get("D200", ""))
 
         registros[reg].append(valores)
 
@@ -676,6 +690,104 @@ def extract_cfop_cst(dfs: dict[str, pd.DataFrame]) -> list[dict]:
             io = str(row.get("_ind_oper", "")).strip()
             linhas.append({
                 "origem": "D105",
+                "ind_oper": _IND_OPER_LABEL.get(io, io or "—"),
+                "cfop": "—",
+                "cst_pis": "—",
+                "cst_cofins": str(row.get("cst_cofins", "")).strip(),
+                "qtd_itens": int(row.get("qtd_itens", 0)),
+                "vl_item": round(float(row.get("vl_item", 0)), 2),
+                "vl_bc_pis": 0.0,
+                "vl_pis": 0.0,
+                "vl_bc_cofins": round(float(row.get("vl_bc_cofins", 0)), 2),
+                "vl_cofins": round(float(row.get("vl_cofins", 0)), 2),
+            })
+
+    # D200 — Consolidação de NF de Serviços de Transporte (saídas consolidadas com CFOP)
+    df_d200 = dfs.get("D200")
+    if df_d200 is not None and not df_d200.empty and "ind_oper" in df_d200.columns:
+        df = df_d200.copy()
+        for col in ("vl_doc", "vl_desc"):
+            if col in df.columns:
+                df[col] = df[col].map(parse_decimal)
+            else:
+                df[col] = 0.0
+        df["_vl"] = df["vl_doc"] - df["vl_desc"]
+        grp_cols = ["ind_oper", "cfop"]
+        grp_cols = [c for c in grp_cols if c in df.columns]
+        grouped = df.groupby(grp_cols, dropna=False).agg(
+            qtd_itens=("_vl", "size"),
+            vl_item=("_vl", "sum"),
+        ).reset_index()
+        for _, row in grouped.iterrows():
+            io = str(row.get("ind_oper", "")).strip()
+            linhas.append({
+                "origem": "D200",
+                "ind_oper": _IND_OPER_LABEL.get(io, io or "—"),
+                "cfop": str(row.get("cfop", "")).strip() or "—",
+                "cst_pis": "—",
+                "cst_cofins": "—",
+                "qtd_itens": int(row.get("qtd_itens", 0)),
+                "vl_item": round(float(row.get("vl_item", 0)), 2),
+                "vl_bc_pis": 0.0,
+                "vl_pis": 0.0,
+                "vl_bc_cofins": 0.0,
+                "vl_cofins": 0.0,
+            })
+
+    # D201 — crédito presumido PIS (filho de D200, análogo a D101)
+    df_d201 = dfs.get("D201")
+    if df_d201 is not None and not df_d201.empty and "_ind_oper" in df_d201.columns:
+        df = df_d201.copy()
+        for col in ("vl_item_nc", "vl_bc_cred", "vl_cred"):
+            if col in df.columns:
+                df[col] = df[col].map(parse_decimal)
+            else:
+                df[col] = 0.0
+        grp_cols = ["_ind_oper", "cst_pis"]
+        grp_cols = [c for c in grp_cols if c in df.columns]
+        grouped = df.groupby(grp_cols, dropna=False).agg(
+            qtd_itens=("vl_item_nc", "size"),
+            vl_item=("vl_item_nc", "sum"),
+            vl_bc_pis=("vl_bc_cred", "sum"),
+            vl_pis=("vl_cred", "sum"),
+        ).reset_index()
+        for _, row in grouped.iterrows():
+            io = str(row.get("_ind_oper", "")).strip()
+            linhas.append({
+                "origem": "D201",
+                "ind_oper": _IND_OPER_LABEL.get(io, io or "—"),
+                "cfop": "—",
+                "cst_pis": str(row.get("cst_pis", "")).strip(),
+                "cst_cofins": "—",
+                "qtd_itens": int(row.get("qtd_itens", 0)),
+                "vl_item": round(float(row.get("vl_item", 0)), 2),
+                "vl_bc_pis": round(float(row.get("vl_bc_pis", 0)), 2),
+                "vl_pis": round(float(row.get("vl_pis", 0)), 2),
+                "vl_bc_cofins": 0.0,
+                "vl_cofins": 0.0,
+            })
+
+    # D205 — crédito presumido COFINS (filho de D200, análogo a D105)
+    df_d205 = dfs.get("D205")
+    if df_d205 is not None and not df_d205.empty and "_ind_oper" in df_d205.columns:
+        df = df_d205.copy()
+        for col in ("vl_item_nc", "vl_bc_cred", "vl_cred"):
+            if col in df.columns:
+                df[col] = df[col].map(parse_decimal)
+            else:
+                df[col] = 0.0
+        grp_cols = ["_ind_oper", "cst_cofins"]
+        grp_cols = [c for c in grp_cols if c in df.columns]
+        grouped = df.groupby(grp_cols, dropna=False).agg(
+            qtd_itens=("vl_item_nc", "size"),
+            vl_item=("vl_item_nc", "sum"),
+            vl_bc_cofins=("vl_bc_cred", "sum"),
+            vl_cofins=("vl_cred", "sum"),
+        ).reset_index()
+        for _, row in grouped.iterrows():
+            io = str(row.get("_ind_oper", "")).strip()
+            linhas.append({
+                "origem": "D205",
                 "ind_oper": _IND_OPER_LABEL.get(io, io or "—"),
                 "cfop": "—",
                 "cst_pis": "—",
