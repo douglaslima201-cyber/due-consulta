@@ -849,40 +849,38 @@ def _sortkey_200(cod: str) -> int:
 
 
 def extract_perdcomp_previa(dfs: dict[str, pd.DataFrame]) -> dict:
-    """Simula a apuração de PERDCOMP seguindo a mesma lógica da apuração:
-      1. Créditos do período (M100/M500 vl_cred_disp) + saldo de períodos anteriores
-         (1100/1500 vl_cred_desc_pa) são somados por código de crédito.
-      2. Série 100 (não ressarcível) zera a contribuição devida — o excesso fica
-         como carry-forward (não vai a PERDCOMP).
-      3. Série 200 (ressarcível) aplica contra o saldo remanescente após série 100;
-         o excesso sobre o saldo devedor é o saldo para PERDCOMP/ressarcimento."""
+    """Determina o saldo para PERDCOMP usando diretamente o campo vl_cred_disp
+    dos registros M100/M500 — que é o saldo de cada crédito APÓS o desconto
+    já realizado em M200. Nenhuma simulação contra a contribuição é necessária:
+    o próprio SPED já fez essa conta.
+
+      - Série 100 (vl_cred_disp > 0) → carry-forward (não ressarcível)
+      - Série 200 (vl_cred_disp > 0) → saldo PERDCOMP (ressarcível)
+
+    O total de vl_cred_disp deve ser igual ao sobra_mes da apuração
+    (= vl_cred_apur − vl_tot_cred_desc do M200)."""
 
     def _build(df_cred, df_tot, df_controle, tributo: str) -> dict:
-        # Créditos do período atual: M100/M500 vl_cred_apur (crédito gerado no período)
-        # Usar vl_cred_apur (e NÃO vl_cred_disp) porque quando o total de créditos
-        # excede a contribuição, vl_cred_disp da série 100 fica zerado (já aplicado
-        # contra a contribuição) e a simulação ficaria errada.
-        creditos_per: dict[str, float] = {}
+        # vl_cred_apur = crédito gerado no período (valor original)
+        # vl_cred_disp = saldo residual após o desconto em M200 (o que sobrou)
+        creditos_apur: dict[str, float] = {}
+        creditos_disp: dict[str, float] = {}
         if df_cred is not None and not df_cred.empty:
             for _, row in df_cred.iterrows():
                 cod = str(row.get("cod_cred", "")).strip()
-                val = parse_decimal(row.get("vl_cred_apur", "0"))
-                if cod and val > 0:
-                    creditos_per[cod] = creditos_per.get(cod, 0.0) + val
+                apur = parse_decimal(row.get("vl_cred_apur", "0"))
+                disp = parse_decimal(row.get("vl_cred_disp", "0"))
+                if cod:
+                    creditos_apur[cod] = creditos_apur.get(cod, 0.0) + apur
+                    creditos_disp[cod] = creditos_disp.get(cod, 0.0) + disp
 
-        # Saldo de períodos anteriores: 1100/1500 vl_cred_desc_pa
-        creditos_pa: dict[str, float] = {}
+        # Créditos de períodos anteriores aplicados neste período (apenas informativo)
         total_cred_pa = 0.0
         if df_controle is not None and not df_controle.empty:
             for _, row in df_controle.iterrows():
-                cod = str(row.get("cod_cred", "")).strip()
                 val = parse_decimal(row.get("vl_cred_desc_pa", "0"))
-                if cod and val > 0:
-                    creditos_pa[cod] = creditos_pa.get(cod, 0.0) + val
+                if val > 0:
                     total_cred_pa += val
-
-        # Combina período atual + período anterior por cod_cred
-        all_codes = set(creditos_per) | set(creditos_pa)
 
         contrib_periodo = 0.0
         creditos_descontados_apuracao = 0.0
@@ -891,62 +889,54 @@ def extract_perdcomp_previa(dfs: dict[str, pd.DataFrame]) -> dict:
             contrib_periodo = parse_decimal(r.get("vl_tot_cont_nc_per", "0"))
             creditos_descontados_apuracao = parse_decimal(r.get("vl_tot_cred_desc", "0"))
 
-        creds_100 = [(c,
-                      creditos_per.get(c, 0.0) + creditos_pa.get(c, 0.0),
-                      creditos_per.get(c, 0.0),
-                      creditos_pa.get(c, 0.0))
+        all_codes = set(creditos_apur)
+        creds_100 = [(c, creditos_apur.get(c, 0.0), creditos_disp.get(c, 0.0))
                      for c in all_codes if c.isdigit() and 100 <= int(c) <= 199]
-        creds_200 = [(c,
-                      creditos_per.get(c, 0.0) + creditos_pa.get(c, 0.0),
-                      creditos_per.get(c, 0.0),
-                      creditos_pa.get(c, 0.0))
+        creds_200 = [(c, creditos_apur.get(c, 0.0), creditos_disp.get(c, 0.0))
                      for c in all_codes if c.isdigit() and 200 <= int(c) <= 299]
 
-        # Série 100: aplica contra contribuição → excesso vira carry-forward (não ressarcível)
-        saldo_deve = contrib_periodo
         steps: list[dict] = []
+        total_perdcomp = 0.0
+        total_carry_fwd = 0.0
 
-        for cod, total, per_atual, per_ant in sorted(creds_100, key=lambda x: int(x[0])):
-            total = round(total, 2)
-            usado = round(min(total, saldo_deve), 2)
-            carry_fwd = round(max(0.0, total - usado), 2)
-            saldo_deve = round(max(0.0, saldo_deve - total), 2)
+        # Série 100 (não ressarcível): vl_cred_disp → carry-forward
+        for cod, apur, disp in sorted(creds_100, key=lambda x: int(x[0])):
+            apur = round(apur, 2)
+            disp = round(disp, 2)
+            usado = round(max(0.0, apur - disp), 2)
+            total_carry_fwd = round(total_carry_fwd + disp, 2)
             steps.append({
                 "cod_cred": cod,
                 "descricao": _TABELA_COD_CRED.get(cod, f"Código {cod}"),
                 "serie": "100", "ressarcivel": False,
-                "valor_disponivel": total,
-                "vl_per_atual": round(per_atual, 2),
-                "vl_per_anterior": round(per_ant, 2),
+                "valor_disponivel": apur,
+                "vl_per_atual": apur,
+                "vl_per_anterior": 0.0,
                 "valor_usado_desconto": usado,
-                "valor_carry_fwd": carry_fwd,
+                "valor_carry_fwd": disp,
                 "valor_perdcomp": 0.0,
             })
 
-        contrib_apos_100 = round(saldo_deve, 2)
-
-        # Série 200: aplica contra o saldo remanescente; excesso → PERDCOMP
-        total_perdcomp = 0.0
-        for cod, total, per_atual, per_ant in sorted(creds_200, key=lambda x: _sortkey_200(x[0])):
-            total = round(total, 2)
-            usado = round(min(total, saldo_deve), 2)
-            perdcomp = round(max(0.0, total - usado), 2)
-            saldo_deve = round(max(0.0, saldo_deve - total), 2)
-            total_perdcomp = round(total_perdcomp + perdcomp, 2)
+        # Série 200 (ressarcível): vl_cred_disp → PERDCOMP
+        for cod, apur, disp in sorted(creds_200, key=lambda x: _sortkey_200(x[0])):
+            apur = round(apur, 2)
+            disp = round(disp, 2)
+            usado = round(max(0.0, apur - disp), 2)
+            total_perdcomp = round(total_perdcomp + disp, 2)
             steps.append({
                 "cod_cred": cod,
                 "descricao": _TABELA_COD_CRED.get(cod, f"Código {cod}"),
                 "serie": "200", "ressarcivel": True,
-                "valor_disponivel": total,
-                "vl_per_atual": round(per_atual, 2),
-                "vl_per_anterior": round(per_ant, 2),
+                "valor_disponivel": apur,
+                "vl_per_atual": apur,
+                "vl_per_anterior": 0.0,
                 "valor_usado_desconto": usado,
                 "valor_carry_fwd": 0.0,
-                "valor_perdcomp": perdcomp,
+                "valor_perdcomp": disp,
             })
 
-        total_100 = round(sum(t for _, t, _, _ in creds_100), 2)
-        total_200 = round(sum(t for _, t, _, _ in creds_200), 2)
+        total_100 = round(sum(a for _, a, _ in creds_100), 2)
+        total_200 = round(sum(a for _, a, _ in creds_200), 2)
         total_all = round(total_100 + total_200, 2)
         diff = round(total_all - creditos_descontados_apuracao, 2)
 
@@ -959,8 +949,9 @@ def extract_perdcomp_previa(dfs: dict[str, pd.DataFrame]) -> dict:
             "total_creditos": total_all,
             "total_cred_periodo_anterior": round(total_cred_pa, 2),
             "diff_m100_vs_apuracao": diff,
-            "contrib_apos_100": contrib_apos_100,
+            "contrib_apos_100": 0.0,
             "total_perdcomp_disponivel": total_perdcomp,
+            "total_carry_fwd": total_carry_fwd,
             "steps": steps,
         }
 
