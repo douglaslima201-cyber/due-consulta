@@ -285,11 +285,13 @@ body.light{
   --db1:#EFF3F8;--db2:#FFFFFF;--db3:#F1F5FA;--db4:#E3EAF4;--db5:#CAD5E2;
   --white:#0D1B2E;--g1:#1E293B;--g2:#334155;--g3:#64748B;--g4:#94A3B8;
 }
-body.light nav{background:rgba(239,243,248,.96);}
+body.light nav{background:rgba(240,245,255,.98);border-bottom-color:rgba(249,115,22,.3);box-shadow:0 2px 24px rgba(0,0,0,.12);}
+body.light .nav-name{color:var(--g1);}
+body.light .nav-back{color:var(--g2);}
 body.light .btn-theme-toggle{background:rgba(0,0,0,.06);border-color:rgba(0,0,0,.1);}
 body.light .btn-theme-toggle:hover{background:rgba(0,0,0,.12);}
-body.light .nav-tag{background:rgba(0,0,0,.04);border-color:rgba(0,0,0,.1);}
-body.light .nav-back:hover{color:var(--g1);}
+body.light .nav-tag{background:rgba(249,115,22,.06);border-color:rgba(249,115,22,.2);color:var(--g3);}
+body.light .nav-back:hover{color:var(--orange);}
 body.light .hero-bg{background:radial-gradient(ellipse 80% 60% at 20% 20%,rgba(29,78,216,.04) 0%,transparent 60%),radial-gradient(ellipse 60% 50% at 80% 80%,rgba(249,115,22,.04) 0%,transparent 60%);}
 body.light .hero-grid{background-image:linear-gradient(rgba(0,0,0,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(0,0,0,.025) 1px,transparent 1px);}
 body.light ::-webkit-scrollbar-thumb{background:rgba(249,115,22,.4);}
@@ -473,6 +475,7 @@ body.light .table-wrap::after{background:linear-gradient(to right,transparent,rg
       <button class="tab-btn" data-tab="G3" onclick="switchTab('G3')">🧾 G3 · Bloco M <span class="tab-badge" id="tab-count-G3">0</span></button>
       <button class="tab-btn" data-tab="G4" onclick="switchTab('G4')">🔁 G4 · Transposição <span class="tab-badge" id="tab-count-G4">0</span></button>
       <button class="tab-btn" data-tab="G5" onclick="switchTab('G5')">⚖️ G5 · Rateio 0111 <span class="tab-badge" id="tab-count-G5">0</span></button>
+      <button class="tab-btn" data-tab="blocoA" onclick="switchTab('blocoA')">📋 Bloco A · Serviços</button>
       <button class="tab-btn" data-tab="cfop" onclick="switchTab('cfop')">🔄 CFOP/CST</button>
       <button class="tab-btn" data-tab="perdcomp" onclick="switchTab('perdcomp')">📑 Prévia PERDCOMP</button>
       <button class="tab-btn" data-tab="conclusao" onclick="switchTab('conclusao')">📝 Conclusão</button>
@@ -648,6 +651,62 @@ body.light .table-wrap::after{background:linear-gradient(to right,transparent,rg
     </div>
 
     <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!--  ABA BLOCO A — Serviços Tomados (A100/A170)                        -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="tab-pane" id="tab-blocoA">
+      <div class="sec-hd">
+        <div><div class="sec-lbl">Registros A100/A170 — Serviços com ISS</div><h2 class="sec-ttl">Bloco A · Auditoria de Serviços Tomados</h2></div>
+      </div>
+      <p style="font-size:13px;color:var(--g3);margin-bottom:16px;">
+        Detalhamento individual de serviços tomados de terceiros (ISS). Cada linha representa um item de A170 enriquecido com o fornecedor do A100 pai.
+        <strong style="color:var(--blue-l)">CST 50–66</strong> = com crédito de PIS/COFINS (regime não-cumulativo).
+        <strong style="color:var(--red)">CST 70–99</strong> = sem crédito (saída tributada/isenta/suspenso).
+        Nat. BC Créd. identifica a natureza do insumo para validação da elegibilidade (Lei 10.637/2002, art. 3°).
+      </p>
+      <!-- KPI strip -->
+      <div id="blocoA-kpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:18px;"></div>
+      <!-- Filters -->
+      <div class="table-toolbar">
+        <div class="search-box"><span class="search-icon">🔍</span><input type="text" placeholder="Fornecedor, serviço, CST, conta..." id="blocoA-search" oninput="filtrarBlocoA()"/></div>
+        <select class="filter-sel" id="blocoA-filter-cred" onchange="filtrarBlocoA()">
+          <option value="">Com e sem crédito</option>
+          <option value="sim">✅ Com crédito PIS/COFINS</option>
+          <option value="nao">❌ Sem crédito PIS/COFINS</option>
+        </select>
+        <select class="filter-sel" id="blocoA-filter-per" onchange="filtrarBlocoA()">
+          <option value="">Todos os períodos</option>
+        </select>
+        <select class="filter-sel" id="blocoA-filter-part" onchange="filtrarBlocoA()">
+          <option value="">Todos os fornecedores</option>
+        </select>
+      </div>
+      <!-- Table -->
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Período</th>
+              <th>Fornecedor</th>
+              <th>Serviço / Descrição</th>
+              <th>Nat. BC Créd.</th>
+              <th>CST PIS</th>
+              <th>CST COF.</th>
+              <th style="text-align:right">Vlr. Item</th>
+              <th style="text-align:right">BC PIS</th>
+              <th style="text-align:right">Alíq. PIS</th>
+              <th style="text-align:right">PIS</th>
+              <th style="text-align:right">COFINS</th>
+              <th style="text-align:center">Créd.?</th>
+              <th class="th-hide-mobile">Conta / C.Custo</th>
+            </tr>
+          </thead>
+          <tbody id="blocoA-body"></tbody>
+        </table>
+      </div>
+      <div id="blocoA-count" style="font-size:11px;color:var(--g4);font-family:var(--mono);margin-top:6px;text-align:right;"></div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
     <!--  ABA CFOP/CST                                                      -->
     <!-- ═══════════════════════════════════════════════════════════════════ -->
     <div class="tab-pane" id="tab-cfop">
@@ -706,7 +765,7 @@ body.light .table-wrap::after{background:linear-gradient(to right,transparent,rg
         <div class="group-info-icon">📑</div>
         <div>
           <div class="group-info-title">Classificação de Créditos e Estratégia PERDCOMP</div>
-          <div class="group-info-desc">Os créditos apurados no Bloco M são classificados pelos códigos da Tabela 4.3.6 do Guia Prático EFD-Contribuições em duas séries: <strong style="color:var(--blue-l)">Série 100 (não ressarcíveis)</strong> — somente podem ser descontados contra a contribuição devida; e <strong style="color:var(--orange)">Série 200 (ressarcíveis)</strong> — podem ser descontados e/ou compensados via PER/DCOMP. A simulação abaixo aplica a ordem ótima de consumo: série 100 primeiro, depois série 200 na ordem 207 → 202 → outros → 201, preservando o máximo do código 201 para PERDCOMP.</div>
+          <div class="group-info-desc">Os créditos apurados no Bloco M são classificados pelos códigos da Tabela 4.3.6 em duas séries: <strong style="color:var(--blue-l)">Série 100 (não ressarcíveis)</strong> — descontados contra a contribuição, excesso vira carry-forward; e <strong style="color:var(--orange)">Série 200 (ressarcíveis)</strong> — podem ser compensados via PER/DCOMP. Os valores são lidos diretamente de <strong>vl_cred_disp</strong> nos registros M100/M500 — o saldo residual pós-M200 já calculado pelo contribuinte no SPED, sem nova simulação.</div>
           <div class="group-info-legal">Base legal: Lei 10.637/2002, art. 13 e 14 · Lei 10.833/2003, art. 15 e 16 · IN RFB 2.055/2010 · Tabela 4.3.6 — Guia Prático EFD-Contribuições</div>
         </div>
       </div>
@@ -747,6 +806,7 @@ let currentAnalysisId = null;
 let allAchados = [];
 let allPorPeriodo = [];
 let allCfopCst = [];
+let allBlocoA = [];
 let charts = {};
 
 const GRUPOS = {
@@ -880,6 +940,14 @@ function renderResults(data) {
     });
   });
 
+  // consolidar bloco_a_detail de todos os períodos com competência
+  allBlocoA = [];
+  allPorPeriodo.forEach(p => {
+    (p.bloco_a_detail || []).forEach(row => {
+      allBlocoA.push({ ...row, competencia: p.competencia });
+    });
+  });
+
   document.getElementById('loading').style.display = 'none';
   document.getElementById('results').style.display = 'block';
   switchTab('resumo');
@@ -914,6 +982,7 @@ function renderResults(data) {
   renderTable(allAchados);
   renderApuracao(allPorPeriodo);
   renderGroupPanes(allAchados, allPorPeriodo);
+  renderBlocoA(allBlocoA);
   renderCfopCst(allCfopCst, allPorPeriodo);
   renderPerdcomp(allPorPeriodo);
   renderConclusao(allAchados, s, allPorPeriodo);
@@ -1780,7 +1849,7 @@ function renderPerdcomp(periodos) {
             <div class="perdcomp-sumbox-val" style="color:var(--purple);">${fmt(credPA)}</div>
           </div>
           <div class="perdcomp-sumbox">
-            <div class="perdcomp-sumbox-lbl">Total Créditos (sim.)</div>
+            <div class="perdcomp-sumbox-lbl">Total Créditos Apurados</div>
             <div class="perdcomp-sumbox-val">${fmt(t100 + t200)}</div>
           </div>
           <div class="perdcomp-sumbox ${totalPerdcomp > 0 ? 'destaque' : ''}">
@@ -1911,13 +1980,118 @@ async function exportarExcel() {
 
 // ── Reset ──────────────────────────────────────────────────────────────────────
 function resetar() {
-  currentAnalysisId = null; allAchados = []; allPorPeriodo = []; allCfopCst = [];
+  currentAnalysisId = null; allAchados = []; allPorPeriodo = []; allCfopCst = []; allBlocoA = [];
   ARQUIVOS = []; document.getElementById('file-input').value = '';
   document.getElementById('flist').innerHTML = '';
   document.getElementById('btn-analisar').disabled = true;
   document.getElementById('results').style.display = 'none';
   document.getElementById('upload-section').style.display = 'block';
   window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ── Bloco A — Serviços Tomados ────────────────────────────────────────────────
+const CST_COM_CREDITO_SET = new Set(['50','51','52','53','54','55','56','60','61','62','63','64','65','66']);
+let _blocoARows = [];
+
+function renderBlocoA(rows) {
+  _blocoARows = rows;
+  if (!rows.length) return;
+
+  // Popula filtros de período e fornecedor
+  const selPer  = document.getElementById('blocoA-filter-per');
+  const selPart = document.getElementById('blocoA-filter-part');
+  const periods = [...new Set(rows.map(r => r.competencia))].sort();
+  const parts   = [...new Set(rows.map(r => r.fornecedor || r.cod_part).filter(Boolean))].sort();
+
+  selPer.innerHTML  = '<option value="">Todos os períodos</option>'  + periods.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('');
+  selPart.innerHTML = '<option value="">Todos os fornecedores</option>' + parts.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('');
+
+  // KPIs
+  const totalItens   = rows.length;
+  const totalValor   = rows.reduce((s, r) => s + (r.vl_item || 0), 0);
+  const totalPIS     = rows.reduce((s, r) => s + (r.vl_pis || 0), 0);
+  const totalCOFINS  = rows.reduce((s, r) => s + (r.vl_cofins || 0), 0);
+  const comCred      = rows.filter(r => r.tem_credito_pis || r.tem_credito_cofins).length;
+  const semCred      = totalItens - comCred;
+
+  document.getElementById('blocoA-kpis').innerHTML = [
+    ['📄 Itens (A170)', totalItens, 'var(--g2)'],
+    ['💰 Valor total serviços', 'R$ ' + totalValor.toLocaleString('pt-BR',{minimumFractionDigits:2}), 'var(--orange)'],
+    ['✅ Com crédito PIS/COF', comCred + ' itens', 'var(--green)'],
+    ['❌ Sem crédito', semCred + ' itens', 'var(--red)'],
+    ['🔵 PIS creditado', 'R$ ' + totalPIS.toLocaleString('pt-BR',{minimumFractionDigits:2}), 'var(--blue-l)'],
+    ['🟠 COFINS creditado', 'R$ ' + totalCOFINS.toLocaleString('pt-BR',{minimumFractionDigits:2}), 'var(--orange-l)'],
+  ].map(([lbl, val, color]) => `
+    <div style="background:var(--db2);border:1px solid rgba(255,255,255,.07);border-radius:var(--r);padding:12px 14px;">
+      <div style="font-size:10px;color:var(--g4);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">${lbl}</div>
+      <div style="font-size:15px;font-weight:700;color:${color};">${val}</div>
+    </div>`).join('');
+
+  filtrarBlocoA();
+}
+
+function filtrarBlocoA() {
+  const q    = (document.getElementById('blocoA-search')?.value || '').toLowerCase();
+  const fc   = document.getElementById('blocoA-filter-cred')?.value || '';
+  const fp   = document.getElementById('blocoA-filter-per')?.value  || '';
+  const fpar = document.getElementById('blocoA-filter-part')?.value || '';
+
+  const filtered = _blocoARows.filter(r => {
+    const haystack = `${r.fornecedor} ${r.cod_part} ${r.descr_servico} ${r.cst_pis} ${r.cst_cofins} ${r.nat_bc_cred_desc} ${r.cod_cta} ${r.nome_cta} ${r.num_doc}`.toLowerCase();
+    if (q && !haystack.includes(q)) return false;
+    if (fc === 'sim' && !(r.tem_credito_pis || r.tem_credito_cofins)) return false;
+    if (fc === 'nao' &&  (r.tem_credito_pis || r.tem_credito_cofins)) return false;
+    if (fp   && r.competencia !== fp) return false;
+    if (fpar && (r.fornecedor || r.cod_part) !== fpar) return false;
+    return true;
+  });
+
+  const tbody = document.getElementById('blocoA-body');
+  if (!filtered.length) {
+    tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;color:var(--g4);padding:24px;">Nenhum item encontrado.</td></tr>';
+    document.getElementById('blocoA-count').textContent = '';
+    return;
+  }
+
+  const rows = filtered.map(r => {
+    const temCred = r.tem_credito_pis || r.tem_credito_cofins;
+    const credBadge = temCred
+      ? '<span class="badge b-sim" style="font-size:9px;">✅ Sim</span>'
+      : '<span class="badge b-nao" style="font-size:9px;">❌ Não</span>';
+    const cstPisBadge  = cstBadge(r.cst_pis,  r.tem_credito_pis);
+    const cstCofBadge  = cstBadge(r.cst_cofins, r.tem_credito_cofins);
+    const natBcStr = r.nat_bc_cred ? `<span style="font-size:9px;color:var(--g3);" title="${esc(r.nat_bc_cred_desc)}">${esc(r.nat_bc_cred)} · ${esc(r.nat_bc_cred_desc)}</span>` : '—';
+    const contaStr = r.nome_cta ? `<span title="${esc(r.cod_cta)}">${esc(r.nome_cta)}</span>` : (r.cod_cta ? `<span class="td-mono" style="font-size:10px;">${esc(r.cod_cta)}</span>` : '—');
+    const fornStr  = r.fornecedor && r.fornecedor !== r.cod_part
+      ? `<div style="font-size:12px;font-weight:600;color:var(--g1);">${esc(r.fornecedor)}</div><div style="font-size:10px;color:var(--g4);font-family:var(--mono);">${esc(r.cod_part)}</div>`
+      : `<span class="td-mono" style="font-size:11px;">${esc(r.cod_part || '—')}</span>`;
+    const aliqPisStr = r.aliq_pis > 0 ? fmtAliq(r.aliq_pis) : '—';
+    return `<tr>
+      <td class="td-mono" style="font-size:11px;">${esc(r.competencia || '—')}</td>
+      <td>${fornStr}</td>
+      <td style="font-size:12px;max-width:220px;">${esc(r.descr_servico || r.cod_item || '—')}</td>
+      <td style="font-size:11px;">${natBcStr}</td>
+      <td style="text-align:center;">${cstPisBadge}</td>
+      <td style="text-align:center;">${cstCofBadge}</td>
+      <td class="td-valor">${fmt(r.vl_item)}</td>
+      <td class="td-valor td-hide-mobile">${r.vl_bc_pis > 0 ? fmt(r.vl_bc_pis) : '—'}</td>
+      <td class="td-valor td-hide-mobile">${aliqPisStr}</td>
+      <td class="td-valor" style="color:${r.vl_pis > 0 ? 'var(--blue-l)' : 'var(--g4)'};">${r.vl_pis > 0 ? fmt(r.vl_pis) : '—'}</td>
+      <td class="td-valor" style="color:${r.vl_cofins > 0 ? 'var(--orange)' : 'var(--g4)'};">${r.vl_cofins > 0 ? fmt(r.vl_cofins) : '—'}</td>
+      <td style="text-align:center;">${credBadge}</td>
+      <td class="th-hide-mobile" style="font-size:11px;">${contaStr}</td>
+    </tr>`;
+  }).join('');
+
+  tbody.innerHTML = rows;
+  document.getElementById('blocoA-count').textContent =
+    `Exibindo ${filtered.length} de ${_blocoARows.length} itens`;
+}
+
+function cstBadge(cst, temCred) {
+  if (!cst || cst === '—') return '<span style="color:var(--g4);font-size:11px;">—</span>';
+  const cls = temCred ? 'b-sim' : (parseInt(cst) >= 70 ? 'b-nao' : 'b-info');
+  return `<span class="badge ${cls}" style="font-size:9px;font-family:var(--mono);">${esc(cst)}</span>`;
 }
 
 function esc(s) {
