@@ -1960,17 +1960,84 @@ function renderPerdcomp(periodos) {
     const pc = p.perdcomp_previa || {};
     const pis = pc.pis || {};
     const cof = pc.cofins || {};
+    const r01  = pc.rateio_0111 || {};
     const totalPisPerdcomp = pis.total_perdcomp_disponivel || 0;
     const totalCofPerdcomp = cof.total_perdcomp_disponivel || 0;
-    const notaRateio = `
-      <div style="background:rgba(139,92,246,.07);border:1px solid rgba(139,92,246,.2);border-radius:var(--r);padding:12px 16px;font-size:12px;color:var(--g2);line-height:1.7;margin-bottom:16px;">
-        <strong style="color:var(--purple)">ℹ️ Sobre rateio e valor ressarcível:</strong><br>
-        A proporção de receita <em>não tributada MI</em> (0111) <strong>não</strong> converte créditos série 100 em ressarcíveis — ela apenas limita o aproveitamento desses créditos (desconto na contribuição). O valor ressarcível vem exclusivamente dos <strong>créditos série 200 (presumidos)</strong>: para transportadoras, principalmente o <em>cod_cred 201</em> (crédito presumido do art. 2° da Lei 10.485/2002) e créditos vinculados a exportações (art. 5° da Lei 10.833/2003). Se o valor ressarcível parece baixo, verifique se os créditos presumidos (D101/D105/D201/D205) estão sendo declarados com cod_cred na série 200 nos registros M100/M500.
+
+    // ── Bloco Rateio 0111 ────────────────────────────────────────────────────
+    const pctExp  = r01.pct_exp   || 0;
+    const pctNt   = r01.pct_nt_mi || 0;
+    const pctTrib = r01.pct_trib_mi || 0;
+    const temR01  = r01.tem_0111;
+
+    const totalDispPIS  = pis.total_disp_todos || ((pis.total_carry_fwd||0) + totalPisPerdcomp);
+    const totalDispCOF  = cof.total_disp_todos || ((cof.total_carry_fwd||0) + totalCofPerdcomp);
+    const totalDispTodos = totalDispPIS + totalDispCOF;
+
+    const teoricoPerdcompPIS  = pis.teorico_perdcomp_0111  || 0;
+    const teoricoPerdcompCOF  = cof.teorico_perdcomp_0111  || 0;
+    const teoricoPerdcompTot  = teoricoPerdcompPIS + teoricoPerdcompCOF;
+    const declaradoPerdcompTot = totalPisPerdcomp + totalCofPerdcomp;
+    const diffTot = (pis.diff_perdcomp_0111 || 0) + (cof.diff_perdcomp_0111 || 0);
+
+    function pctBar(v, color) {
+      const w = Math.min(100, Math.round(v * 100));
+      return `<div style="height:6px;border-radius:3px;background:${color};width:${w}%;min-width:2px;"></div>`;
+    }
+
+    const rateio0111Html = temR01 ? `
+      <div style="background:var(--db2);border:1px solid rgba(249,115,22,.2);border-radius:var(--r2);padding:16px 20px;margin-bottom:18px;">
+        <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--orange);margin-bottom:12px;font-family:var(--mono);">Rateio Registro 0111 — Base da Distribuição Teórica</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px;">
+          <div>
+            <div style="font-size:10px;color:var(--g4);margin-bottom:4px;">Tributável MI</div>
+            <div style="font-size:16px;font-weight:700;color:var(--blue-l);">${(pctTrib*100).toFixed(1)}%</div>
+            <div style="margin-top:4px;">${pctBar(pctTrib,'var(--blue-l)')}</div>
+            <div style="font-size:11px;color:var(--g4);font-family:var(--mono);">${fmt(r01.rec_trib_mi)}</div>
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--g4);margin-bottom:4px;">Não Tributável MI</div>
+            <div style="font-size:16px;font-weight:700;color:var(--yellow);">${(pctNt*100).toFixed(1)}%</div>
+            <div style="margin-top:4px;">${pctBar(pctNt,'var(--yellow)')}</div>
+            <div style="font-size:11px;color:var(--g4);font-family:var(--mono);">${fmt(r01.rec_nt_mi)}</div>
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--g4);margin-bottom:4px;">Exportação</div>
+            <div style="font-size:16px;font-weight:700;color:var(--green);">${(pctExp*100).toFixed(1)}%</div>
+            <div style="margin-top:4px;">${pctBar(pctExp,'var(--green)')}</div>
+            <div style="font-size:11px;color:var(--g4);font-family:var(--mono);">${fmt(r01.rec_exp)}</div>
+          </div>
+        </div>
+        <div style="border-top:1px solid rgba(255,255,255,.06);padding-top:12px;">
+          <div style="font-size:10px;color:var(--g4);margin-bottom:8px;letter-spacing:.06em;text-transform:uppercase;font-family:var(--mono);">Distribuição Teórica dos Créditos (saldo total: ${fmt(totalDispTodos)})</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;">
+            <div style="background:var(--db3);border-radius:var(--r);padding:10px 14px;">
+              <div style="font-size:9px;color:var(--g4);text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px;">Teórico série 200<br>(exportação × saldo)</div>
+              <div style="font-size:17px;font-weight:800;color:var(--green);">${fmt(teoricoPerdcompTot)}</div>
+              <div style="font-size:10px;color:var(--g4);margin-top:2px;">PIS ${fmt(teoricoPerdcompPIS)} · COF ${fmt(teoricoPerdcompCOF)}</div>
+            </div>
+            <div style="background:var(--db3);border-radius:var(--r);padding:10px 14px;">
+              <div style="font-size:9px;color:var(--g4);text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px;">Declarado série 200<br>(cod_cred M100/M500)</div>
+              <div style="font-size:17px;font-weight:800;color:var(--orange);">${fmt(declaradoPerdcompTot)}</div>
+              <div style="font-size:10px;color:var(--g4);margin-top:2px;">PIS ${fmt(totalPisPerdcomp)} · COF ${fmt(totalCofPerdcomp)}</div>
+            </div>
+            <div style="background:${diffTot > 100 ? 'rgba(239,68,68,.07)' : diffTot < -100 ? 'rgba(249,115,22,.07)' : 'var(--db3)'};border:1px solid ${diffTot > 100 ? 'rgba(239,68,68,.2)' : diffTot < -100 ? 'rgba(249,115,22,.2)' : 'transparent'};border-radius:var(--r);padding:10px 14px;">
+              <div style="font-size:9px;color:var(--g4);text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px;">Diferença<br>(teórico − declarado)</div>
+              <div style="font-size:17px;font-weight:800;color:${diffTot > 100 ? 'var(--red)' : diffTot < -100 ? 'var(--orange)' : 'var(--g3)'};">${diffTot >= 0 ? '+' : ''}${fmt(diffTot)}</div>
+              <div style="font-size:10px;color:var(--g4);margin-top:2px;">${diffTot > 100 ? '⚠️ Potencial crédito ressarcível não aproveitado' : diffTot < -100 ? '⚠️ Ressarcível declarado acima do esperado pelo 0111' : '✅ Dentro do esperado pelo 0111'}</div>
+            </div>
+          </div>
+          ${pctExp === 0 ? `<div style="margin-top:10px;font-size:12px;color:var(--g3);">ℹ️ Exportação = 0% no 0111 → nenhum crédito deveria ser ressarcível pela regra proporcional. Ressarcibilidade pode existir por outras vias (crédito presumido do art. 2° da Lei 10.485/2002, por exemplo).</div>` : ''}
+        </div>
+      </div>` : `
+      <div style="background:rgba(107,125,148,.06);border:1px solid rgba(107,125,148,.12);border-radius:var(--r);padding:10px 14px;font-size:12px;color:var(--g4);margin-bottom:16px;">
+        ℹ️ Registro 0111 não encontrado — não foi possível calcular a distribuição teórica por rateio de receitas.
       </div>`;
+
     return `
       <div class="apur-periodo">
         <div class="apur-periodo-hd">📅 Competência: ${esc(p.competencia)} &nbsp;·&nbsp; ${esc(p.arquivo)}</div>
-        ${notaRateio}
+        ${rateio0111Html}
         ${buildTributo(pis)}
         <div style="height:16px;"></div>
         ${buildTributo(cof)}

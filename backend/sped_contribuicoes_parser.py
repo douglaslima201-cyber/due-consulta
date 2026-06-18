@@ -1091,8 +1091,42 @@ def extract_perdcomp_previa(dfs: dict[str, pd.DataFrame]) -> dict:
       - Série 100 (vl_cred_disp > 0) → carry-forward (não ressarcível)
       - Série 200 (vl_cred_disp > 0) → saldo PERDCOMP (ressarcível)
 
-    O total de vl_cred_disp deve ser igual ao sobra_mes da apuração
-    (= vl_cred_apur − vl_tot_cred_desc do M200)."""
+    Adicionalmente, calcula a distribuição TEÓRICA com base no rateio do registro
+    0111: a fração de receita de exportação determina o percentual de créditos que
+    deveria ser ressarcível (série 200). A comparação entre o declarado e o teórico
+    revela potenciais créditos ressarcíveis não aproveitados."""
+
+    # ── Rateio do registro 0111 ────────────────────────────────────────────────
+    pct_exp = 0.0
+    pct_nt  = 0.0
+    pct_trib = 1.0
+    rec_trib = 0.0
+    rec_nt   = 0.0
+    rec_exp  = 0.0
+    rec_ncum_total = 0.0
+
+    df0111 = dfs.get("0111")
+    if df0111 is not None and not df0111.empty:
+        r0111 = df0111.iloc[0]
+        rec_trib = parse_decimal(r0111.get("rec_bru_ncum_trib_mi", "0"))
+        rec_nt   = parse_decimal(r0111.get("rec_bru_ncum_nt_mi",   "0"))
+        rec_exp  = parse_decimal(r0111.get("rec_bru_ncum_exp",     "0"))
+        rec_ncum_total = rec_trib + rec_nt + rec_exp
+        if rec_ncum_total > 0:
+            pct_trib = rec_trib / rec_ncum_total
+            pct_nt   = rec_nt   / rec_ncum_total
+            pct_exp  = rec_exp  / rec_ncum_total
+
+    rateio_0111 = {
+        "rec_trib_mi": round(rec_trib, 2),
+        "rec_nt_mi":   round(rec_nt,   2),
+        "rec_exp":     round(rec_exp,  2),
+        "rec_ncum_total": round(rec_ncum_total, 2),
+        "pct_trib_mi": round(pct_trib, 6),
+        "pct_nt_mi":   round(pct_nt,   6),
+        "pct_exp":     round(pct_exp,  6),
+        "tem_0111":    rec_ncum_total > 0,
+    }
 
     def _build(df_cred, df_tot, df_controle, tributo: str) -> dict:
         # vl_cred_apur = crédito gerado no período (valor original)
@@ -1108,7 +1142,6 @@ def extract_perdcomp_previa(dfs: dict[str, pd.DataFrame]) -> dict:
                     creditos_apur[cod] = creditos_apur.get(cod, 0.0) + apur
                     creditos_disp[cod] = creditos_disp.get(cod, 0.0) + disp
 
-        # Créditos de períodos anteriores aplicados neste período (apenas informativo)
         total_cred_pa = 0.0
         if df_controle is not None and not df_controle.empty:
             for _, row in df_controle.iterrows():
@@ -1133,7 +1166,6 @@ def extract_perdcomp_previa(dfs: dict[str, pd.DataFrame]) -> dict:
         total_perdcomp = 0.0
         total_carry_fwd = 0.0
 
-        # Série 100 (não ressarcível): vl_cred_disp → carry-forward
         for cod, apur, disp in sorted(creds_100, key=lambda x: int(x[0])):
             apur = round(apur, 2)
             disp = round(disp, 2)
@@ -1151,7 +1183,6 @@ def extract_perdcomp_previa(dfs: dict[str, pd.DataFrame]) -> dict:
                 "valor_perdcomp": 0.0,
             })
 
-        # Série 200 (ressarcível): vl_cred_disp → PERDCOMP
         for cod, apur, disp in sorted(creds_200, key=lambda x: _sortkey_200(x[0])):
             apur = round(apur, 2)
             disp = round(disp, 2)
@@ -1174,6 +1205,19 @@ def extract_perdcomp_previa(dfs: dict[str, pd.DataFrame]) -> dict:
         total_all = round(total_100 + total_200, 2)
         diff = round(total_all - creditos_descontados_apuracao, 2)
 
+        # ── Distribuição teórica pelo rateio 0111 ──────────────────────────────
+        # Total de créditos disponíveis (vl_cred_disp de todas as séries)
+        total_disp_todos = round(total_carry_fwd + total_perdcomp, 2)
+
+        # pct_exp do 0111: fração da receita não-cumulativa que é exportação
+        # → essa proporção dos créditos deveria ser ressarcível (série 200)
+        teorico_perdcomp = round(total_disp_todos * pct_exp, 2)
+        teorico_carry_fwd = round(total_disp_todos * pct_trib, 2)
+        teorico_irrecuperavel = round(total_disp_todos * pct_nt, 2)
+
+        # Diferença: positiva = crédito ressarcível potencialmente não aproveitado
+        diff_perdcomp_0111 = round(teorico_perdcomp - total_perdcomp, 2)
+
         return {
             "tributo": tributo,
             "contrib_periodo": round(contrib_periodo, 2),
@@ -1187,9 +1231,16 @@ def extract_perdcomp_previa(dfs: dict[str, pd.DataFrame]) -> dict:
             "total_perdcomp_disponivel": total_perdcomp,
             "total_carry_fwd": total_carry_fwd,
             "steps": steps,
+            # Distribuição teórica por 0111
+            "total_disp_todos": total_disp_todos,
+            "teorico_perdcomp_0111": teorico_perdcomp,
+            "teorico_carry_fwd_0111": teorico_carry_fwd,
+            "teorico_irrecuperavel_0111": teorico_irrecuperavel,
+            "diff_perdcomp_0111": diff_perdcomp_0111,
         }
 
     return {
         "pis": _build(dfs.get("M100"), dfs.get("M200"), dfs.get("1100"), "PIS"),
         "cofins": _build(dfs.get("M500"), dfs.get("M600"), dfs.get("1500"), "COFINS"),
+        "rateio_0111": rateio_0111,
     }
