@@ -121,6 +121,7 @@ def upload():
             "bloco_a_detail": extract_bloco_a_detail(dfs),
             "bloco_f_detail": extract_bloco_f_detail(dfs),
             "perdcomp_previa": extract_perdcomp_previa(dfs),
+            "_debug_registros": {k: len(v) for k, v in dfs.items() if k.startswith("F")},
         })
 
     if len(periodos_dfs) >= 2:

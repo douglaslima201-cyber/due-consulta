@@ -2421,7 +2421,21 @@ function renderBlocoF(rows) {
   _blocoFRows = rows;
   if (!rows.length) {
     const kpis = document.getElementById('blocoF-kpis');
-    if (kpis) kpis.innerHTML = '<div class="achado-empty" style="grid-column:1/-1;">Nenhum registro F100 encontrado no(s) arquivo(s) analisado(s). O bloco F (demais operações) não possui lançamentos neste período.</div>';
+    if (kpis) {
+      // Mostra quais registros Bloco F existem no arquivo para diagnóstico
+      const regsF = {};
+      allPorPeriodo.forEach(p => { Object.assign(regsF, p._debug_registros || {}); });
+      const regsHtml = Object.keys(regsF).length
+        ? `<div style="margin-top:10px;font-size:11px;color:var(--g4);">
+            Registros Bloco F encontrados no arquivo:
+            ${Object.entries(regsF).map(([k,v]) => `<span style="color:var(--blue-l);font-weight:700;">${k}</span> (${v} linhas)`).join(' · ')}
+           </div>`
+        : '<div style="margin-top:6px;font-size:11px;color:var(--g4);">Nenhum registro do Bloco F encontrado no arquivo.</div>';
+      kpis.innerHTML = `<div class="achado-empty" style="grid-column:1/-1;">
+        Nenhum registro F100 encontrado no(s) arquivo(s) analisado(s). O bloco F (demais operações) não possui lançamentos neste período.
+        ${regsHtml}
+      </div>`;
+    }
     return;
   }
 
