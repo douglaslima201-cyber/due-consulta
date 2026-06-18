@@ -938,6 +938,135 @@ def extract_bloco_a_detail(dfs: dict[str, pd.DataFrame]) -> list[dict]:
     return result
 
 
+# ─── 7. EXTRATOR BLOCO F — F100 (Demais Operações) ────────────────────────────
+
+_F100_TIPO_KEYWORDS: dict[str, list[str]] = {
+    "SUBCONTRATACAO": [
+        "frete", "subcontrat", "ct-e", "cte ", "conhecimento de transporte",
+        "transporte rodoviario", "transporte rodoviário",
+    ],
+    "ARRENDAMENTO": [
+        "arrendamento", "aluguel", "locacao", "locação", "leasing",
+    ],
+    "PEDAGIO": [
+        "pedagio", "pedágio", "sem parar", "concessao rodoviaria", "concessionaria",
+    ],
+    "SEGURO": ["seguro"],
+    "RASTREAMENTO": [
+        "rastreamento", "rastreio", "monitoramento", "telemetria", "gps",
+        "localizacao veicular", "localização veicular",
+    ],
+}
+
+_F100_NAT_TIPO: dict[str, str] = {
+    "05": "ARRENDAMENTO",
+    "06": "SERVICO_PJ",
+    "07": "SUBCONTRATACAO",
+    "08": "SUBCONTRATACAO",
+}
+
+_F100_TIPO_LABEL: dict[str, str] = {
+    "SUBCONTRATACAO": "Subcontratação de Frete",
+    "ARRENDAMENTO": "Arrendamento / Aluguel",
+    "PEDAGIO": "Pedágio",
+    "SEGURO": "Seguro",
+    "RASTREAMENTO": "Rastreamento / Monitoramento",
+    "SERVICO_PJ": "Serviço de PJ",
+    "OUTROS": "Outros",
+}
+
+
+def _classify_f100_tipo(nat_bc_cred: str, desc: str, item_descr: str) -> str:
+    texto = (desc + " " + item_descr).lower()
+    # nat_bc_cred tem prioridade, mas arrendamento sobrepõe subcontratação por keyword
+    if nat_bc_cred in ("07", "08"):
+        for kw in _F100_TIPO_KEYWORDS["ARRENDAMENTO"]:
+            if kw in texto:
+                return "ARRENDAMENTO"
+    if nat_bc_cred in _F100_NAT_TIPO:
+        return _F100_NAT_TIPO[nat_bc_cred]
+    for tipo, kws in _F100_TIPO_KEYWORDS.items():
+        for kw in kws:
+            if kw in texto:
+                return tipo
+    return "OUTROS"
+
+
+def extract_bloco_f_detail(dfs: dict[str, pd.DataFrame]) -> list[dict]:
+    """Retorna linhas individuais de F100 enriquecidas com fornecedor, descrição
+    de item, conta e classificação do tipo de operação (subcontratação, arrendamento,
+    pedágio, seguro, rastreamento etc.) para auditoria da transportadora."""
+    df = dfs.get("F100")
+    if df is None or df.empty:
+        return []
+
+    part_map = build_participante_map(dfs)
+    item_map = build_item_map(dfs)
+    conta_map = build_conta_map(dfs)
+
+    result = []
+    for _, row in df.iterrows():
+        ind_oper   = str(row.get("ind_oper",   "")).strip()
+        cod_part   = str(row.get("cod_part",   "")).strip()
+        cod_item   = str(row.get("cod_item",   "")).strip()
+        dt_oper    = str(row.get("dt_oper",    "")).strip()
+        desc_doc   = str(row.get("desc_doc_oper", "")).strip()
+        nat_bc     = str(row.get("nat_bc_cred", "")).strip()
+        ind_orig   = str(row.get("ind_orig_cred", "")).strip()
+        cst_pis    = str(row.get("cst_pis",    "")).strip()
+        cst_cofins = str(row.get("cst_cofins", "")).strip()
+        cod_cta    = str(row.get("cod_cta",    "")).strip()
+        cod_ccus   = str(row.get("cod_ccus",   "")).strip()
+
+        vl_oper    = parse_decimal(row.get("vl_oper",     "0"))
+        vl_bc_pis  = parse_decimal(row.get("vl_bc_pis",  "0"))
+        aliq_pis   = parse_decimal(row.get("aliq_pis",   "0"))
+        vl_pis     = parse_decimal(row.get("vl_pis",     "0"))
+        vl_bc_cof  = parse_decimal(row.get("vl_bc_cofins", "0"))
+        aliq_cof   = parse_decimal(row.get("aliq_cofins", "0"))
+        vl_cofins  = parse_decimal(row.get("vl_cofins",  "0"))
+
+        item_descr = item_map.get(cod_item, "")
+        descr      = desc_doc or item_descr or cod_item
+        fornecedor = part_map.get(cod_part, cod_part)
+
+        tem_cred_pis = cst_pis    in CST_COM_CREDITO
+        tem_cred_cof = cst_cofins in CST_COM_CREDITO
+
+        tipo = _classify_f100_tipo(nat_bc, desc_doc, item_descr)
+
+        result.append({
+            "ind_oper":           _IND_OPER_LABEL.get(ind_oper, ind_oper or "—"),
+            "cod_part":           cod_part,
+            "fornecedor":         fornecedor if cod_part else "—",
+            "cod_item":           cod_item,
+            "descr_servico":      descr,
+            "tipo_operacao":      tipo,
+            "tipo_operacao_label": _F100_TIPO_LABEL.get(tipo, tipo),
+            "eh_subcontratacao":  tipo == "SUBCONTRATACAO",
+            "dt_oper":            dt_oper,
+            "vl_oper":            round(vl_oper,   2),
+            "nat_bc_cred":        nat_bc,
+            "nat_bc_cred_desc":   _NAT_BC_CRED_LABEL.get(nat_bc, nat_bc or "—"),
+            "ind_orig_cred":      ind_orig,
+            "cst_pis":            cst_pis,
+            "cst_cofins":         cst_cofins,
+            "tem_credito_pis":    tem_cred_pis,
+            "tem_credito_cofins": tem_cred_cof,
+            "vl_bc_pis":          round(vl_bc_pis, 2),
+            "aliq_pis":           round(aliq_pis,  4),
+            "vl_pis":             round(vl_pis,    2),
+            "vl_bc_cofins":       round(vl_bc_cof, 2),
+            "aliq_cofins":        round(aliq_cof,  4),
+            "vl_cofins":          round(vl_cofins, 2),
+            "cod_cta":            cod_cta,
+            "nome_cta":           conta_map.get(cod_cta, ""),
+            "cod_ccus":           cod_ccus,
+        })
+
+    return result
+
+
 def _sortkey_200(cod: str) -> int:
     """Ordena 200-série para consumo: 207 primeiro, 202 segundo, 201 por último."""
     try:

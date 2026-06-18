@@ -476,6 +476,7 @@ body.light .table-wrap::after{background:linear-gradient(to right,transparent,rg
       <button class="tab-btn" data-tab="G4" onclick="switchTab('G4')">🔁 G4 · Transposição <span class="tab-badge" id="tab-count-G4">0</span></button>
       <button class="tab-btn" data-tab="G5" onclick="switchTab('G5')">⚖️ G5 · Rateio 0111 <span class="tab-badge" id="tab-count-G5">0</span></button>
       <button class="tab-btn" data-tab="blocoA" onclick="switchTab('blocoA')">📋 Bloco A · Serviços</button>
+      <button class="tab-btn" data-tab="blocoF" onclick="switchTab('blocoF')">📦 Bloco F · F100</button>
       <button class="tab-btn" data-tab="cfop" onclick="switchTab('cfop')">🔄 CFOP/CST</button>
       <button class="tab-btn" data-tab="perdcomp" onclick="switchTab('perdcomp')">📑 Prévia PERDCOMP</button>
       <button class="tab-btn" data-tab="conclusao" onclick="switchTab('conclusao')">📝 Conclusão</button>
@@ -707,6 +708,89 @@ body.light .table-wrap::after{background:linear-gradient(to right,transparent,rg
     </div>
 
     <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!--  ABA BLOCO F — F100 (Demais Operações)                             -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="tab-pane" id="tab-blocoF">
+      <div class="sec-hd">
+        <div><div class="sec-lbl">Registro F100 — Demais Operações</div><h2 class="sec-ttl">Bloco F · Auditoria de Subcontratações e Demais Despesas</h2></div>
+      </div>
+      <p style="font-size:13px;color:var(--g3);margin-bottom:16px;">
+        Detalhamento individual de operações do registro F100 — frete subcontratado, arrendamento/aluguel de veículos, pedágio, seguro de carga, rastreamento e demais despesas que geram (ou deveriam gerar) crédito de PIS/COFINS para a transportadora.
+        O tipo de operação é classificado automaticamente com base na natureza da base de crédito (<code style="font-size:11px;color:var(--orange)">nat_bc_cred</code>) e na descrição do documento.
+        <strong style="color:var(--blue-l)">CST 50–66</strong> = com crédito · <strong style="color:var(--red)">CST 70–99</strong> = sem crédito.
+      </p>
+      <!-- KPI strip -->
+      <div id="blocoF-kpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:18px;"></div>
+      <!-- Breakdown por tipo -->
+      <div id="blocoF-tipos" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px;"></div>
+      <!-- Filters -->
+      <div class="table-toolbar">
+        <div class="search-box"><span class="search-icon">🔍</span><input type="text" placeholder="Fornecedor, descrição, CST, conta..." id="blocoF-search" oninput="filtrarBlocoF()"/></div>
+        <select class="filter-sel" id="blocoF-filter-tipo" onchange="filtrarBlocoF()">
+          <option value="">Todos os tipos</option>
+          <option value="SUBCONTRATACAO">🚛 Subcontratação de Frete</option>
+          <option value="ARRENDAMENTO">🔑 Arrendamento / Aluguel</option>
+          <option value="PEDAGIO">🛣️ Pedágio</option>
+          <option value="SEGURO">🛡️ Seguro</option>
+          <option value="RASTREAMENTO">📡 Rastreamento</option>
+          <option value="SERVICO_PJ">🏢 Serviço de PJ</option>
+          <option value="OUTROS">📋 Outros</option>
+        </select>
+        <select class="filter-sel" id="blocoF-filter-cred" onchange="filtrarBlocoF()">
+          <option value="">Com e sem crédito</option>
+          <option value="sim">✅ Com crédito PIS/COFINS</option>
+          <option value="nao">❌ Sem crédito PIS/COFINS</option>
+        </select>
+        <select class="filter-sel" id="blocoF-filter-per" onchange="filtrarBlocoF()">
+          <option value="">Todos os períodos</option>
+        </select>
+        <select class="filter-sel" id="blocoF-filter-part" onchange="filtrarBlocoF()">
+          <option value="">Todos os fornecedores</option>
+        </select>
+      </div>
+      <!-- Table -->
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Período</th>
+              <th>Data</th>
+              <th>Fornecedor</th>
+              <th>Tipo de Operação</th>
+              <th>Descrição / Item</th>
+              <th>Nat. BC Créd.</th>
+              <th>CST PIS</th>
+              <th>CST COF.</th>
+              <th style="text-align:right">Vlr. Operação</th>
+              <th style="text-align:right" class="th-hide-mobile">BC PIS</th>
+              <th style="text-align:right" class="th-hide-mobile">Alíq. PIS</th>
+              <th style="text-align:right">PIS</th>
+              <th style="text-align:right">COFINS</th>
+              <th style="text-align:center">Créd.?</th>
+              <th class="th-hide-mobile">Conta</th>
+            </tr>
+          </thead>
+          <tbody id="blocoF-body"></tbody>
+        </table>
+      </div>
+      <div id="blocoF-count" style="font-size:11px;color:var(--g4);font-family:var(--mono);margin-top:6px;text-align:right;"></div>
+
+      <!-- Análise de Subcontratações (card conclusivo) -->
+      <div id="blocoF-subcont-card" style="display:none;margin-top:24px;">
+        <div class="sec-hd"><div><div class="sec-lbl">Foco de Auditoria</div><h2 class="sec-ttl">Subcontratações de Frete</h2></div></div>
+        <div class="group-info">
+          <div class="group-info-icon">🚛</div>
+          <div>
+            <div class="group-info-title">Análise de Frete Subcontratado (F100)</div>
+            <div class="group-info-desc" id="blocoF-subcont-desc">—</div>
+            <div class="group-info-legal">Lei 10.833/2003, art. 3º, II · IN RFB 2.121/2022 · nat_bc_cred 07/08 = frete na aquisição / frete na revenda</div>
+          </div>
+        </div>
+        <div class="group-stats" id="blocoF-subcont-stats"></div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
     <!--  ABA CFOP/CST                                                      -->
     <!-- ═══════════════════════════════════════════════════════════════════ -->
     <div class="tab-pane" id="tab-cfop">
@@ -807,6 +891,7 @@ let allAchados = [];
 let allPorPeriodo = [];
 let allCfopCst = [];
 let allBlocoA = [];
+let allBlocoF = [];
 let charts = {};
 
 const GRUPOS = {
@@ -948,6 +1033,14 @@ function renderResults(data) {
     });
   });
 
+  // consolidar bloco_f_detail de todos os períodos com competência
+  allBlocoF = [];
+  allPorPeriodo.forEach(p => {
+    (p.bloco_f_detail || []).forEach(row => {
+      allBlocoF.push({ ...row, competencia: p.competencia });
+    });
+  });
+
   document.getElementById('loading').style.display = 'none';
   document.getElementById('results').style.display = 'block';
   switchTab('resumo');
@@ -983,6 +1076,7 @@ function renderResults(data) {
   renderApuracao(allPorPeriodo);
   renderGroupPanes(allAchados, allPorPeriodo);
   renderBlocoA(allBlocoA);
+  renderBlocoF(allBlocoF);
   renderCfopCst(allCfopCst, allPorPeriodo);
   renderPerdcomp(allPorPeriodo);
   renderConclusao(allAchados, s, allPorPeriodo);
@@ -1980,7 +2074,7 @@ async function exportarExcel() {
 
 // ── Reset ──────────────────────────────────────────────────────────────────────
 function resetar() {
-  currentAnalysisId = null; allAchados = []; allPorPeriodo = []; allCfopCst = []; allBlocoA = [];
+  currentAnalysisId = null; allAchados = []; allPorPeriodo = []; allCfopCst = []; allBlocoA = []; allBlocoF = [];
   ARQUIVOS = []; document.getElementById('file-input').value = '';
   document.getElementById('flist').innerHTML = '';
   document.getElementById('btn-analisar').disabled = true;
@@ -2092,6 +2186,171 @@ function cstBadge(cst, temCred) {
   if (!cst || cst === '—') return '<span style="color:var(--g4);font-size:11px;">—</span>';
   const cls = temCred ? 'b-sim' : (parseInt(cst) >= 70 ? 'b-nao' : 'b-info');
   return `<span class="badge ${cls}" style="font-size:9px;font-family:var(--mono);">${esc(cst)}</span>`;
+}
+
+// ── Bloco F — Demais Operações (F100) ────────────────────────────────────────
+const _TIPO_ICON = {
+  SUBCONTRATACAO: '🚛', ARRENDAMENTO: '🔑', PEDAGIO: '🛣️',
+  SEGURO: '🛡️', RASTREAMENTO: '📡', SERVICO_PJ: '🏢', OUTROS: '📋',
+};
+const _TIPO_COLOR = {
+  SUBCONTRATACAO: 'var(--orange)', ARRENDAMENTO: 'var(--blue-l)', PEDAGIO: 'var(--yellow)',
+  SEGURO: 'var(--purple)', RASTREAMENTO: 'var(--green)', SERVICO_PJ: 'var(--g2)', OUTROS: 'var(--g3)',
+};
+let _blocoFRows = [];
+
+function renderBlocoF(rows) {
+  _blocoFRows = rows;
+  if (!rows.length) return;
+
+  // Período e fornecedor para filtros
+  const selPer  = document.getElementById('blocoF-filter-per');
+  const selPart = document.getElementById('blocoF-filter-part');
+  const periods = [...new Set(rows.map(r => r.competencia))].sort();
+  const parts   = [...new Set(rows.map(r => r.fornecedor || r.cod_part).filter(Boolean))].sort();
+  selPer.innerHTML  = '<option value="">Todos os períodos</option>'  + periods.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('');
+  selPart.innerHTML = '<option value="">Todos os fornecedores</option>' + parts.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('');
+
+  // KPIs
+  const totalItens  = rows.length;
+  const totalVlr    = rows.reduce((s, r) => s + (r.vl_oper || 0), 0);
+  const totalPIS    = rows.reduce((s, r) => s + (r.vl_pis || 0), 0);
+  const totalCOF    = rows.reduce((s, r) => s + (r.vl_cofins || 0), 0);
+  const comCred     = rows.filter(r => r.tem_credito_pis || r.tem_credito_cofins).length;
+  const semCred     = totalItens - comCred;
+  const subcont     = rows.filter(r => r.eh_subcontratacao).length;
+  const vlrSubcont  = rows.filter(r => r.eh_subcontratacao).reduce((s, r) => s + (r.vl_oper || 0), 0);
+
+  document.getElementById('blocoF-kpis').innerHTML = [
+    ['📄 Itens (F100)', totalItens, 'var(--g2)'],
+    ['💰 Valor total operações', 'R$ ' + totalVlr.toLocaleString('pt-BR',{minimumFractionDigits:2}), 'var(--orange)'],
+    ['🚛 Subcontratações', subcont + ' · ' + 'R$ ' + vlrSubcont.toLocaleString('pt-BR',{minimumFractionDigits:2}), 'var(--orange)'],
+    ['✅ Com crédito PIS/COF', comCred + ' itens', 'var(--green)'],
+    ['❌ Sem crédito', semCred + ' itens', 'var(--red)'],
+    ['🔵 PIS', 'R$ ' + totalPIS.toLocaleString('pt-BR',{minimumFractionDigits:2}), 'var(--blue-l)'],
+    ['🟠 COFINS', 'R$ ' + totalCOF.toLocaleString('pt-BR',{minimumFractionDigits:2}), 'var(--orange-l)'],
+  ].map(([lbl, val, color]) => `
+    <div style="background:var(--db2);border:1px solid rgba(255,255,255,.07);border-radius:var(--r);padding:12px 14px;">
+      <div style="font-size:10px;color:var(--g4);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">${lbl}</div>
+      <div style="font-size:14px;font-weight:700;color:${color};">${val}</div>
+    </div>`).join('');
+
+  // Breakdown por tipo
+  const tipoMap = {};
+  rows.forEach(r => {
+    const t = r.tipo_operacao || 'OUTROS';
+    if (!tipoMap[t]) tipoMap[t] = { count: 0, valor: 0, label: r.tipo_operacao_label || t };
+    tipoMap[t].count++;
+    tipoMap[t].valor += (r.vl_oper || 0);
+  });
+  document.getElementById('blocoF-tipos').innerHTML = Object.entries(tipoMap)
+    .sort((a, b) => b[1].valor - a[1].valor)
+    .map(([tipo, d]) => `
+      <div style="background:var(--db2);border:1px solid rgba(255,255,255,.07);border-radius:var(--r);padding:8px 12px;display:flex;align-items:center;gap:8px;cursor:pointer;" onclick="document.getElementById('blocoF-filter-tipo').value='${tipo}';filtrarBlocoF()">
+        <span style="font-size:16px;">${_TIPO_ICON[tipo]||'📋'}</span>
+        <div>
+          <div style="font-size:11px;font-weight:600;color:${_TIPO_COLOR[tipo]||'var(--g2)'};">${esc(d.label)}</div>
+          <div style="font-size:10px;color:var(--g4);">${d.count} oper. · R$ ${d.valor.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div>
+        </div>
+      </div>`).join('');
+
+  // Card subcontratação
+  const subRows = rows.filter(r => r.eh_subcontratacao);
+  const cardEl = document.getElementById('blocoF-subcont-card');
+  if (subRows.length > 0) {
+    cardEl.style.display = 'block';
+    const vlrSC  = subRows.reduce((s, r) => s + (r.vl_oper || 0), 0);
+    const pisSC  = subRows.reduce((s, r) => s + (r.vl_pis || 0), 0);
+    const cofSC  = subRows.reduce((s, r) => s + (r.vl_cofins || 0), 0);
+    const semSC  = subRows.filter(r => !(r.tem_credito_pis || r.tem_credito_cofins));
+    const vlrSem = semSC.reduce((s, r) => s + (r.vl_oper || 0), 0);
+    document.getElementById('blocoF-subcont-desc').innerHTML =
+      `${subRows.length} operações de frete subcontratado totalizando <strong style="color:var(--orange)">R$ ${vlrSC.toLocaleString('pt-BR',{minimumFractionDigits:2})}</strong>.` +
+      (semSC.length
+        ? ` <span style="color:var(--red)">⚠️ ${semSC.length} operação(ões) sem CST de crédito (R$ ${vlrSem.toLocaleString('pt-BR',{minimumFractionDigits:2})}) — verificar elegibilidade (Lei 10.833/2003, art. 3º, II).</span>`
+        : ' <span style="color:var(--green)">✅ Todas com CST de crédito.</span>');
+    document.getElementById('blocoF-subcont-stats').innerHTML = [
+      ['🚛 Operações', subRows.length],
+      ['💰 Valor total', 'R$ ' + vlrSC.toLocaleString('pt-BR',{minimumFractionDigits:2})],
+      ['🔵 PIS apurado', 'R$ ' + pisSC.toLocaleString('pt-BR',{minimumFractionDigits:2})],
+      ['🟠 COFINS apurado', 'R$ ' + cofSC.toLocaleString('pt-BR',{minimumFractionDigits:2})],
+      ['⚠️ Sem crédito', semSC.length + ' oper.'],
+    ].map(([lbl, val]) => `
+      <div class="group-stat">
+        <div class="group-stat-label">${lbl}</div>
+        <div class="group-stat-value">${val}</div>
+      </div>`).join('');
+  } else {
+    cardEl.style.display = 'none';
+  }
+
+  filtrarBlocoF();
+}
+
+function filtrarBlocoF() {
+  const q    = (document.getElementById('blocoF-search')?.value || '').toLowerCase();
+  const ft   = document.getElementById('blocoF-filter-tipo')?.value  || '';
+  const fc   = document.getElementById('blocoF-filter-cred')?.value  || '';
+  const fp   = document.getElementById('blocoF-filter-per')?.value   || '';
+  const fpar = document.getElementById('blocoF-filter-part')?.value  || '';
+
+  const filtered = _blocoFRows.filter(r => {
+    const haystack = `${r.fornecedor} ${r.cod_part} ${r.descr_servico} ${r.tipo_operacao_label} ${r.cst_pis} ${r.cst_cofins} ${r.nat_bc_cred_desc} ${r.cod_cta} ${r.nome_cta}`.toLowerCase();
+    if (q   && !haystack.includes(q)) return false;
+    if (ft  && r.tipo_operacao !== ft) return false;
+    if (fc === 'sim' && !(r.tem_credito_pis || r.tem_credito_cofins)) return false;
+    if (fc === 'nao' &&  (r.tem_credito_pis || r.tem_credito_cofins)) return false;
+    if (fp  && r.competencia !== fp) return false;
+    if (fpar && (r.fornecedor || r.cod_part) !== fpar) return false;
+    return true;
+  });
+
+  const tbody = document.getElementById('blocoF-body');
+  if (!filtered.length) {
+    tbody.innerHTML = '<tr><td colspan="15" style="text-align:center;color:var(--g4);padding:24px;">Nenhum item encontrado.</td></tr>';
+    document.getElementById('blocoF-count').textContent = '';
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(r => {
+    const temCred     = r.tem_credito_pis || r.tem_credito_cofins;
+    const credBadge   = temCred
+      ? '<span class="badge b-sim" style="font-size:9px;">✅ Sim</span>'
+      : '<span class="badge b-nao" style="font-size:9px;">❌ Não</span>';
+    const cstPisBadge = cstBadge(r.cst_pis,    r.tem_credito_pis);
+    const cstCofBadge = cstBadge(r.cst_cofins, r.tem_credito_cofins);
+    const fornStr = r.fornecedor && r.fornecedor !== r.cod_part
+      ? `<div style="font-size:12px;font-weight:600;color:var(--g1);">${esc(r.fornecedor)}</div><div style="font-size:10px;color:var(--g4);font-family:var(--mono);">${esc(r.cod_part)}</div>`
+      : `<span class="td-mono" style="font-size:11px;">${esc(r.cod_part || '—')}</span>`;
+    const tipoStr = `<span style="font-size:11px;color:${_TIPO_COLOR[r.tipo_operacao]||'var(--g3)'};">${_TIPO_ICON[r.tipo_operacao]||'📋'} ${esc(r.tipo_operacao_label || r.tipo_operacao)}</span>`;
+    const natStr  = r.nat_bc_cred
+      ? `<span style="font-size:9px;color:var(--g3);" title="${esc(r.nat_bc_cred_desc)}">${esc(r.nat_bc_cred)} · ${esc(r.nat_bc_cred_desc)}</span>`
+      : '—';
+    const contaStr = r.nome_cta ? `<span title="${esc(r.cod_cta)}">${esc(r.nome_cta)}</span>` : (r.cod_cta ? `<span class="td-mono" style="font-size:10px;">${esc(r.cod_cta)}</span>` : '—');
+    const dtStr = r.dt_oper && r.dt_oper.length === 8
+      ? `${r.dt_oper.slice(0,2)}/${r.dt_oper.slice(2,4)}/${r.dt_oper.slice(4)}`
+      : (r.dt_oper || '—');
+    return `<tr>
+      <td class="td-mono" style="font-size:11px;">${esc(r.competencia||'—')}</td>
+      <td class="td-mono" style="font-size:11px;">${esc(dtStr)}</td>
+      <td>${fornStr}</td>
+      <td>${tipoStr}</td>
+      <td style="font-size:12px;max-width:200px;">${esc(r.descr_servico||r.cod_item||'—')}</td>
+      <td style="font-size:11px;">${natStr}</td>
+      <td style="text-align:center;">${cstPisBadge}</td>
+      <td style="text-align:center;">${cstCofBadge}</td>
+      <td class="td-valor">${fmt(r.vl_oper)}</td>
+      <td class="td-valor td-hide-mobile">${r.vl_bc_pis > 0 ? fmt(r.vl_bc_pis) : '—'}</td>
+      <td class="td-valor td-hide-mobile">${r.aliq_pis > 0 ? fmtAliq(r.aliq_pis) : '—'}</td>
+      <td class="td-valor" style="color:${r.vl_pis > 0 ? 'var(--blue-l)' : 'var(--g4)'};">${r.vl_pis > 0 ? fmt(r.vl_pis) : '—'}</td>
+      <td class="td-valor" style="color:${r.vl_cofins > 0 ? 'var(--orange)' : 'var(--g4)'};">${r.vl_cofins > 0 ? fmt(r.vl_cofins) : '—'}</td>
+      <td style="text-align:center;">${credBadge}</td>
+      <td class="th-hide-mobile" style="font-size:11px;">${contaStr}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('blocoF-count').textContent =
+    `Exibindo ${filtered.length} de ${_blocoFRows.length} itens`;
 }
 
 function esc(s) {

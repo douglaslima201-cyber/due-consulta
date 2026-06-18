@@ -18,7 +18,7 @@ from flask import Blueprint, jsonify, request, send_file
 
 from sped_contribuicoes_parser import (
     parse_sped_file, extract_header, extract_apuracao, extract_cfop_cst,
-    extract_perdcomp_previa, extract_bloco_a_detail,
+    extract_perdcomp_previa, extract_bloco_a_detail, extract_bloco_f_detail,
 )
 from sped_contribuicoes_regras import gerar_achados, gerar_achados_transposicao
 
@@ -119,6 +119,7 @@ def upload():
             "apuracao": extract_apuracao(dfs),
             "cfop_cst": extract_cfop_cst(dfs),
             "bloco_a_detail": extract_bloco_a_detail(dfs),
+            "bloco_f_detail": extract_bloco_f_detail(dfs),
             "perdcomp_previa": extract_perdcomp_previa(dfs),
         })
 
