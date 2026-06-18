@@ -332,6 +332,8 @@ def _g2_ativo_imobilizado(dfs: dict[str, pd.DataFrame], header: dict, conta_map:
             vl_bc_pis = parse_decimal(row.get("vl_bc_pis", "0"))
             cst_pis = str(row.get("cst_pis", "")).strip()
             mes_oper_aquis = row.get("mes_oper_aquis", "")
+            _np_raw = parse_decimal(row.get("num_parc", "0"))
+            num_parc = int(_np_raw) if _np_raw >= 1 else 48
 
             categoria, _ = _classificar(nome_cta, ident_bem)
             eh_frota = categoria == "ATIVO_IMOBILIZADO_FROTA" or ident_bem == "06"
@@ -355,38 +357,41 @@ def _g2_ativo_imobilizado(dfs: dict[str, pd.DataFrame], header: dict, conta_map:
                     "F120 para os veículos da frota e ajustando M100/M500.",
                     severidade=_severidade_por_valor(vl_bc_pis),
                 ))
-                # Mesmo sendo método incorreto, valida o cálculo da parcela
-                if vl_bc_cred > 0:
-                    parcela_esperada = vl_bc_cred / 48
+                # Mesmo sendo método incorreto, valida o valor do crédito mensal
+                # BC esperada = vl_oper_aquis / num_parc (1/48 do valor de aquisição)
+                if vl_oper_aquis > 0:
+                    parcela_esperada = round(vl_oper_aquis / num_parc, 2)
                     if abs(parcela_esperada - vl_bc_pis) > TOLERANCIA_VALOR:
                         achados.append(_achado(
                             "G2", "F", "F130", competencia, "INCONSISTENCIA",
                             f"F130 frota ({nome_cta or cod_cta}, aquisição {mes_oper_aquis}): "
-                            f"além do método incorreto, a parcela mensal (R$ {vl_bc_pis:,.2f}) "
-                            f"diverge do esperado para 1/48 sobre R$ {vl_bc_cred:,.2f} "
-                            f"(esperado R$ {parcela_esperada:,.2f}).",
+                            f"a parcela mensal declarada (R$ {vl_bc_pis:,.2f}) diverge "
+                            f"de 1/{num_parc} do valor de aquisição R$ {vl_oper_aquis:,.2f} "
+                            f"(esperado R$ {parcela_esperada:,.2f}, diferença R$ {abs(vl_bc_pis - parcela_esperada):,.2f}). "
+                            "Apesar do método incorreto (deveria ser F120), o valor do crédito mensal "
+                            "deve corresponder a 1/48 do valor de aquisição do bem.",
                             vl_bc_pis - parcela_esperada, BASE_LEGAL_ATIVO_IMOB,
-                            "Solução: além de migrar para o método F120 (depreciação), "
-                            "verificar o cálculo da parcela. No método F130 a parcela "
-                            "mensal deve ser 1/48 do valor de aquisição — diferença de "
-                            f"R$ {abs(vl_bc_pis - parcela_esperada):,.2f} deve ser "
-                            "corrigida antes da retificação do SPED.",
+                            "Verificar: (1) se o valor de aquisição está correto; "
+                            f"(2) se o número de parcelas ({num_parc}) está correto. "
+                            "A parcela mensal de crédito = vl_oper_aquis / num_parc. "
+                            "Corrigir antes de migrar para F120 (método correto para frota).",
                         ))
             else:
-                # Para outros bens do imobilizado (não frota), verifica 1/48
-                if vl_bc_cred > 0:
-                    parcela_esperada = vl_bc_cred / 48
+                # Para outros bens do imobilizado (não frota), verifica 1/num_parc do valor de aquisição
+                if vl_oper_aquis > 0:
+                    parcela_esperada = round(vl_oper_aquis / num_parc, 2)
                     if abs(parcela_esperada - vl_bc_pis) > TOLERANCIA_VALOR:
                         achados.append(_achado(
                             "G2", "F", "F130", competencia, "INCONSISTENCIA",
                             f"F130 ({nome_cta or cod_cta}, aquisição {mes_oper_aquis}): parcela "
-                            f"do mês (R$ {vl_bc_pis:,.2f}) diverge do esperado para 1/48 sobre "
-                            f"R$ {vl_bc_cred:,.2f} (esperado R$ {parcela_esperada:,.2f}).",
+                            f"mensal (R$ {vl_bc_pis:,.2f}) diverge de 1/{num_parc} do valor de "
+                            f"aquisição R$ {vl_oper_aquis:,.2f} (esperado R$ {parcela_esperada:,.2f}, "
+                            f"diferença R$ {abs(vl_bc_pis - parcela_esperada):,.2f}).",
                             vl_bc_pis - parcela_esperada, BASE_LEGAL_ATIVO_IMOB,
-                            "Solução: (1) Verificar o valor de aquisição e o método de "
-                            "apropriação (1/48 ou prazo diferente). (2) Retificar F130 "
-                            "ajustando vl_bc_pis/vl_bc_cofins. (3) Refletir em M100/M500 "
-                            "via M110/M510 — sub-aproveitamento: acréscimo; super-aproveitamento: redução.",
+                            "Verificar: (1) o valor de aquisição (vl_oper_aquis) e o número de "
+                            f"parcelas ({num_parc}) declarados em F130; "
+                            "(2) parcela mensal correta = vl_oper_aquis / num_parc; "
+                            "(3) ajustar vl_bc_pis/vl_bc_cofins e refletir em M100/M500.",
                         ))
                 if cst_pis in CST_RATEIO:
                     achados.append(_achado(

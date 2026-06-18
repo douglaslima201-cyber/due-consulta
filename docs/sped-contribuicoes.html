@@ -630,7 +630,7 @@ body.light .table-wrap::after{background:linear-gradient(to right,transparent,rg
       <div class="sec-hd">
         <div><div class="sec-lbl">Bloco M — M200 / M210 / M600 / M610</div><h2 class="sec-ttl">Totalização da apuração do período</h2></div>
       </div>
-      <p style="font-size:13px;color:var(--g3);margin-bottom:24px;">Demonstrativo extraído dos registros M200/M210 (PIS) e M600/M610 (COFINS). Abaixo de cada período também são exibidos os saldos de créditos de períodos anteriores controlados nos registros 1100 (PIS) e 1500 (COFINS), com a fórmula: Crédito Total − Descontado em períodos anteriores − Descontado no período = Saldo Final.</p>
+      <p style="font-size:13px;color:var(--g3);margin-bottom:24px;">Demonstrativo extraído dos registros M200/M210 (PIS) e M600/M610 (COFINS). O controle de saldos de períodos anteriores (registros 1100/1500) está na aba <strong>G4 — Transposição</strong>.</p>
       <div id="apuracao-body"></div>
     </div>
 
@@ -1395,6 +1395,42 @@ function filtrarTabela() {
 function atualizarContador(vis, tot) { document.getElementById('table-count').textContent = `Exibindo ${vis} de ${tot} achados`; }
 
 // ── Apuração ──────────────────────────────────────────────────────────────────
+// ── Helper: tabela de saldos 1100/1500 (usada em G4) ─────────────────────────
+function renderSaldosTable(registros, tributo) {
+  if (!registros || !registros.length) return '';
+  const rows = registros.map(r => `
+    <tr>
+      <td class="td-mono">${esc(r.per_apur_cred)}</td>
+      <td class="td-mono">${esc(r.cod_cred)}</td>
+      <td class="td-valor">${fmt(r.vl_cred)}</td>
+      <td class="td-valor" style="color:var(--g3);">${fmt(r.vl_cred_desc_pa_ant)}</td>
+      <td class="td-valor" style="color:var(--g3);">${fmt(r.vl_cred_desc_pa)}</td>
+      <td class="td-valor" style="color:var(--green);font-weight:700;">${fmt(r.sld_cred_final)}</td>
+    </tr>`).join('');
+  const totalSld = registros.reduce((s, r) => s + (r.sld_cred_final || 0), 0);
+  return `
+    <div style="margin-top:16px;">
+      <div style="font-size:11px;font-weight:700;color:var(--g2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">
+        📋 ${tributo} — Controle de Saldos (${tributo === 'PIS' ? '1100' : '1500'})
+        &nbsp;<span style="font-weight:400;color:var(--g4);">Total disponível:</span>
+        <span style="color:var(--green);">${fmt(totalSld)}</span>
+      </div>
+      <p style="font-size:11px;color:var(--g4);margin-bottom:8px;">Crédito total − Descontado em per. anteriores − Descontado no período = <strong>Saldo final</strong></p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Per. Origem</th><th>Cód. Crédito</th>
+            <th style="text-align:right">Crédito Total</th>
+            <th style="text-align:right">Desc. Per. Ant.</th>
+            <th style="text-align:right">Desc. Per. Atual</th>
+            <th style="text-align:right">Saldo Final</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
 function renderApuracao(periodos) {
   const el = document.getElementById('apuracao-body');
   if (!periodos.length) { el.innerHTML = '<div class="achado-empty">Nenhum período processado.</div>'; return; }
@@ -1424,51 +1460,12 @@ function renderApuracao(periodos) {
           <div class="apur-row recolher"><span class="apur-lbl">Sobra do mês (a transportar / PERDCOMP)</span><span class="apur-val" style="color:${sob > 0 ? 'var(--blue-l)' : 'var(--g4)'}">${sob > 0 ? fmt(sob) : '—'}</span></div>
         </div>`;
     }
-    function saldosTable(registros, tributo) {
-      if (!registros || !registros.length) return '';
-      const rows = registros.map(r => `
-        <tr>
-          <td class="td-mono">${esc(r.per_apur_cred)}</td>
-          <td class="td-mono">${esc(r.cod_cred)}</td>
-          <td class="td-valor">${fmt(r.vl_cred)}</td>
-          <td class="td-valor" style="color:var(--g3);">${fmt(r.vl_cred_desc_pa_ant)}</td>
-          <td class="td-valor" style="color:var(--g3);">${fmt(r.vl_cred_desc_pa)}</td>
-          <td class="td-valor" style="color:var(--green);font-weight:700;">${fmt(r.sld_cred_final)}</td>
-        </tr>`).join('');
-      const totalSld = registros.reduce((s, r) => s + (r.sld_cred_final || 0), 0);
-      return `
-        <div style="margin-top:20px;">
-          <div style="font-size:12px;font-weight:700;color:var(--g2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">
-            📋 Controle de Saldo de Créditos — ${tributo} (${tributo === 'PIS' ? '1100' : '1500'})
-          </div>
-          <p style="font-size:12px;color:var(--g3);margin-bottom:12px;">
-            Fórmula: Saldo inicial + Crédito do período − Descontado em per. anteriores − Descontado no período = <strong>Saldo final</strong>.
-            Total disponível: <strong style="color:var(--green);">${fmt(totalSld)}</strong>
-          </p>
-          <div class="table-wrap">
-            <table>
-              <thead><tr>
-                <th>Per. Origem</th><th>Cód. Crédito</th>
-                <th style="text-align:right">Crédito Total</th>
-                <th style="text-align:right">Desc. Per. Ant.</th>
-                <th style="text-align:right">Desc. Per. Atual</th>
-                <th style="text-align:right">Saldo Final</th>
-              </tr></thead>
-              <tbody>${rows}</tbody>
-            </table>
-          </div>
-        </div>`;
-    }
-    const saldos1100 = (ap.saldos_pis_1100 || []);
-    const saldos1500 = (ap.saldos_cofins_1500 || []);
     return `<div class="apur-periodo">
       <div class="apur-periodo-hd">📅 Competência: ${esc(p.competencia)} &nbsp;·&nbsp; ${esc(p.arquivo)}</div>
       <div class="apur-grid">
         ${apCard('PIS — Apuração (M200 / M210)', pis)}
         ${apCard('COFINS — Apuração (M600 / M610)', cof)}
       </div>
-      ${saldosTable(saldos1100, 'PIS')}
-      ${saldosTable(saldos1500, 'COFINS')}
     </div>`;
   }).join('<div class="dvd"></div>');
 }
@@ -1504,7 +1501,45 @@ function renderGroupPanes(achados, periodos) {
       <div class="group-stat"><div class="group-stat-label">🔎 Inconsistências</div><div class="group-stat-value" style="color:var(--yellow)">${fmtShort(valorInc)}</div></div>`;
 
     const listEl = document.getElementById(`group-list-${g}`);
-    if (g !== 'G5') {
+    if (g === 'G4') {
+      // Saldos 1100/1500 collapsible per period, followed by achados
+      const hasSaldos = periodos.some(p => {
+        const ap = p.apuracao || {};
+        return (ap.saldos_pis_1100 || []).length > 0 || (ap.saldos_cofins_1500 || []).length > 0;
+      });
+      let saldosHtml = '';
+      if (hasSaldos) {
+        saldosHtml = `<div style="margin-bottom:24px;">
+          <div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--g3);margin-bottom:12px;font-family:var(--mono);">Controle de Saldos por Período — Registros 1100 (PIS) e 1500 (COFINS)</div>
+          ${periodos.map(p => {
+            const ap = p.apuracao || {};
+            const s1100 = ap.saldos_pis_1100 || [];
+            const s1500 = ap.saldos_cofins_1500 || [];
+            if (!s1100.length && !s1500.length) return '';
+            const totalPIS  = s1100.reduce((a, r) => a + (r.sld_cred_final || 0), 0);
+            const totalCOF  = s1500.reduce((a, r) => a + (r.sld_cred_final || 0), 0);
+            return `<details style="margin-bottom:8px;">
+              <summary style="cursor:pointer;padding:10px 14px;background:var(--db2);border:1px solid rgba(255,255,255,.07);border-radius:var(--r);font-size:12px;font-weight:600;color:var(--g2);display:flex;align-items:center;justify-content:space-between;list-style:none;user-select:none;">
+                <span>📅 ${esc(p.competencia)} &nbsp;·&nbsp; <span style="font-weight:400;color:var(--g4);">${esc(p.arquivo)}</span></span>
+                <span style="font-size:11px;color:var(--g4);">
+                  PIS saldo: <strong style="color:var(--green);">${fmt(totalPIS)}</strong> &nbsp;·&nbsp;
+                  COFINS saldo: <strong style="color:var(--green);">${fmt(totalCOF)}</strong>
+                  &nbsp;▾
+                </span>
+              </summary>
+              <div style="padding:4px 0 8px;">
+                ${renderSaldosTable(s1100, 'PIS')}
+                ${renderSaldosTable(s1500, 'COFINS')}
+              </div>
+            </details>`;
+          }).join('')}
+        </div>`;
+      }
+      const achadosHtml = items.length
+        ? items.map(r => achadoCard(r)).join('')
+        : '<div class="achado-empty">✅ Nenhum achado de transposição identificado nos períodos analisados.</div>';
+      listEl.innerHTML = saldosHtml + achadosHtml;
+    } else if (g !== 'G5') {
       listEl.innerHTML = items.length ? items.map(r => achadoCard(r)).join('') : '<div class="achado-empty">✅ Nenhum achado identificado neste grupo para os períodos analisados.</div>';
     } else {
       // G5 achados listados abaixo da seção rateio (renderG5Rateio cuida disso)
@@ -1657,17 +1692,56 @@ function renderCfopCst(rows, periodos) {
   const selPer = document.getElementById('cfop-filter-per');
   const periods = [...new Set(rows.map(r => r.competencia))].sort();
   selPer.innerHTML = '<option value="">Todos os Períodos</option>' + periods.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('');
-  renderSaidasResumo(rows);
+  renderCfopResumoGerencial(rows);
   filtrarCfop();
 }
 
-function renderSaidasResumo(rows) {
+function renderCfopResumoGerencial(rows) {
   const el = document.getElementById('cfop-saidas-resumo');
-  if (!el) return;
-  const saidas = rows.filter(r => r.ind_oper === 'Saída');
-  if (!saidas.length) { el.innerHTML = ''; return; }
+  if (!el || !rows.length) { if (el) el.innerHTML = ''; return; }
 
-  // agrupa por período + cfop para o resumo consolidado
+  const CST_CRED = new Set(['50','51','52','53','54','55','56','60','61','62','63','64','65','66']);
+
+  const entradas = rows.filter(r => r.ind_oper === 'Entrada');
+  const saidas   = rows.filter(r => r.ind_oper === 'Saída');
+
+  const totalQtd   = rows.reduce((s, r) => s + (r.qtd_itens || 0), 0);
+  const totalValor = rows.reduce((s, r) => s + (r.vl_item   || 0), 0);
+  const totalPIS   = rows.reduce((s, r) => s + (r.vl_pis    || 0), 0);
+  const totalCOF   = rows.reduce((s, r) => s + (r.vl_cofins || 0), 0);
+
+  const entQtd    = entradas.reduce((s, r) => s + (r.qtd_itens || 0), 0);
+  const entValor  = entradas.reduce((s, r) => s + (r.vl_item   || 0), 0);
+  const entPIS    = entradas.reduce((s, r) => s + (r.vl_pis    || 0), 0);
+  const entCOF    = entradas.reduce((s, r) => s + (r.vl_cofins || 0), 0);
+
+  const saiQtd    = saidas.reduce((s, r) => s + (r.qtd_itens || 0), 0);
+  const saiValor  = saidas.reduce((s, r) => s + (r.vl_item   || 0), 0);
+
+  // Breakdown por CST (entradas)
+  const entComCred   = entradas.filter(r => CST_CRED.has(r.cst_pis));
+  const entSemCred   = entradas.filter(r => !CST_CRED.has(r.cst_pis));
+  const entComCredQ  = entComCred.reduce((s, r) => s + (r.qtd_itens || 0), 0);
+  const entSemCredQ  = entSemCred.reduce((s, r) => s + (r.qtd_itens || 0), 0);
+  const entComCredV  = entComCred.reduce((s, r) => s + (r.vl_item   || 0), 0);
+  const entSemCredV  = entSemCred.reduce((s, r) => s + (r.vl_item   || 0), 0);
+  const entComCredP  = entComCred.reduce((s, r) => s + (r.vl_pis    || 0), 0);
+  const entComCredC  = entComCred.reduce((s, r) => s + (r.vl_cofins || 0), 0);
+  const entCredPct   = entValor > 0 ? (entComCredV / entValor * 100).toFixed(1) : '0';
+
+  // Top 8 CFOPs por valor (entradas)
+  const cfopMap = {};
+  entradas.forEach(r => {
+    if (!r.cfop) return;
+    if (!cfopMap[r.cfop]) cfopMap[r.cfop] = { cfop: r.cfop, qtd: 0, valor: 0, pis: 0, cofins: 0 };
+    cfopMap[r.cfop].qtd    += r.qtd_itens || 0;
+    cfopMap[r.cfop].valor  += r.vl_item   || 0;
+    cfopMap[r.cfop].pis    += r.vl_pis    || 0;
+    cfopMap[r.cfop].cofins += r.vl_cofins || 0;
+  });
+  const topCfops = Object.values(cfopMap).sort((a, b) => b.valor - a.valor).slice(0, 8);
+
+  // Saídas por período + CFOP
   const byPeriodCfop = {};
   saidas.forEach(r => {
     const key = `${r.competencia}||${r.cfop}||${r.origem}`;
@@ -1675,46 +1749,123 @@ function renderSaidasResumo(rows) {
     byPeriodCfop[key].qtd   += r.qtd_itens || 0;
     byPeriodCfop[key].valor += r.vl_item   || 0;
   });
-  const linhas = Object.values(byPeriodCfop).sort((a, b) => a.competencia.localeCompare(b.competencia) || a.cfop.localeCompare(b.cfop));
-  const totalSaidas = linhas.reduce((s, l) => s + l.valor, 0);
+  const saiLinhas = Object.values(byPeriodCfop).sort((a, b) => a.competencia.localeCompare(b.competencia) || a.cfop.localeCompare(b.cfop));
 
   el.innerHTML = `
     <div style="margin-bottom:28px;">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
-        <div style="font-size:12px;font-weight:700;color:var(--g2);text-transform:uppercase;letter-spacing:.06em;">🚛 Saídas — Receita de Transporte (D200 / D100)</div>
-        <div style="font-size:13px;font-weight:700;color:var(--orange);">${fmt(totalSaidas)}</div>
+
+      <!-- KPI strip -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:20px;">
+        <div style="background:var(--db2);border:1px solid rgba(255,255,255,.06);border-radius:var(--r);padding:12px 14px;">
+          <div style="font-size:10px;color:var(--g4);text-transform:uppercase;letter-spacing:.07em;">Total de registros</div>
+          <div style="font-size:20px;font-weight:800;color:var(--g1);margin:4px 0;">${totalQtd.toLocaleString('pt-BR')}</div>
+          <div style="font-size:11px;color:var(--g4);">Valor: ${fmt(totalValor)}</div>
+        </div>
+        <div style="background:var(--db2);border:1px solid rgba(92,196,124,.15);border-radius:var(--r);padding:12px 14px;">
+          <div style="font-size:10px;color:var(--g4);text-transform:uppercase;letter-spacing:.07em;">Entradas</div>
+          <div style="font-size:20px;font-weight:800;color:var(--green);margin:4px 0;">${entQtd.toLocaleString('pt-BR')}</div>
+          <div style="font-size:11px;color:var(--g4);">${fmt(entValor)}</div>
+        </div>
+        <div style="background:var(--db2);border:1px solid rgba(249,115,22,.15);border-radius:var(--r);padding:12px 14px;">
+          <div style="font-size:10px;color:var(--g4);text-transform:uppercase;letter-spacing:.07em;">Saídas</div>
+          <div style="font-size:20px;font-weight:800;color:var(--orange);margin:4px 0;">${saiQtd.toLocaleString('pt-BR')}</div>
+          <div style="font-size:11px;color:var(--g4);">${fmt(saiValor)}</div>
+        </div>
+        <div style="background:var(--db2);border:1px solid rgba(59,130,246,.15);border-radius:var(--r);padding:12px 14px;">
+          <div style="font-size:10px;color:var(--g4);text-transform:uppercase;letter-spacing:.07em;">Crédito PIS</div>
+          <div style="font-size:20px;font-weight:800;color:var(--blue-l);margin:4px 0;">${fmt(entPIS)}</div>
+          <div style="font-size:11px;color:var(--g4);">${entComCredQ} docs com crédito</div>
+        </div>
+        <div style="background:var(--db2);border:1px solid rgba(139,92,246,.15);border-radius:var(--r);padding:12px 14px;">
+          <div style="font-size:10px;color:var(--g4);text-transform:uppercase;letter-spacing:.07em;">Crédito COFINS</div>
+          <div style="font-size:20px;font-weight:800;color:var(--purple);margin:4px 0;">${fmt(entCOF)}</div>
+          <div style="font-size:11px;color:var(--g4);">${entCredPct}% do valor de entradas</div>
+        </div>
       </div>
-      <div class="table-wrap" style="margin:0;">
-        <table>
-          <thead><tr>
-            <th>Competência</th>
-            <th>Origem</th>
-            <th>CFOP</th>
-            <th style="text-align:right">Qtd Docs</th>
-            <th style="text-align:right">Valor Total</th>
-            <th style="text-align:right">% do Total</th>
-          </tr></thead>
-          <tbody>
-            ${linhas.map(l => {
-              const pct = totalSaidas > 0 ? (l.valor / totalSaidas * 100).toFixed(1) : '0.0';
-              return `<tr>
-                <td class="td-mono">${esc(l.competencia)}</td>
-                <td><span class="badge b-possivel" style="font-size:9px;">${esc(l.origem)}</span></td>
-                <td class="td-mono" style="font-weight:700;">${esc(l.cfop)}</td>
-                <td class="td-valor">${l.qtd}</td>
-                <td class="td-valor" style="color:var(--orange);font-weight:700;">${fmt(l.valor)}</td>
-                <td class="td-valor" style="color:var(--g3);">${pct}%</td>
-              </tr>`;
-            }).join('')}
-          </tbody>
-          <tfoot><tr style="background:rgba(255,255,255,.04);">
-            <td colspan="3" style="font-size:12px;font-weight:700;color:var(--g1);padding:8px 14px;">TOTAL SAÍDAS</td>
-            <td class="td-valor" style="font-weight:700;">${linhas.reduce((s,l) => s + l.qtd, 0)}</td>
-            <td class="td-valor" style="color:var(--orange);font-weight:700;">${fmt(totalSaidas)}</td>
-            <td class="td-valor">100,0%</td>
-          </tr></tfoot>
-        </table>
+
+      <!-- CST Breakdown -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">
+        <div style="background:var(--db2);border:1px solid rgba(255,255,255,.06);border-radius:var(--r);padding:14px 16px;">
+          <div style="font-size:11px;font-weight:700;color:var(--g2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">🔵 Entradas — CST de Crédito</div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+            <div>
+              <div style="font-size:10px;color:var(--g4);">Com crédito (CST 50-66)</div>
+              <div style="font-size:15px;font-weight:700;color:var(--green);">${fmt(entComCredV)}</div>
+              <div style="font-size:11px;color:var(--g4);">${entComCredQ} docs · PIS ${fmt(entComCredP)} · COF ${fmt(entComCredC)}</div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-size:10px;color:var(--g4);">Sem crédito</div>
+              <div style="font-size:15px;font-weight:700;color:var(--g3);">${fmt(entSemCredV)}</div>
+              <div style="font-size:11px;color:var(--g4);">${entSemCredQ} docs</div>
+            </div>
+          </div>
+          <div style="height:6px;border-radius:3px;background:rgba(255,255,255,.07);overflow:hidden;">
+            <div style="height:100%;width:${entCredPct}%;background:var(--green);border-radius:3px;"></div>
+          </div>
+          <div style="font-size:10px;color:var(--g4);margin-top:4px;">${entCredPct}% do valor de entradas tem crédito</div>
+        </div>
+        ${topCfops.length ? `
+        <div style="background:var(--db2);border:1px solid rgba(255,255,255,.06);border-radius:var(--r);padding:14px 16px;overflow:auto;">
+          <div style="font-size:11px;font-weight:700;color:var(--g2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">📊 Top CFOPs por Valor (Entradas)</div>
+          <table style="width:100%;font-size:11px;border-collapse:collapse;">
+            <thead><tr>
+              <th style="text-align:left;padding:2px 6px 6px 0;color:var(--g4);font-weight:600;">CFOP</th>
+              <th style="text-align:right;padding:2px 0 6px;color:var(--g4);font-weight:600;">Docs</th>
+              <th style="text-align:right;padding:2px 0 6px;color:var(--g4);font-weight:600;">Valor</th>
+              <th style="text-align:right;padding:2px 0 6px;color:var(--g4);font-weight:600;">PIS+COF</th>
+            </tr></thead>
+            <tbody>
+              ${topCfops.map(c => {
+                const pct = entValor > 0 ? (c.valor / entValor * 100).toFixed(0) : 0;
+                return `<tr>
+                  <td style="padding:3px 6px 3px 0;font-weight:700;color:var(--blue-l);font-family:var(--mono);">${esc(c.cfop)}</td>
+                  <td style="text-align:right;padding:3px 0;color:var(--g3);">${c.qtd}</td>
+                  <td style="text-align:right;padding:3px 0;color:var(--g1);">${fmt(c.valor)}</td>
+                  <td style="text-align:right;padding:3px 0;color:var(--green);">${fmt(c.pis + c.cofins)}</td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>` : ''}
       </div>
+
+      <!-- Saídas de Transporte -->
+      ${saiLinhas.length ? `
+      <div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
+          <div style="font-size:12px;font-weight:700;color:var(--g2);text-transform:uppercase;letter-spacing:.06em;">🚛 Saídas — Receita de Transporte (D200 / D100)</div>
+          <div style="font-size:13px;font-weight:700;color:var(--orange);">${fmt(saiValor)}</div>
+        </div>
+        <div class="table-wrap" style="margin:0;">
+          <table>
+            <thead><tr>
+              <th>Competência</th><th>Origem</th><th>CFOP</th>
+              <th style="text-align:right">Qtd Docs</th>
+              <th style="text-align:right">Valor Total</th>
+              <th style="text-align:right">% do Total</th>
+            </tr></thead>
+            <tbody>
+              ${saiLinhas.map(l => {
+                const pct = saiValor > 0 ? (l.valor / saiValor * 100).toFixed(1) : '0.0';
+                return `<tr>
+                  <td class="td-mono">${esc(l.competencia)}</td>
+                  <td><span class="badge b-possivel" style="font-size:9px;">${esc(l.origem)}</span></td>
+                  <td class="td-mono" style="font-weight:700;">${esc(l.cfop)}</td>
+                  <td class="td-valor">${l.qtd}</td>
+                  <td class="td-valor" style="color:var(--orange);font-weight:700;">${fmt(l.valor)}</td>
+                  <td class="td-valor" style="color:var(--g3);">${pct}%</td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+            <tfoot><tr style="background:rgba(255,255,255,.04);">
+              <td colspan="3" style="font-size:12px;font-weight:700;color:var(--g1);padding:8px 14px;">TOTAL SAÍDAS</td>
+              <td class="td-valor" style="font-weight:700;">${saiLinhas.reduce((s,l) => s+l.qtd, 0)}</td>
+              <td class="td-valor" style="color:var(--orange);font-weight:700;">${fmt(saiValor)}</td>
+              <td class="td-valor">100,0%</td>
+            </tfoot>
+          </table>
+        </div>
+      </div>` : ''}
     </div>`;
 }
 
@@ -2268,7 +2419,11 @@ let _blocoFRows = [];
 
 function renderBlocoF(rows) {
   _blocoFRows = rows;
-  if (!rows.length) return;
+  if (!rows.length) {
+    const kpis = document.getElementById('blocoF-kpis');
+    if (kpis) kpis.innerHTML = '<div class="achado-empty" style="grid-column:1/-1;">Nenhum registro F100 encontrado no(s) arquivo(s) analisado(s). O bloco F (demais operações) não possui lançamentos neste período.</div>';
+    return;
+  }
 
   // Período e fornecedor para filtros
   const selPer  = document.getElementById('blocoF-filter-per');
