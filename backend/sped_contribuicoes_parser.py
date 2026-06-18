@@ -294,6 +294,12 @@ def parse_sped_file(content: bytes) -> dict[str, pd.DataFrame]:
     }
     _cur_ind_oper: dict[str, str] = {}
 
+    # Rastreia dados do A100 pai para enriquecer A170 com fornecedor e nº doc
+    _a170_cod_part: list[str] = []
+    _a170_num_doc: list[str] = []
+    _cur_a100_cod_part: str = ""
+    _cur_a100_num_doc: str = ""
+
     for linha in text.splitlines():
         linha = linha.strip("\r\n").strip()
         if not linha.startswith("|"):
@@ -309,10 +315,16 @@ def parse_sped_file(content: bytes) -> dict[str, pd.DataFrame]:
 
         if reg in ("C100", "A100", "D100", "D200"):
             _cur_ind_oper[reg] = valores[0] if valores else ""
+        if reg == "A100":
+            # A100 layout: ind_oper, _extra, cod_part, cod_sit, ser, sub, num_doc ...
+            _cur_a100_cod_part = valores[2] if len(valores) > 2 else ""
+            _cur_a100_num_doc  = valores[6] if len(valores) > 6 else ""
         elif reg == "C170":
             _ind_oper_extra["C170"].append(_cur_ind_oper.get("C100", ""))
         elif reg == "A170":
             _ind_oper_extra["A170"].append(_cur_ind_oper.get("A100", ""))
+            _a170_cod_part.append(_cur_a100_cod_part)
+            _a170_num_doc.append(_cur_a100_num_doc)
         elif reg == "D101":
             _ind_oper_extra["D101"].append(_cur_ind_oper.get("D100", ""))
         elif reg == "D105":
@@ -345,6 +357,13 @@ def parse_sped_file(content: bytes) -> dict[str, pd.DataFrame]:
     for reg, extra_vals in _ind_oper_extra.items():
         if reg in dfs and extra_vals:
             dfs[reg]["_ind_oper"] = extra_vals
+
+    # Injeta dados do A100 pai em A170 para enriquecimento da visão de auditoria
+    if "A170" in dfs:
+        if _a170_cod_part:
+            dfs["A170"]["_cod_part"] = _a170_cod_part
+        if _a170_num_doc:
+            dfs["A170"]["_num_doc_a100"] = _a170_num_doc
 
     return dfs
 
@@ -831,6 +850,92 @@ _TABELA_COD_CRED: dict[str, str] = {
     "210": "Presumido — Devoluções de Vendas",
     "211": "Presumido — Outras Operações",
 }
+
+
+_NAT_BC_CRED_LABEL: dict[str, str] = {
+    "01": "Aquisição p/ revenda",
+    "02": "Insumos de produção",
+    "03": "Ativo imobilizado (aquisição)",
+    "04": "Ativo imobilizado (depreciação)",
+    "05": "Ativo imobilizado (aluguel/arrendamento)",
+    "06": "Serviços tomados de PJ",
+    "07": "Frete na aquisição",
+    "08": "Frete na revenda",
+    "09": "Armazenagem e frete",
+    "10": "Vale-transporte / refeição / uniforme",
+    "11": "Devoluções",
+    "12": "Embalagens p/ revenda",
+    "13": "Outros bens e serviços",
+    "14": "Aluguéis e royalties",
+    "15": "Despesas financeiras PJ",
+    "99": "Outros",
+}
+
+# Mapa nat_bc_cred → flag de relevância para transportadora
+_NAT_BC_CRED_TRANSPORTE = {"03", "04", "05", "06", "07", "08", "09"}
+
+
+def extract_bloco_a_detail(dfs: dict[str, pd.DataFrame]) -> list[dict]:
+    """Retorna linhas individuais de A170 enriquecidas com dados de fornecedor
+    (via _cod_part injetado do A100 pai) e descrição de item (via 0200).
+    Usado na aba de auditoria detalhada do Bloco A."""
+    df = dfs.get("A170")
+    if df is None or df.empty:
+        return []
+
+    part_map = build_participante_map(dfs)
+    item_map = build_item_map(dfs)
+    conta_map = build_conta_map(dfs)
+
+    result = []
+    for _, row in df.iterrows():
+        cod_part  = str(row.get("_cod_part", "")).strip() if "_cod_part" in df.columns else ""
+        num_doc   = str(row.get("_num_doc_a100", "")).strip() if "_num_doc_a100" in df.columns else ""
+        cod_item  = str(row.get("cod_item", "")).strip()
+        descr_compl = str(row.get("descr_compl", "")).strip()
+        descr     = descr_compl or item_map.get(cod_item, "") or cod_item
+        nat_bc    = str(row.get("nat_bc_cred", "")).strip()
+        cst_pis   = str(row.get("cst_pis", "")).strip()
+        cst_cofins = str(row.get("cst_cofins", "")).strip()
+        ind_orig  = str(row.get("ind_orig_cred", "")).strip()
+        cod_cta   = str(row.get("cod_cta", "")).strip()
+        vl_item   = parse_decimal(row.get("vl_item", "0"))
+        vl_bc_pis = parse_decimal(row.get("vl_bc_pis", "0"))
+        aliq_pis  = parse_decimal(row.get("aliq_pis", "0"))
+        vl_pis    = parse_decimal(row.get("vl_pis", "0"))
+        vl_bc_cof = parse_decimal(row.get("vl_bc_cofins", "0"))
+        aliq_cof  = parse_decimal(row.get("aliq_cofins", "0"))
+        vl_cofins = parse_decimal(row.get("vl_cofins", "0"))
+        tem_cred_pis = cst_pis in CST_COM_CREDITO
+        tem_cred_cof = cst_cofins in CST_COM_CREDITO
+        relevante_transp = nat_bc in _NAT_BC_CRED_TRANSPORTE
+
+        result.append({
+            "cod_part": cod_part,
+            "fornecedor": part_map.get(cod_part, cod_part) if cod_part else "—",
+            "num_doc": num_doc,
+            "cod_item": cod_item,
+            "descr_servico": descr,
+            "nat_bc_cred": nat_bc,
+            "nat_bc_cred_desc": _NAT_BC_CRED_LABEL.get(nat_bc, nat_bc or "—"),
+            "relevante_transporte": relevante_transp,
+            "cst_pis": cst_pis,
+            "cst_cofins": cst_cofins,
+            "tem_credito_pis": tem_cred_pis,
+            "tem_credito_cofins": tem_cred_cof,
+            "vl_item": round(vl_item, 2),
+            "vl_bc_pis": round(vl_bc_pis, 2),
+            "aliq_pis": round(aliq_pis, 4),
+            "vl_pis": round(vl_pis, 2),
+            "vl_bc_cofins": round(vl_bc_cof, 2),
+            "aliq_cofins": round(aliq_cof, 4),
+            "vl_cofins": round(vl_cofins, 2),
+            "cod_cta": cod_cta,
+            "nome_cta": conta_map.get(cod_cta, ""),
+            "ind_orig_cred": ind_orig,
+        })
+
+    return result
 
 
 def _sortkey_200(cod: str) -> int:
