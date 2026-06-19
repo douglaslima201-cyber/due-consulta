@@ -321,88 +321,131 @@ def _g2_ativo_imobilizado(dfs: dict[str, pd.DataFrame], header: dict, conta_map:
     competencia = header.get("competencia", "")
 
     # ── F130 — crédito sobre valor de aquisição ───────────────────────────────
+    PARCELAS_F130 = 48   # Lei 10.637/2002 art. 3º §14 — sempre 1/48
     df_f130 = dfs.get("F130")
     if df_f130 is not None and not df_f130.empty:
         for _, row in df_f130.iterrows():
-            cod_cta = row.get("cod_cta", "")
-            nome_cta = conta_map.get(cod_cta, "")
-            ident_bem = str(row.get("ident_bem_imob", "")).strip()
-            vl_oper_aquis = parse_decimal(row.get("vl_oper_aquis", "0"))
-            vl_bc_cred = parse_decimal(row.get("vl_bc_cred", "0"))
-            vl_bc_pis = parse_decimal(row.get("vl_bc_pis", "0"))
-            cst_pis = str(row.get("cst_pis", "")).strip()
+            cod_cta        = row.get("cod_cta", "")
+            nome_cta       = conta_map.get(cod_cta, "")
+            ident_bem      = str(row.get("ident_bem_imob", "")).strip()
             mes_oper_aquis = row.get("mes_oper_aquis", "")
-            _np_raw = parse_decimal(row.get("num_parc", "0"))
-            num_parc = int(_np_raw) if _np_raw >= 1 else 48
+
+            vl_oper_aquis  = parse_decimal(row.get("vl_oper_aquis",          "0"))
+            parc_nao_bc    = parse_decimal(row.get("parc_oper_nao_bc_cred",   "0"))
+            vl_bc_cred     = parse_decimal(row.get("vl_bc_cred",             "0"))
+            vl_bc_pis      = parse_decimal(row.get("vl_bc_pis",              "0"))
+            aliq_pis       = parse_decimal(row.get("aliq_pis",               "0"))
+            vl_pis         = parse_decimal(row.get("vl_pis",                 "0"))
+            vl_bc_cofins   = parse_decimal(row.get("vl_bc_cofins",           "0"))
+            aliq_cofins    = parse_decimal(row.get("aliq_cofins",            "0"))
+            vl_cofins      = parse_decimal(row.get("vl_cofins",              "0"))
+            cst_pis        = str(row.get("cst_pis",    "")).strip()
+
+            id_bem = nome_cta or cod_cta or ident_bem
 
             categoria, _ = _classificar(nome_cta, ident_bem)
             eh_frota = categoria == "ATIVO_IMOBILIZADO_FROTA" or ident_bem == "06"
 
+            # ── 1. Frota: método errado (F130 em vez de F120) ─────────────────
             if eh_frota:
-                # Transportadoras devem apropriar crédito de frota EXCLUSIVAMENTE
-                # pela depreciação (F120), não pelo valor de aquisição (F130).
                 achados.append(_achado(
                     "G2", "F", "F130", competencia, "RISCO",
-                    f"F130 ({nome_cta or cod_cta}, aquisição {mes_oper_aquis}, "
+                    f"F130 ({id_bem}, aquisição {mes_oper_aquis}, "
                     f"valor R$ {vl_oper_aquis:,.2f}): crédito de PIS/COFINS sobre "
                     "veículo da frota tomado pelo método de valor de aquisição. "
                     "Transportadoras devem apropriar o crédito exclusivamente pela "
                     "parcela de depreciação (registro F120), não pela aquisição.",
-                    vl_bc_pis, BASE_LEGAL_ATIVO_IMOB,
-                    "Solução: (1) Estornar o crédito tomado via F130 para a frota "
-                    "(redução em M110/M510). (2) Adotar o registro F120 (encargos de "
-                    "depreciação): o crédito mensal corresponde ao valor da depreciação "
-                    "contábil do bem, calculado sobre o valor de aquisição e a vida útil "
-                    "adotada. (3) Retificar o SPED substituindo os registros F130 por "
-                    "F120 para os veículos da frota e ajustando M100/M500.",
-                    severidade=_severidade_por_valor(vl_bc_pis),
+                    vl_bc_pis + vl_bc_cofins, BASE_LEGAL_ATIVO_IMOB,
+                    "Solução: (1) Estornar o crédito via M110/M510. (2) Adotar F120 "
+                    "(depreciação): crédito mensal = valor da depreciação contábil. "
+                    "(3) Retificar o SPED substituindo F130 por F120 para a frota.",
+                    severidade=_severidade_por_valor(vl_bc_pis + vl_bc_cofins),
                 ))
-                # Mesmo sendo método incorreto, valida o valor do crédito mensal
-                # BC esperada = vl_oper_aquis / num_parc (1/48 do valor de aquisição)
-                if vl_oper_aquis > 0:
-                    parcela_esperada = round(vl_oper_aquis / num_parc, 2)
-                    if abs(parcela_esperada - vl_bc_pis) > TOLERANCIA_VALOR:
-                        achados.append(_achado(
-                            "G2", "F", "F130", competencia, "INCONSISTENCIA",
-                            f"F130 frota ({nome_cta or cod_cta}, aquisição {mes_oper_aquis}): "
-                            f"a parcela mensal declarada (R$ {vl_bc_pis:,.2f}) diverge "
-                            f"de 1/{num_parc} do valor de aquisição R$ {vl_oper_aquis:,.2f} "
-                            f"(esperado R$ {parcela_esperada:,.2f}, diferença R$ {abs(vl_bc_pis - parcela_esperada):,.2f}). "
-                            "Apesar do método incorreto (deveria ser F120), o valor do crédito mensal "
-                            "deve corresponder a 1/48 do valor de aquisição do bem.",
-                            vl_bc_pis - parcela_esperada, BASE_LEGAL_ATIVO_IMOB,
-                            "Verificar: (1) se o valor de aquisição está correto; "
-                            f"(2) se o número de parcelas ({num_parc}) está correto. "
-                            "A parcela mensal de crédito = vl_oper_aquis / num_parc. "
-                            "Corrigir antes de migrar para F120 (método correto para frota).",
-                        ))
-            else:
-                # Para outros bens do imobilizado (não frota), verifica 1/num_parc do valor de aquisição
-                if vl_oper_aquis > 0:
-                    parcela_esperada = round(vl_oper_aquis / num_parc, 2)
-                    if abs(parcela_esperada - vl_bc_pis) > TOLERANCIA_VALOR:
-                        achados.append(_achado(
-                            "G2", "F", "F130", competencia, "INCONSISTENCIA",
-                            f"F130 ({nome_cta or cod_cta}, aquisição {mes_oper_aquis}): parcela "
-                            f"mensal (R$ {vl_bc_pis:,.2f}) diverge de 1/{num_parc} do valor de "
-                            f"aquisição R$ {vl_oper_aquis:,.2f} (esperado R$ {parcela_esperada:,.2f}, "
-                            f"diferença R$ {abs(vl_bc_pis - parcela_esperada):,.2f}).",
-                            vl_bc_pis - parcela_esperada, BASE_LEGAL_ATIVO_IMOB,
-                            "Verificar: (1) o valor de aquisição (vl_oper_aquis) e o número de "
-                            f"parcelas ({num_parc}) declarados em F130; "
-                            "(2) parcela mensal correta = vl_oper_aquis / num_parc; "
-                            "(3) ajustar vl_bc_pis/vl_bc_cofins e refletir em M100/M500.",
-                        ))
-                if cst_pis in CST_RATEIO:
+
+            # ── 2. Cadeia de valores (aplica-se a TODOS os F130) ──────────────
+
+            # 2a. vl_bc_cred deve ser vl_oper_aquis − parc_oper_nao_bc_cred
+            if vl_oper_aquis > 0:
+                vl_bc_cred_esp = round(vl_oper_aquis - parc_nao_bc, 2)
+                if abs(vl_bc_cred_esp - vl_bc_cred) > TOLERANCIA_VALOR:
                     achados.append(_achado(
-                        "G2", "F", "F130", competencia, "INFORMATIVO",
-                        f"F130 ({nome_cta or cod_cta}, aquisição {mes_oper_aquis}, "
-                        f"R$ {vl_oper_aquis:,.2f}): CST {cst_pis}, sujeito ao rateio (0111).",
-                        vl_bc_pis, BASE_LEGAL_RATEIO,
-                        "Confirmar que o percentual de rateio do 0111 foi aplicado "
-                        "corretamente neste crédito (ver achados G5).",
-                        severidade="BAIXO",
+                        "G2", "F", "F130", competencia, "INCONSISTENCIA",
+                        f"F130 ({id_bem}, aquisição {mes_oper_aquis}): base de crédito "
+                        f"declarada (R$ {vl_bc_cred:,.2f}) diverge de "
+                        f"vl_oper_aquis − parc_nao_bc = "
+                        f"R$ {vl_oper_aquis:,.2f} − R$ {parc_nao_bc:,.2f} = "
+                        f"R$ {vl_bc_cred_esp:,.2f} (dif. R$ {abs(vl_bc_cred_esp - vl_bc_cred):,.2f}).",
+                        vl_bc_cred_esp - vl_bc_cred, BASE_LEGAL_ATIVO_IMOB,
+                        "Corrigir vl_bc_cred em F130: deve ser o valor de aquisição "
+                        "menos as parcelas que não integram a base (vale-pedágio, ICMS-ST etc.).",
                     ))
+
+            # 2b. vl_bc_pis / vl_bc_cofins devem ser 1/48 de vl_bc_cred
+            base_ref = vl_bc_cred if vl_bc_cred > 0 else vl_oper_aquis
+            if base_ref > 0:
+                parcela_esp = round(base_ref / PARCELAS_F130, 2)
+                if vl_bc_pis > 0 and abs(parcela_esp - vl_bc_pis) > TOLERANCIA_VALOR:
+                    achados.append(_achado(
+                        "G2", "F", "F130", competencia, "INCONSISTENCIA",
+                        f"F130 ({id_bem}, aquisição {mes_oper_aquis}): BC PIS mensal "
+                        f"(R$ {vl_bc_pis:,.2f}) diverge de 1/48 de "
+                        f"R$ {base_ref:,.2f} = R$ {parcela_esp:,.2f} "
+                        f"(dif. R$ {abs(parcela_esp - vl_bc_pis):,.2f}).",
+                        vl_bc_pis - parcela_esp, BASE_LEGAL_ATIVO_IMOB,
+                        "A base de cálculo mensal do PIS em F130 deve ser "
+                        "vl_bc_cred / 48 (Lei 10.637/2002, art. 3º, §14).",
+                    ))
+                if vl_bc_cofins > 0 and abs(parcela_esp - vl_bc_cofins) > TOLERANCIA_VALOR:
+                    achados.append(_achado(
+                        "G2", "F", "F130", competencia, "INCONSISTENCIA",
+                        f"F130 ({id_bem}, aquisição {mes_oper_aquis}): BC COFINS mensal "
+                        f"(R$ {vl_bc_cofins:,.2f}) diverge de 1/48 de "
+                        f"R$ {base_ref:,.2f} = R$ {parcela_esp:,.2f} "
+                        f"(dif. R$ {abs(parcela_esp - vl_bc_cofins):,.2f}).",
+                        vl_bc_cofins - parcela_esp, BASE_LEGAL_ATIVO_IMOB,
+                        "A base de cálculo mensal da COFINS em F130 deve ser "
+                        "vl_bc_cred / 48 (Lei 10.833/2003, art. 3º, §14).",
+                    ))
+
+            # 2c. vl_pis deve ser vl_bc_pis × aliq_pis / 100
+            if vl_bc_pis > 0 and aliq_pis > 0:
+                vl_pis_esp = round(vl_bc_pis * aliq_pis / 100, 2)
+                if abs(vl_pis_esp - vl_pis) > TOLERANCIA_VALOR:
+                    achados.append(_achado(
+                        "G2", "F", "F130", competencia, "INCONSISTENCIA",
+                        f"F130 ({id_bem}, aquisição {mes_oper_aquis}): PIS calculado "
+                        f"(R$ {vl_pis:,.2f}) diverge de "
+                        f"BC R$ {vl_bc_pis:,.2f} × {aliq_pis}% = R$ {vl_pis_esp:,.2f} "
+                        f"(dif. R$ {abs(vl_pis_esp - vl_pis):,.2f}).",
+                        vl_pis - vl_pis_esp, BASE_LEGAL_ATIVO_IMOB,
+                        "Corrigir vl_pis em F130: deve ser vl_bc_pis × aliq_pis / 100.",
+                    ))
+
+            # 2d. vl_cofins deve ser vl_bc_cofins × aliq_cofins / 100
+            if vl_bc_cofins > 0 and aliq_cofins > 0:
+                vl_cof_esp = round(vl_bc_cofins * aliq_cofins / 100, 2)
+                if abs(vl_cof_esp - vl_cofins) > TOLERANCIA_VALOR:
+                    achados.append(_achado(
+                        "G2", "F", "F130", competencia, "INCONSISTENCIA",
+                        f"F130 ({id_bem}, aquisição {mes_oper_aquis}): COFINS calculada "
+                        f"(R$ {vl_cofins:,.2f}) diverge de "
+                        f"BC R$ {vl_bc_cofins:,.2f} × {aliq_cofins}% = R$ {vl_cof_esp:,.2f} "
+                        f"(dif. R$ {abs(vl_cof_esp - vl_cofins):,.2f}).",
+                        vl_cofins - vl_cof_esp, BASE_LEGAL_ATIVO_IMOB,
+                        "Corrigir vl_cofins em F130: deve ser vl_bc_cofins × aliq_cofins / 100.",
+                    ))
+
+            # ── 3. Rateio (apenas não-frota, CST sujeito a rateio) ────────────
+            if not eh_frota and cst_pis in CST_RATEIO:
+                achados.append(_achado(
+                    "G2", "F", "F130", competencia, "INFORMATIVO",
+                    f"F130 ({id_bem}, aquisição {mes_oper_aquis}, "
+                    f"R$ {vl_oper_aquis:,.2f}): CST {cst_pis} — sujeito ao rateio (0111).",
+                    vl_bc_pis + vl_bc_cofins, BASE_LEGAL_RATEIO,
+                    "Confirmar que o percentual de rateio do 0111 foi aplicado "
+                    "corretamente neste crédito (ver achados G5).",
+                    severidade="BAIXO",
+                ))
 
     # ── F120 — crédito sobre encargos de depreciação (método correto para frota) ─
     df_f120 = dfs.get("F120")
