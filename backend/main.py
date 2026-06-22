@@ -1860,5 +1860,6 @@ if __name__ == "__main__":
     print("  Portal                — http://localhost:5000/portal.html")
     print("  PIS/COFINS            — http://localhost:5000/piscofins.html")
     print("  Simples Nacional      — http://localhost:5000/simples-nacional.html")
+    print("  PER/DCOMP Analyzer    — http://localhost:5000/perdcomp.html")
     print("=" * 60)
     app.run(host="0.0.0.0", port=5000, debug=False)

@@ -1741,13 +1741,20 @@ async function ecacAtualizarPasta(){
       n>0?`${n} PDF(s) encontrado(s) — pronto para analisar.`:'Nenhum PDF na pasta ainda.';
     document.getElementById('ecac-pasta-lista').innerHTML=
       (d.arquivos||[]).map(f=>`<div class="fitem"><span class="fitem-ic">📄</span><span class="fitem-name">${e(f)}</span></div>`).join('');
-    document.getElementById('btn-ecac-analisar').disabled=n===0;
+    const btnPdf=document.getElementById('btn-ecac-analisar-pdf');
+    if(btnPdf) btnPdf.disabled=n===0;
   }catch(err){console.error(err);}
 }
 
 function ecacCopiarPasta(){
   const txt=document.getElementById('ecac-pasta-path').textContent;
   navigator.clipboard.writeText(txt).then(()=>alert('Caminho copiado:\n'+txt));
+}
+
+async function ecacAbrirExplorer(){
+  try{
+    await fetch(`${API}/ecac/abrir-pasta`);
+  }catch(err){alert('Erro ao abrir pasta: '+err.message);}
 }
 
 async function ecacLimparPasta(){
