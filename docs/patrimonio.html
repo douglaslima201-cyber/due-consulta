@@ -454,11 +454,43 @@ textarea{resize:vertical;min-height:60px}
         <div class="form-group"><label>Data de Entrada em Operação</label><input type="date" id="f-dt-op"/></div>
         <div class="form-group"><label>Valor de Aquisição (R$) *</label><input type="number" id="f-valor" step="0.01" min="0"/></div>
         <div class="form-group"><label>Valor Residual Estimado (R$)</label><input type="number" id="f-residual" step="0.01" min="0" value="0"/></div>
-        <div class="form-group"><label>Vida Útil Fiscal (meses)</label><input type="number" id="f-vida-fisc" value="60" min="1"/></div>
-        <div class="form-group"><label>Vida Útil Societária (meses)</label><input type="number" id="f-vida-soc" value="60" min="1"/></div>
-        <div class="form-group"><label>Nº de Turnos</label>
-          <select id="f-turnos"><option value="1">1 turno (taxa normal)</option><option value="2">2 turnos (×1,5)</option><option value="3">3 turnos (×2)</option></select>
+
+        <!-- Depreciação Fiscal -->
+        <div class="form-group span3" style="background:rgba(0,191,255,.04);border:1px solid rgba(0,191,255,.15);border-radius:8px;padding:12px;margin-top:4px">
+          <div style="font-size:11px;font-weight:700;color:var(--accent2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">
+            📋 Depreciação Fiscal (RIR — Legislação Federal)
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+            <div class="form-group"><label>Vida Útil Fiscal (meses)</label><input type="number" id="f-vida-fisc" value="60" min="1" oninput="sincronizarFiscal()"/></div>
+            <div class="form-group"><label>Taxa Fiscal (% a.a.) — calculada</label><input type="number" id="f-taxa-fisc-calc" step="0.01" style="background:var(--bg);color:var(--muted)" readonly title="Calculada automaticamente a partir da vida útil fiscal"/></div>
+            <div class="form-group"><label>Nº de Turnos (aceleração)</label>
+              <select id="f-turnos" onchange="sincronizarFiscal()"><option value="1">1 turno (taxa normal)</option><option value="2">2 turnos (×1,5)</option><option value="3">3 turnos (×2)</option></select>
+            </div>
+          </div>
         </div>
+
+        <!-- Depreciação Societária -->
+        <div class="form-group span3" style="background:rgba(245,166,35,.04);border:1px solid rgba(245,166,35,.2);border-radius:8px;padding:12px;margin-top:4px">
+          <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">
+            📉 Depreciação Societária (NBC TG 27 — Critério contábil)
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:10px">
+            Preencha a <strong>alíquota % a.a.</strong> OU a <strong>vida útil em meses</strong> — os campos se calculam automaticamente.
+            Quando informada, a alíquota tem prioridade sobre a vida útil.
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div class="form-group">
+              <label>Alíquota Societária (% a.a.) <span style="color:var(--accent)">← prioridade</span></label>
+              <input type="number" id="f-taxa-soc" step="0.01" min="0" max="100" placeholder="Ex: 20 para 5 anos" oninput="taxaSocParaMeses()"/>
+            </div>
+            <div class="form-group">
+              <label>Vida Útil Societária (meses)</label>
+              <input type="number" id="f-vida-soc" value="60" min="1" oninput="mesesSocParaTaxa()"/>
+            </div>
+          </div>
+          <div id="dep-soc-preview" style="margin-top:8px;font-size:12px;color:var(--muted)"></div>
+        </div>
+
         <div class="form-group"><label>Estado de Conservação</label>
           <select id="f-estado"><option value="excelente">Excelente</option><option value="bom" selected>Bom</option><option value="regular">Regular</option><option value="ruim">Ruim</option></select>
         </div>
@@ -691,19 +723,75 @@ function regimeLabel(r){
   return {lucro_real:'Lucro Real',lucro_presumido:'L. Presumido',simples:'Simples'}[r] || r || '—';
 }
 
+// ─── interlock taxa societária ↔ meses ───────────────────────────────────────
+function taxaSocParaMeses() {
+  const taxa = parseFloat(document.getElementById('f-taxa-soc').value) || 0;
+  if (taxa > 0) {
+    const meses = Math.round(100 / taxa * 12);
+    document.getElementById('f-vida-soc').value = meses;
+  }
+  atualizarPreviewDepSoc();
+}
+
+function mesesSocParaTaxa() {
+  const meses = parseFloat(document.getElementById('f-vida-soc').value) || 0;
+  if (meses > 0) {
+    const taxa = Math.round(100 / meses * 12 * 100) / 100;
+    document.getElementById('f-taxa-soc').value = taxa;
+  }
+  atualizarPreviewDepSoc();
+}
+
+function sincronizarFiscal() {
+  const vida = parseFloat(document.getElementById('f-vida-fisc').value) || 0;
+  const turnos = parseFloat(document.getElementById('f-turnos').value) || 1;
+  const acelerador = {1:1, 2:1.5, 3:2}[turnos] || 1;
+  if (vida > 0) {
+    const taxaFisc = Math.round(100 / vida * 12 * acelerador * 100) / 100;
+    document.getElementById('f-taxa-fisc-calc').value = taxaFisc;
+  }
+}
+
+function atualizarPreviewDepSoc() {
+  const valor = parseFloat(document.getElementById('f-valor').value) || 0;
+  const residual = parseFloat(document.getElementById('f-residual').value) || 0;
+  const taxa = parseFloat(document.getElementById('f-taxa-soc').value) || 0;
+  const meses = parseInt(document.getElementById('f-vida-soc').value) || 0;
+  const el = document.getElementById('dep-soc-preview');
+  if (!el) return;
+  if (valor <= 0) { el.textContent = ''; return; }
+  const depreciavel = Math.max(valor - residual, 0);
+  if (taxa > 0) {
+    const depMes = depreciavel * (taxa / 100) / 12;
+    const vidaCalc = Math.round(depreciavel / depMes);
+    el.innerHTML = `<span style="color:var(--accent)">▶ Usando alíquota ${taxa}% a.a.</span> · Dep. mensal: <strong>${fmt(depMes)}</strong> · Vida útil efetiva: <strong>${vidaCalc} meses</strong>`;
+  } else if (meses > 0) {
+    const depMes = depreciavel / meses;
+    const taxaCalc = Math.round(depMes * 12 / valor * 100 * 100) / 100;
+    el.innerHTML = `<span style="color:var(--muted)">▶ Usando vida útil ${meses} meses</span> · Dep. mensal: <strong>${fmt(depMes)}</strong> · Taxa equiv.: <strong>${taxaCalc}% a.a.</strong>`;
+  } else {
+    el.textContent = '';
+  }
+}
+
 function abrirModalAtivo(id = null) {
-  const campos = ['codigo','descricao','tipo','categoria','placa','chassi',
-    'dt-aq','dt-op','valor','residual','vida-fisc','vida-soc','turnos','estado',
-    'regime','aliq-icms','icms','metodo-pc','cc','filial','un','status','obs','id'];
-  campos.forEach(c => { const el=document.getElementById('f-'+c); if(el) el.value=''; });
+  ['codigo','descricao','tipo','categoria','placa','chassi',
+   'dt-aq','dt-op','valor','residual','vida-fisc','vida-soc',
+   'taxa-soc','taxa-fisc-calc','turnos','estado',
+   'regime','aliq-icms','icms','metodo-pc','cc','filial','un','status','obs','id'
+  ].forEach(c => { const el=document.getElementById('f-'+c); if(el) el.value=''; });
   document.getElementById('f-vida-fisc').value = 60;
   document.getElementById('f-vida-soc').value = 60;
+  document.getElementById('f-taxa-soc').value = '';
   document.getElementById('f-turnos').value = 1;
   document.getElementById('f-estado').value = 'bom';
   document.getElementById('f-regime').value = 'lucro_real';
   document.getElementById('f-status').value = 'ativo';
   document.getElementById('f-residual').value = 0;
+  const prev = document.getElementById('dep-soc-preview');
+  if (prev) prev.textContent = '';
   document.getElementById('modal-ativo-title').textContent = id ? 'Editar Ativo' : 'Cadastrar Ativo';
+  sincronizarFiscal();
   if (!id) { abrirModal('modal-ativo'); return; }
   const a = ativos.find(x => x.id === id);
   if (!a) return;
@@ -720,6 +808,8 @@ function abrirModalAtivo(id = null) {
   document.getElementById('f-residual').value = a.valor_residual_estimado||0;
   document.getElementById('f-vida-fisc').value = a.vida_util_fiscal_meses||60;
   document.getElementById('f-vida-soc').value = a.vida_util_societaria_meses||60;
+  const taxaSoc = parseFloat(a.taxa_depreciacao_societaria_pct_ano) || 0;
+  document.getElementById('f-taxa-soc').value = taxaSoc > 0 ? taxaSoc : '';
   document.getElementById('f-turnos').value = a.numero_turnos||1;
   document.getElementById('f-estado').value = a.estado_conservacao||'bom';
   document.getElementById('f-regime').value = a.regime_tributario||'lucro_real';
@@ -731,12 +821,15 @@ function abrirModalAtivo(id = null) {
   document.getElementById('f-un').value = a.unidade_negocio||'';
   document.getElementById('f-status').value = a.status||'ativo';
   document.getElementById('f-obs').value = a.observacoes||'';
+  sincronizarFiscal();
+  atualizarPreviewDepSoc();
   abrirModal('modal-ativo');
 }
 
 function editarAtivo(id) { abrirModalAtivo(id); }
 
 async function salvarAtivo() {
+  const taxaSoc = parseFloat(document.getElementById('f-taxa-soc').value) || 0;
   const payload = {
     codigo: document.getElementById('f-codigo').value.trim(),
     descricao: document.getElementById('f-descricao').value.trim(),
@@ -750,6 +843,7 @@ async function salvarAtivo() {
     valor_residual_estimado: parseFloat(document.getElementById('f-residual').value)||0,
     vida_util_fiscal_meses: parseInt(document.getElementById('f-vida-fisc').value)||60,
     vida_util_societaria_meses: parseInt(document.getElementById('f-vida-soc').value)||60,
+    taxa_depreciacao_societaria_pct_ano: taxaSoc,
     numero_turnos: parseInt(document.getElementById('f-turnos').value)||1,
     estado_conservacao: document.getElementById('f-estado').value,
     regime_tributario: document.getElementById('f-regime').value,
@@ -786,14 +880,21 @@ async function carregarDepSoc() {
   try {
     const d = await api(`/ativos/${id}/depreciacao`);
     const r = d.resumo;
+    const metodoLabel = r.metodo === 'aliquota'
+      ? `<span style="color:var(--accent)">Alíquota ${r.taxa_anual_pct}% a.a. (cadastrada)</span>`
+      : `<span style="color:var(--muted)">Vida útil ${r.vida_util_meses}m → ${r.taxa_anual_pct}% a.a.</span>`;
     el.innerHTML = `
+      <div class="info-panel" style="margin-bottom:12px">
+        <strong>Critério societário:</strong> ${metodoLabel} ·
+        Depreciação linear sobre o valor depreciável (aquisição − residual) conforme NBC TG 27.
+      </div>
       <div class="cards-grid">
         <div class="card"><div class="card-label">Depreciação Mensal</div><div class="card-value accent">${fmt(r.depreciacao_mensal)}</div></div>
         <div class="card"><div class="card-label">Depreciação Anual</div><div class="card-value accent">${fmt(r.depreciacao_anual)}</div></div>
-        <div class="card"><div class="card-label">Taxa Anual</div><div class="card-value">${fmtPct(r.taxa_anual_pct)}</div></div>
+        <div class="card"><div class="card-label">Taxa Societária (% a.a.)</div><div class="card-value">${fmtPct(r.taxa_anual_pct)}</div></div>
         <div class="card"><div class="card-label">Valor Aquisição</div><div class="card-value">${fmt(r.valor_aquisicao)}</div></div>
         <div class="card"><div class="card-label">Valor Residual</div><div class="card-value">${fmt(r.valor_residual)}</div></div>
-        <div class="card"><div class="card-label">Vida Útil</div><div class="card-value">${r.vida_util_meses}m</div></div>
+        <div class="card"><div class="card-label">Vida Útil Efetiva</div><div class="card-value">${r.vida_util_meses}m</div></div>
       </div>
       <div class="chart-card" style="margin-bottom:16px"><h3>Evolução do Valor Líquido Contábil</h3><canvas id="chart-dep-soc"></canvas></div>
       <div class="table-wrap"><div class="table-header"><h3>Cronograma Anual de Depreciação</h3></div>

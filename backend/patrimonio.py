@@ -55,6 +55,7 @@ def init_db():
         data_entrada_operacao TEXT,
         vida_util_fiscal_meses INTEGER DEFAULT 60,
         vida_util_societaria_meses INTEGER DEFAULT 60,
+        taxa_depreciacao_societaria_pct_ano REAL DEFAULT 0,
         valor_aquisicao REAL DEFAULT 0,
         valor_residual_estimado REAL DEFAULT 0,
         estado_conservacao TEXT DEFAULT 'bom',
@@ -104,30 +105,65 @@ def init_db():
 
 init_db()
 
+# Migração: adiciona coluna se DB antigo não a tiver
+try:
+    _c = db()
+    _c.execute("ALTER TABLE patrimonio_ativos ADD COLUMN taxa_depreciacao_societaria_pct_ano REAL DEFAULT 0")
+    _c.commit()
+    _c.close()
+except Exception:
+    pass  # coluna já existe
+
 
 # ─── cálculos ─────────────────────────────────────────────────────────────────
+
+def _resolver_dep_societaria(ativo: dict):
+    """
+    Retorna (dep_mensal, vida_meses, taxa_anual_pct, metodo).
+    Prioridade: taxa_depreciacao_societaria_pct_ano > vida_util_societaria_meses.
+    """
+    valor = float(ativo.get("valor_aquisicao") or 0)
+    residual = float(ativo.get("valor_residual_estimado") or 0)
+    depreciavel = max(valor - residual, 0)
+    taxa_anual = float(ativo.get("taxa_depreciacao_societaria_pct_ano") or 0)
+
+    if taxa_anual > 0:
+        dep_m = depreciavel * (taxa_anual / 100) / 12
+        vida = int(depreciavel / dep_m) if dep_m > 0 else 0
+        metodo = "aliquota"
+    else:
+        vida = int(ativo.get("vida_util_societaria_meses") or 60)
+        dep_m = depreciavel / vida if vida > 0 else 0
+        taxa_anual = (dep_m * 12 / valor * 100) if valor > 0 else 0
+        metodo = "vida_util"
+
+    return dep_m, vida, round(taxa_anual, 4), metodo
+
 
 def dep_societaria(ativo: dict) -> list:
     valor = float(ativo.get("valor_aquisicao") or 0)
     residual = float(ativo.get("valor_residual_estimado") or 0)
-    vida = int(ativo.get("vida_util_societaria_meses") or 60)
     entrada_str = ativo.get("data_entrada_operacao") or ativo.get("data_aquisicao")
-    if not entrada_str or vida <= 0:
+    if not entrada_str:
         return []
     try:
         dt0 = datetime.strptime(entrada_str[:10], "%Y-%m-%d")
     except ValueError:
         return []
-    depreciavel = max(valor - residual, 0)
-    dep_m = depreciavel / vida
+
+    dep_m, vida, _, _ = _resolver_dep_societaria(ativo)
+    if vida <= 0 or dep_m <= 0:
+        return []
+
     schedule, acum = [], 0.0
     for i in range(vida):
-        acum += dep_m
+        prev = acum
+        acum = min(acum + dep_m, max(valor - residual, 0))
         vlc = max(valor - acum, residual)
         schedule.append({
             "mes": i + 1,
             "competencia": add_months(dt0, i).strftime("%Y-%m"),
-            "depreciacao_mensal": round(dep_m, 2),
+            "depreciacao_mensal": round(acum - prev, 2),
             "depreciacao_acumulada": round(acum, 2),
             "valor_liquido_contabil": round(vlc, 2),
         })
@@ -322,17 +358,19 @@ def criar_ativo():
             INSERT INTO patrimonio_ativos
             (id,codigo,descricao,tipo_ativo,categoria,placa,chassi,
              data_aquisicao,data_entrada_operacao,vida_util_fiscal_meses,
-             vida_util_societaria_meses,valor_aquisicao,valor_residual_estimado,
+             vida_util_societaria_meses,taxa_depreciacao_societaria_pct_ano,
+             valor_aquisicao,valor_residual_estimado,
              estado_conservacao,centro_custo,filial,unidade_negocio,
              regime_tributario,aliquota_icms,valor_icms_aquisicao,
              numero_turnos,metodo_credito_pis_cofins,status,observacoes,
              created_at,updated_at)
-            VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, (aid, d["codigo"], d["descricao"],
               d.get("tipo_ativo", "veiculo"), d.get("categoria"),
               d.get("placa"), d.get("chassi"),
               d.get("data_aquisicao"), d.get("data_entrada_operacao"),
               d.get("vida_util_fiscal_meses", 60), d.get("vida_util_societaria_meses", 60),
+              d.get("taxa_depreciacao_societaria_pct_ano", 0),
               d.get("valor_aquisicao", 0), d.get("valor_residual_estimado", 0),
               d.get("estado_conservacao", "bom"),
               d.get("centro_custo"), d.get("filial"), d.get("unidade_negocio"),
@@ -372,7 +410,8 @@ def atualizar_ativo(aid):
         UPDATE patrimonio_ativos SET
         codigo=?,descricao=?,tipo_ativo=?,categoria=?,placa=?,chassi=?,
         data_aquisicao=?,data_entrada_operacao=?,vida_util_fiscal_meses=?,
-        vida_util_societaria_meses=?,valor_aquisicao=?,valor_residual_estimado=?,
+        vida_util_societaria_meses=?,taxa_depreciacao_societaria_pct_ano=?,
+        valor_aquisicao=?,valor_residual_estimado=?,
         estado_conservacao=?,centro_custo=?,filial=?,unidade_negocio=?,
         regime_tributario=?,aliquota_icms=?,valor_icms_aquisicao=?,
         numero_turnos=?,metodo_credito_pis_cofins=?,status=?,observacoes=?,
@@ -384,6 +423,7 @@ def atualizar_ativo(aid):
           d.get("data_entrada_operacao", e["data_entrada_operacao"]),
           d.get("vida_util_fiscal_meses", e["vida_util_fiscal_meses"]),
           d.get("vida_util_societaria_meses", e["vida_util_societaria_meses"]),
+          d.get("taxa_depreciacao_societaria_pct_ano", e.get("taxa_depreciacao_societaria_pct_ano", 0)),
           d.get("valor_aquisicao", e["valor_aquisicao"]),
           d.get("valor_residual_estimado", e["valor_residual_estimado"]),
           d.get("estado_conservacao", e["estado_conservacao"]),
@@ -422,17 +462,18 @@ def api_dep_soc(aid):
         return jsonify({"error": "Não encontrado"}), 404
     ativo = dict(row)
     sched = dep_societaria(ativo)
-    dep_m = sched[0]["depreciacao_mensal"] if sched else 0
+    dep_m, vida, taxa_anual, metodo = _resolver_dep_societaria(ativo)
     return jsonify({
         "ativo": ativo,
         "schedule": sched,
         "resumo": {
             "valor_aquisicao": ativo["valor_aquisicao"],
             "valor_residual": ativo["valor_residual_estimado"],
-            "depreciacao_mensal": dep_m,
+            "depreciacao_mensal": round(dep_m, 2),
             "depreciacao_anual": round(dep_m * 12, 2),
-            "vida_util_meses": ativo["vida_util_societaria_meses"],
-            "taxa_anual_pct": round(dep_m * 12 / float(ativo["valor_aquisicao"] or 1) * 100, 2),
+            "vida_util_meses": vida,
+            "taxa_anual_pct": taxa_anual,
+            "metodo": metodo,
         },
     })
 
