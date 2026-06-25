@@ -1,0 +1,1279 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Gestão Patrimonial — Transportadoras</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#0b1628;--sidebar:#0d1f3c;--card:#111f3a;--card2:#152545;
+  --border:#1e3560;--accent:#f5a623;--accent2:#00bfff;--green:#22c55e;
+  --red:#ef4444;--text:#e2e8f0;--muted:#7a9cc0;--white:#fff;
+  --radius:10px;--shadow:0 4px 20px rgba(0,0,0,.4);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column}
+/* layout */
+.app{display:flex;flex:1;min-height:0}
+/* sidebar */
+.sidebar{width:260px;background:var(--sidebar);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;flex-shrink:0}
+.sidebar-header{padding:20px 16px 12px;border-bottom:1px solid var(--border)}
+.sidebar-header h1{font-size:15px;color:var(--accent);font-weight:700;letter-spacing:.5px}
+.sidebar-header p{font-size:11px;color:var(--muted);margin-top:3px}
+.nav-section{padding:10px 8px 4px;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:600}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;cursor:pointer;border-radius:8px;margin:2px 6px;transition:all .15s;font-size:13px;color:var(--muted)}
+.nav-item:hover{background:var(--card);color:var(--text)}
+.nav-item.active{background:var(--accent);color:#000;font-weight:600}
+.nav-item .icon{font-size:16px;width:20px;text-align:center}
+/* topbar */
+.topbar{background:var(--sidebar);border-bottom:1px solid var(--border);padding:10px 20px;display:flex;align-items:center;justify-content:space-between}
+.topbar h2{font-size:16px;font-weight:600;color:var(--text)}
+.topbar-right{display:flex;gap:10px;align-items:center}
+/* main */
+.main{flex:1;overflow-y:auto;padding:20px}
+/* section */
+.section{display:none}
+.section.active{display:block}
+/* cards */
+.cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;margin-bottom:20px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px}
+.card-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.card-value{font-size:22px;font-weight:700;color:var(--white)}
+.card-value.green{color:var(--green)}
+.card-value.red{color:var(--red)}
+.card-value.accent{color:var(--accent)}
+.card-value.blue{color:var(--accent2)}
+.card-sub{font-size:11px;color:var(--muted);margin-top:4px}
+/* charts */
+.charts-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+.chart-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px}
+.chart-card h3{font-size:13px;font-weight:600;color:var(--muted);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px}
+.chart-card canvas{max-height:220px}
+/* tables */
+.table-wrap{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:20px}
+.table-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border)}
+.table-header h3{font-size:13px;font-weight:600;color:var(--text)}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{background:var(--card2);padding:10px 12px;text-align:left;font-weight:600;color:var(--muted);text-transform:uppercase;font-size:10px;letter-spacing:.5px;position:sticky;top:0}
+td{padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,.02)}
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:600}
+.badge.ativo{background:rgba(34,197,94,.15);color:var(--green)}
+.badge.vendido{background:rgba(239,68,68,.15);color:var(--red)}
+.badge.alienado{background:rgba(245,166,35,.15);color:var(--accent)}
+/* forms */
+.form-section{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:20px}
+.form-section h3{font-size:14px;font-weight:600;color:var(--text);margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.form-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.form-grid.cols2{grid-template-columns:1fr 1fr}
+.form-grid.cols3{grid-template-columns:1fr 1fr 1fr}
+.form-group{display:flex;flex-direction:column;gap:5px}
+.form-group.span2{grid-column:span 2}
+.form-group.span3{grid-column:span 3}
+label{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.3px}
+input,select,textarea{background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text);font-size:13px;width:100%;transition:border-color .15s}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent2)}
+select option{background:var(--card2)}
+textarea{resize:vertical;min-height:60px}
+/* buttons */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:7px;border:none;cursor:pointer;font-size:13px;font-weight:600;transition:all .15s}
+.btn-primary{background:var(--accent);color:#000}
+.btn-primary:hover{background:#e6951c}
+.btn-secondary{background:var(--card2);color:var(--text);border:1px solid var(--border)}
+.btn-secondary:hover{background:var(--border)}
+.btn-danger{background:rgba(239,68,68,.15);color:var(--red);border:1px solid rgba(239,68,68,.3)}
+.btn-danger:hover{background:rgba(239,68,68,.25)}
+.btn-success{background:rgba(34,197,94,.15);color:var(--green);border:1px solid rgba(34,197,94,.3)}
+.btn-success:hover{background:rgba(34,197,94,.25)}
+.btn-blue{background:rgba(0,191,255,.15);color:var(--accent2);border:1px solid rgba(0,191,255,.3)}
+.btn-blue:hover{background:rgba(0,191,255,.25)}
+.btn-sm{padding:5px 10px;font-size:11px}
+/* modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:1000;opacity:0;pointer-events:none;transition:opacity .2s}
+.modal-overlay.open{opacity:1;pointer-events:all}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:14px;width:min(900px,95vw);max-height:90vh;overflow-y:auto;padding:24px;box-shadow:var(--shadow)}
+.modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.modal-header h2{font-size:16px;font-weight:700;color:var(--text)}
+.close-btn{background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;line-height:1}
+.close-btn:hover{color:var(--text)}
+/* result box */
+.result-box{background:var(--card2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-top:16px}
+.result-box h4{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
+.result-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px}
+.result-row:last-child{border-bottom:none}
+.result-row.total{font-weight:700;color:var(--white);font-size:14px;border-top:2px solid var(--border);margin-top:4px;padding-top:10px}
+.result-row.positive .val{color:var(--green)}
+.result-row.negative .val{color:var(--red)}
+.result-row.highlight .val{color:var(--accent)}
+.val{font-weight:600}
+/* info panels */
+.info-panel{background:rgba(0,191,255,.05);border:1px solid rgba(0,191,255,.2);border-radius:8px;padding:12px 16px;font-size:12px;color:var(--accent2);margin-bottom:16px}
+.warn-panel{background:rgba(245,166,35,.05);border:1px solid rgba(245,166,35,.2);border-radius:8px;padding:12px 16px;font-size:12px;color:var(--accent);margin-bottom:16px}
+/* select de ativo */
+.ativo-select-bar{display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap}
+.ativo-select-bar select{max-width:320px}
+/* cenarios */
+.cenarios-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;margin-top:16px}
+.cenario-card{background:var(--card);border:2px solid var(--border);border-radius:var(--radius);padding:16px}
+.cenario-card.best{border-color:var(--green)}
+.cenario-card h4{font-size:13px;font-weight:700;color:var(--accent);margin-bottom:12px}
+/* reforma tributaria */
+.reforma-compare{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+.reforma-col{background:var(--card2);border:1px solid var(--border);border-radius:var(--radius);padding:16px}
+.reforma-col h4{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px}
+.reforma-col.atual h4{color:var(--muted)}
+.reforma-col.nova h4{color:var(--accent2)}
+/* consolidado */
+.consolidado-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px}
+.consolidado-box{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px}
+.consolidado-box h3{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px}
+.consolidado-box.ganhos h3{color:var(--green)}
+.consolidado-box.perdas h3{color:var(--red)}
+/* empty state */
+.empty{text-align:center;padding:40px 20px;color:var(--muted)}
+.empty .icon{font-size:40px;margin-bottom:12px}
+/* scrollbar */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+/* responsive */
+@media(max-width:768px){
+  .sidebar{width:200px}
+  .charts-row,.consolidado-grid,.reforma-compare{grid-template-columns:1fr}
+  .cards-grid{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-header">
+    <h1>🚛 Gestão Patrimonial</h1>
+    <p>Transportadoras · Simulação Tributária</p>
+  </div>
+
+  <div class="nav-section">Principal</div>
+  <div class="nav-item active" onclick="nav('dashboard')"><span class="icon">📊</span>Dashboard</div>
+  <div class="nav-item" onclick="nav('cadastro')"><span class="icon">🏗️</span>Cadastro de Ativos</div>
+
+  <div class="nav-section">Depreciação</div>
+  <div class="nav-item" onclick="nav('dep-soc')"><span class="icon">📉</span>Dep. Societária</div>
+  <div class="nav-item" onclick="nav('dep-fisc')"><span class="icon">📋</span>Dep. Fiscal</div>
+  <div class="nav-item" onclick="nav('diferencas')"><span class="icon">⚖️</span>Dif. Fiscal × Soc.</div>
+
+  <div class="nav-section">Tributário</div>
+  <div class="nav-item" onclick="nav('pis-cofins')"><span class="icon">💰</span>Créditos PIS/COFINS</div>
+  <div class="nav-item" onclick="nav('icms')"><span class="icon">🏛️</span>ICMS</div>
+  <div class="nav-item" onclick="nav('reforma')"><span class="icon">🔄</span>Reforma Tributária</div>
+
+  <div class="nav-section">Financeiro</div>
+  <div class="nav-item" onclick="nav('financiamentos')"><span class="icon">🏦</span>Financiamentos</div>
+
+  <div class="nav-section">Simuladores</div>
+  <div class="nav-item" onclick="nav('sim-compra')"><span class="icon">🛒</span>Simulador Compra</div>
+  <div class="nav-item" onclick="nav('sim-venda')"><span class="icon">💸</span>Simulador Venda</div>
+  <div class="nav-item" onclick="nav('comparador')"><span class="icon">🔀</span>Comparador TCO/ROI</div>
+
+  <div class="nav-section">Consolidado</div>
+  <div class="nav-item" onclick="nav('consolidado')"><span class="icon">📋</span>Resultado Econômico</div>
+
+  <div style="margin-top:auto;padding:12px 8px;border-top:1px solid var(--border)">
+    <button class="btn btn-secondary btn-sm" onclick="exportarExcel()" style="width:100%">⬇️ Exportar Excel</button>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div style="flex:1;display:flex;flex-direction:column;min-width:0">
+<div class="topbar">
+  <h2 id="section-title">Dashboard Executivo</h2>
+  <div class="topbar-right">
+    <span id="status-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--muted)"></span>
+    <span id="status-txt" style="font-size:12px;color:var(--muted)">conectando...</span>
+    <a href="/portal.html" style="font-size:12px;color:var(--accent2);text-decoration:none">← Portal DUE</a>
+  </div>
+</div>
+
+<div class="main">
+
+<!-- ===== DASHBOARD ===== -->
+<div id="sec-dashboard" class="section active">
+  <div class="cards-grid" id="dash-cards">
+    <div class="card"><div class="card-label">Patrimônio Bruto</div><div class="card-value accent" id="d-bruto">R$ —</div></div>
+    <div class="card"><div class="card-label">Patrimônio Líquido Contábil</div><div class="card-value blue" id="d-liquido">R$ —</div></div>
+    <div class="card"><div class="card-label">Depreciação Acumulada</div><div class="card-value" id="d-dep">R$ —</div></div>
+    <div class="card"><div class="card-label">Crédito PIS/COFINS (total)</div><div class="card-value green" id="d-piscof">R$ —</div></div>
+    <div class="card"><div class="card-label">Crédito ICMS</div><div class="card-value green" id="d-icms">R$ —</div></div>
+    <div class="card"><div class="card-label">Total Financiado</div><div class="card-value" id="d-fin">R$ —</div></div>
+    <div class="card"><div class="card-label">Juros Financiamentos</div><div class="card-value red" id="d-juros">R$ —</div></div>
+    <div class="card"><div class="card-label">Ativos Cadastrados</div><div class="card-value" id="d-qtd">—</div></div>
+  </div>
+
+  <div class="charts-row">
+    <div class="chart-card"><h3>Composição do Patrimônio</h3><canvas id="chart-pat"></canvas></div>
+    <div class="chart-card"><h3>Ativos por Tipo</h3><canvas id="chart-tipos"></canvas></div>
+  </div>
+
+  <div class="table-wrap">
+    <div class="table-header"><h3>Ativos Cadastrados</h3></div>
+    <div style="overflow-x:auto">
+    <table id="tbl-dashboard">
+      <thead><tr>
+        <th>Código</th><th>Descrição</th><th>Tipo</th>
+        <th>Valor Aquisição</th><th>Dep. Acum.</th><th>Valor Líq. Cont.</th><th>% Dep.</th><th>Status</th>
+      </tr></thead>
+      <tbody id="tbody-dashboard"></tbody>
+    </table>
+    </div>
+  </div>
+</div>
+
+<!-- ===== CADASTRO ===== -->
+<div id="sec-cadastro" class="section">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+    <div></div>
+    <button class="btn btn-primary" onclick="abrirModalAtivo()">＋ Novo Ativo</button>
+  </div>
+  <div class="table-wrap">
+    <div class="table-header"><h3>Ativos Imobilizados</h3><span id="total-ativos-badge" class="badge ativo"></span></div>
+    <div style="overflow-x:auto">
+    <table>
+      <thead><tr>
+        <th>Código</th><th>Descrição</th><th>Tipo</th><th>Placa</th>
+        <th>Valor Aquisição</th><th>Data Aquisição</th><th>V.Útil(m)</th>
+        <th>Regime</th><th>Status</th><th>Ações</th>
+      </tr></thead>
+      <tbody id="tbody-cadastro"></tbody>
+    </table>
+    </div>
+  </div>
+</div>
+
+<!-- ===== DEP. SOCIETÁRIA ===== -->
+<div id="sec-dep-soc" class="section">
+  <div class="ativo-select-bar">
+    <label>Selecione o ativo:</label>
+    <select id="sel-dep-soc" onchange="carregarDepSoc()"><option value="">— selecione —</option></select>
+  </div>
+  <div id="dep-soc-content"></div>
+</div>
+
+<!-- ===== DEP. FISCAL ===== -->
+<div id="sec-dep-fisc" class="section">
+  <div class="ativo-select-bar">
+    <label>Selecione o ativo:</label>
+    <select id="sel-dep-fisc" onchange="carregarDepFisc()"><option value="">— selecione —</option></select>
+  </div>
+  <div id="dep-fisc-content"></div>
+</div>
+
+<!-- ===== DIFERENÇAS ===== -->
+<div id="sec-diferencas" class="section">
+  <div class="ativo-select-bar">
+    <label>Selecione o ativo:</label>
+    <select id="sel-dif" onchange="carregarDiferencas()"><option value="">— selecione —</option></select>
+  </div>
+  <div id="dif-content"></div>
+</div>
+
+<!-- ===== PIS/COFINS ===== -->
+<div id="sec-pis-cofins" class="section">
+  <div class="ativo-select-bar">
+    <label>Selecione o ativo:</label>
+    <select id="sel-pc" onchange="carregarPisCofins()"><option value="">— selecione —</option></select>
+    <select id="sel-pc-metodo" onchange="carregarPisCofins()">
+      <option value="">método padrão (do cadastro)</option>
+      <option value="depreciacao">Pela Depreciação</option>
+      <option value="aquisicao_12">Aquisição / 12 meses</option>
+      <option value="aquisicao_48">Aquisição / 48 meses</option>
+    </select>
+  </div>
+  <div id="pc-content"></div>
+</div>
+
+<!-- ===== ICMS ===== -->
+<div id="sec-icms" class="section">
+  <div class="ativo-select-bar">
+    <label>Selecione o ativo:</label>
+    <select id="sel-icms" onchange="carregarICMS()"><option value="">— selecione —</option></select>
+  </div>
+  <div id="icms-content"></div>
+</div>
+
+<!-- ===== REFORMA TRIBUTÁRIA ===== -->
+<div id="sec-reforma" class="section">
+  <div class="form-section">
+    <h3>Parâmetros de Simulação — Reforma Tributária (IBS/CBS)</h3>
+    <div class="info-panel">
+      CBS substitui PIS/COFINS (alíquota estimada ~8,88%) · IBS substitui ICMS+ISS (estimativa ~26%) · Período de transição 2026–2033.
+      Os valores são estimativas baseadas nos textos legais em curso — use com fins gerenciais.
+    </div>
+    <div class="form-grid cols3">
+      <div class="form-group"><label>Valor de Aquisição (R$)</label><input type="number" id="ref-valor" value="300000" step="1000"/></div>
+      <div class="form-group"><label>Vida Útil (meses)</label><input type="number" id="ref-vida" value="60"/></div>
+      <div class="form-group"><label>Regime Tributário</label>
+        <select id="ref-regime"><option value="lucro_real">Lucro Real</option><option value="lucro_presumido">Lucro Presumido</option></select>
+      </div>
+    </div>
+    <div style="margin-top:12px"><button class="btn btn-primary" onclick="simularReforma()">Calcular Impacto</button></div>
+  </div>
+  <div id="reforma-content"></div>
+</div>
+
+<!-- ===== FINANCIAMENTOS ===== -->
+<div id="sec-financiamentos" class="section">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+    <div></div>
+    <button class="btn btn-primary" onclick="abrirModalFin()">＋ Novo Financiamento</button>
+  </div>
+  <div class="table-wrap">
+    <div class="table-header"><h3>Financiamentos Cadastrados</h3></div>
+    <div style="overflow-x:auto">
+    <table>
+      <thead><tr>
+        <th>Ativo</th><th>Banco</th><th>Contrato</th>
+        <th>Valor Financiado</th><th>Entrada</th><th>Taxa Mensal</th>
+        <th>Prazo</th><th>Sistema</th><th>Ações</th>
+      </tr></thead>
+      <tbody id="tbody-fins"></tbody>
+    </table>
+    </div>
+  </div>
+  <div id="cronograma-content"></div>
+</div>
+
+<!-- ===== SIMULADOR COMPRA ===== -->
+<div id="sec-sim-compra" class="section">
+  <div class="form-section">
+    <h3>Simulador de Aquisição de Ativo</h3>
+    <div class="form-grid cols3">
+      <div class="form-group"><label>Valor de Aquisição (R$)</label><input type="number" id="sc-valor" value="500000" step="1000"/></div>
+      <div class="form-group"><label>Vida Útil (meses)</label><input type="number" id="sc-vida" value="60"/></div>
+      <div class="form-group"><label>Valor Residual (R$)</label><input type="number" id="sc-residual" value="50000" step="1000"/></div>
+      <div class="form-group"><label>ICMS na Nota (R$)</label><input type="number" id="sc-icms" value="0" step="100"/></div>
+      <div class="form-group"><label>Regime Tributário</label>
+        <select id="sc-regime"><option value="lucro_real">Lucro Real</option><option value="lucro_presumido">Lucro Presumido</option></select>
+      </div>
+    </div>
+    <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px">
+      <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:8px">OPÇÃO FINANCIAMENTO (opcional)</div>
+      <div class="form-grid cols3">
+        <div class="form-group"><label>Entrada (R$)</label><input type="number" id="sc-entrada" value="0" step="1000"/></div>
+        <div class="form-group"><label>Taxa Mensal (%)</label><input type="number" id="sc-taxa" value="1.2" step="0.01"/></div>
+        <div class="form-group"><label>Prazo (meses)</label><input type="number" id="sc-prazo" value="48"/></div>
+      </div>
+    </div>
+    <div style="margin-top:12px"><button class="btn btn-primary" onclick="simularCompra()">Simular Cenários</button></div>
+  </div>
+  <div id="compra-result"></div>
+</div>
+
+<!-- ===== SIMULADOR VENDA ===== -->
+<div id="sec-sim-venda" class="section">
+  <div class="form-section">
+    <h3>Simulador de Venda de Ativo</h3>
+    <div class="ativo-select-bar">
+      <label>Ativo:</label>
+      <select id="sv-ativo"><option value="">— selecione —</option></select>
+    </div>
+    <div class="form-grid cols3">
+      <div class="form-group"><label>Valor de Venda (R$)</label><input type="number" id="sv-valor" value="0" step="1000"/></div>
+      <div class="form-group"><label>Data da Venda</label><input type="date" id="sv-data"/></div>
+    </div>
+    <div style="margin-top:12px"><button class="btn btn-primary" onclick="simularVenda()">Calcular Impacto</button></div>
+  </div>
+  <div id="venda-result"></div>
+</div>
+
+<!-- ===== COMPARADOR ===== -->
+<div id="sec-comparador" class="section">
+  <div class="form-section">
+    <h3>Comparador de Cenários — TCO / ROI / VPL / TIR</h3>
+    <div class="form-grid cols3">
+      <div class="form-group"><label>Valor de Aquisição (R$)</label><input type="number" id="cmp-valor" value="400000" step="1000"/></div>
+      <div class="form-group"><label>Vida Útil (meses)</label><input type="number" id="cmp-vida" value="60"/></div>
+      <div class="form-group"><label>Valor Residual (R$)</label><input type="number" id="cmp-residual" value="40000" step="1000"/></div>
+      <div class="form-group"><label>Regime Tributário</label>
+        <select id="cmp-regime"><option value="lucro_real">Lucro Real</option><option value="lucro_presumido">Lucro Presumido</option></select>
+      </div>
+      <div class="form-group"><label>ICMS Aquisição (R$)</label><input type="number" id="cmp-icms" value="0" step="100"/></div>
+      <div class="form-group"><label>Taxa Desconto Mensal (%)</label><input type="number" id="cmp-taxa-desc" value="1.0" step="0.1"/></div>
+    </div>
+    <div style="margin-top:12px"><button class="btn btn-primary" onclick="calcularComparador()">Calcular</button></div>
+  </div>
+  <div id="comparador-result"></div>
+</div>
+
+<!-- ===== CONSOLIDADO ===== -->
+<div id="sec-consolidado" class="section">
+  <div id="consolidado-content">
+    <div class="empty"><div class="icon">📋</div><p>Clique em "Resultado Econômico" para carregar os dados consolidados.</p></div>
+  </div>
+</div>
+
+</div><!-- /main -->
+</div><!-- /main col -->
+</div><!-- /app -->
+
+<!-- ===== MODAL ATIVO ===== -->
+<div id="modal-ativo" class="modal-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modal-ativo-title">Cadastrar Ativo</h2>
+      <button class="close-btn" onclick="fecharModal('modal-ativo')">×</button>
+    </div>
+
+    <div class="form-section" style="margin:0">
+      <h3>Identificação</h3>
+      <div class="form-grid">
+        <div class="form-group"><label>Código *</label><input id="f-codigo" placeholder="EX: CV-001"/></div>
+        <div class="form-group span2"><label>Descrição *</label><input id="f-descricao" placeholder="Ex: Scania R450 — 2024"/></div>
+        <div class="form-group"><label>Tipo do Ativo</label>
+          <select id="f-tipo">
+            <option value="cavalo_mecanico">Cavalo Mecânico</option>
+            <option value="carreta">Carreta</option>
+            <option value="implemento">Implemento Rodoviário</option>
+            <option value="maquina">Máquina/Equipamento</option>
+            <option value="veiculo">Veículo</option>
+            <option value="outro">Outro</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Categoria</label><input id="f-categoria" placeholder="Ex: Tração 6x4"/></div>
+        <div class="form-group"><label>Placa</label><input id="f-placa" placeholder="ABC-1234"/></div>
+        <div class="form-group"><label>Chassi</label><input id="f-chassi"/></div>
+      </div>
+    </div>
+
+    <div class="form-section" style="margin-top:12px">
+      <h3>Datas e Valores</h3>
+      <div class="form-grid">
+        <div class="form-group"><label>Data de Aquisição</label><input type="date" id="f-dt-aq"/></div>
+        <div class="form-group"><label>Data de Entrada em Operação</label><input type="date" id="f-dt-op"/></div>
+        <div class="form-group"><label>Valor de Aquisição (R$) *</label><input type="number" id="f-valor" step="0.01" min="0"/></div>
+        <div class="form-group"><label>Valor Residual Estimado (R$)</label><input type="number" id="f-residual" step="0.01" min="0" value="0"/></div>
+        <div class="form-group"><label>Vida Útil Fiscal (meses)</label><input type="number" id="f-vida-fisc" value="60" min="1"/></div>
+        <div class="form-group"><label>Vida Útil Societária (meses)</label><input type="number" id="f-vida-soc" value="60" min="1"/></div>
+        <div class="form-group"><label>Nº de Turnos</label>
+          <select id="f-turnos"><option value="1">1 turno (taxa normal)</option><option value="2">2 turnos (×1,5)</option><option value="3">3 turnos (×2)</option></select>
+        </div>
+        <div class="form-group"><label>Estado de Conservação</label>
+          <select id="f-estado"><option value="excelente">Excelente</option><option value="bom" selected>Bom</option><option value="regular">Regular</option><option value="ruim">Ruim</option></select>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-section" style="margin-top:12px">
+      <h3>Tributário</h3>
+      <div class="form-grid">
+        <div class="form-group"><label>Regime Tributário</label>
+          <select id="f-regime"><option value="lucro_real">Lucro Real</option><option value="lucro_presumido">Lucro Presumido</option><option value="simples">Simples Nacional</option></select>
+        </div>
+        <div class="form-group"><label>Alíquota ICMS (%)</label><input type="number" id="f-aliq-icms" value="0" step="0.01" min="0"/></div>
+        <div class="form-group"><label>Valor ICMS na Aquisição (R$)</label><input type="number" id="f-icms" value="0" step="0.01" min="0"/></div>
+        <div class="form-group"><label>Método Crédito PIS/COFINS</label>
+          <select id="f-metodo-pc">
+            <option value="depreciacao">Pela Depreciação</option>
+            <option value="aquisicao_12">Aquisição ÷ 12 meses</option>
+            <option value="aquisicao_48">Aquisição ÷ 48 meses</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-section" style="margin-top:12px">
+      <h3>Organização</h3>
+      <div class="form-grid">
+        <div class="form-group"><label>Centro de Custo</label><input id="f-cc"/></div>
+        <div class="form-group"><label>Filial</label><input id="f-filial"/></div>
+        <div class="form-group"><label>Unidade de Negócio</label><input id="f-un"/></div>
+        <div class="form-group"><label>Status</label>
+          <select id="f-status"><option value="ativo">Ativo</option><option value="vendido">Vendido</option><option value="alienado">Alienado</option></select>
+        </div>
+        <div class="form-group span2"><label>Observações</label><textarea id="f-obs"></textarea></div>
+      </div>
+    </div>
+
+    <input type="hidden" id="f-id"/>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
+      <button class="btn btn-secondary" onclick="fecharModal('modal-ativo')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarAtivo()">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL FINANCIAMENTO ===== -->
+<div id="modal-fin" class="modal-overlay">
+  <div class="modal" style="max-width:600px">
+    <div class="modal-header">
+      <h2>Cadastrar Financiamento</h2>
+      <button class="close-btn" onclick="fecharModal('modal-fin')">×</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group span2"><label>Ativo</label>
+        <select id="ff-ativo"><option value="">— selecione —</option></select>
+      </div>
+      <div class="form-group"><label>Banco / Financeira</label><input id="ff-banco"/></div>
+      <div class="form-group"><label>Número do Contrato</label><input id="ff-contrato"/></div>
+      <div class="form-group"><label>Valor Financiado (R$)</label><input type="number" id="ff-valor" step="0.01"/></div>
+      <div class="form-group"><label>Entrada (R$)</label><input type="number" id="ff-entrada" value="0" step="0.01"/></div>
+      <div class="form-group"><label>Taxa Mensal (%)</label><input type="number" id="ff-taxa" step="0.001" value="1.2"/></div>
+      <div class="form-group"><label>Sistema de Amortização</label>
+        <select id="ff-sistema"><option value="price">PRICE (parcela fixa)</option><option value="sac">SAC (amort. fixa)</option></select>
+      </div>
+      <div class="form-group"><label>Prazo (meses)</label><input type="number" id="ff-prazo" value="48"/></div>
+      <div class="form-group"><label>Balão/Residual (R$)</label><input type="number" id="ff-balao" value="0" step="0.01"/></div>
+      <div class="form-group"><label>Data de Início</label><input type="date" id="ff-inicio"/></div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
+      <button class="btn btn-secondary" onclick="fecharModal('modal-fin')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarFin()">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = 'http://localhost:5000/patrimonio';
+let ativos = [];
+let chartPat = null, chartTipos = null, chartDepSoc = null, chartDepFisc = null, chartPC = null, chartFin = null;
+
+// ─── navigation ──────────────────────────────────────────────────────────────
+const sectionTitles = {
+  dashboard:'Dashboard Executivo', cadastro:'Cadastro de Ativos',
+  'dep-soc':'Depreciação Societária', 'dep-fisc':'Depreciação Fiscal',
+  diferencas:'Diferenças Fiscal × Societária',
+  'pis-cofins':'Créditos PIS/COFINS', icms:'ICMS', reforma:'Reforma Tributária',
+  financiamentos:'Financiamentos', 'sim-compra':'Simulador de Compra',
+  'sim-venda':'Simulador de Venda', comparador:'Comparador TCO/ROI/VPL/TIR',
+  consolidado:'Resultado Econômico Consolidado'
+};
+
+function nav(id) {
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  document.querySelector(`.nav-item[onclick="nav('${id}')"]`).classList.add('active');
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById('sec-' + id).classList.add('active');
+  document.getElementById('section-title').textContent = sectionTitles[id] || id;
+  if (id === 'dashboard') carregarDashboard();
+  if (id === 'consolidado') carregarConsolidado();
+}
+
+// ─── utils ────────────────────────────────────────────────────────────────────
+const fmt = v => (v == null ? '—' : new Intl.NumberFormat('pt-BR', {style:'currency', currency:'BRL'}).format(v));
+const fmtN = v => (v == null ? '—' : new Intl.NumberFormat('pt-BR',{minimumFractionDigits:2}).format(v));
+const fmtPct = v => `${fmtN(v)}%`;
+const cor = v => v >= 0 ? 'green' : 'red';
+
+async function api(path, opts = {}) {
+  const r = await fetch(API + path, {headers:{'Content-Type':'application/json'}, ...opts});
+  if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || r.statusText); }
+  return r.json();
+}
+
+function destroyChart(c) { if (c) c.destroy(); }
+
+function populaSelects(lista) {
+  const sels = ['sel-dep-soc','sel-dep-fisc','sel-dif','sel-pc','sel-icms','sv-ativo'];
+  sels.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const cur = el.value;
+    el.innerHTML = '<option value="">— selecione —</option>';
+    lista.forEach(a => {
+      const opt = document.createElement('option');
+      opt.value = a.id; opt.textContent = `${a.codigo} — ${a.descricao}`;
+      el.appendChild(opt);
+    });
+    if (cur) el.value = cur;
+  });
+  // financiamento modal ativo select
+  const ffAt = document.getElementById('ff-ativo');
+  if (ffAt) {
+    ffAt.innerHTML = '<option value="">— selecione —</option>';
+    lista.forEach(a => {
+      const opt = document.createElement('option');
+      opt.value = a.id; opt.textContent = `${a.codigo} — ${a.descricao}`;
+      ffAt.appendChild(opt);
+    });
+  }
+}
+
+// ─── status check ─────────────────────────────────────────────────────────────
+async function checkStatus() {
+  try {
+    await fetch('http://localhost:5000/');
+    document.getElementById('status-dot').style.background = 'var(--green)';
+    document.getElementById('status-txt').textContent = 'backend online';
+  } catch {
+    document.getElementById('status-dot').style.background = 'var(--red)';
+    document.getElementById('status-txt').textContent = 'backend offline';
+  }
+}
+
+// ─── dashboard ────────────────────────────────────────────────────────────────
+async function carregarDashboard() {
+  try {
+    const d = await api('/dashboard');
+    const t = d.totais;
+    document.getElementById('d-bruto').textContent = fmt(t.patrimonio_bruto);
+    document.getElementById('d-liquido').textContent = fmt(t.patrimonio_liquido);
+    document.getElementById('d-dep').textContent = fmt(t.depreciacao_acumulada);
+    document.getElementById('d-piscof').textContent = fmt(t.credito_pis_cofins_total);
+    document.getElementById('d-icms').textContent = fmt(t.credito_icms_total);
+    document.getElementById('d-fin').textContent = fmt(t.total_financiado);
+    document.getElementById('d-juros').textContent = fmt(t.total_juros_fins);
+    document.getElementById('d-qtd').textContent = d.ativos.length;
+
+    // tabela
+    const tbody = document.getElementById('tbody-dashboard');
+    tbody.innerHTML = d.ativos.map(a => `
+      <tr>
+        <td>${a.codigo}</td><td>${a.descricao}</td><td>${tipoLabel(a.tipo_ativo)}</td>
+        <td>${fmt(a.valor_aquisicao)}</td><td>${fmt(a.depreciacao_acumulada)}</td>
+        <td>${fmt(a.valor_liquido_contabil)}</td>
+        <td><div style="background:rgba(245,166,35,.1);border-radius:4px;padding:3px 8px;display:inline-block;color:var(--accent)">${a.pct_depreciado}%</div></td>
+        <td><span class="badge ${a.status}">${a.status}</span></td>
+      </tr>`).join('') || '<tr><td colspan="8" class="empty"><div class="icon">🚛</div><p>Nenhum ativo cadastrado</p></td></tr>';
+
+    // charts
+    destroyChart(chartPat);
+    destroyChart(chartTipos);
+
+    chartPat = new Chart(document.getElementById('chart-pat'), {
+      type:'doughnut',
+      data:{
+        labels:['Patrimônio Líquido','Depreciação Acumulada'],
+        datasets:[{data:[t.patrimonio_liquido, t.depreciacao_acumulada], backgroundColor:['#00bfff','#1e3560']}]
+      },
+      options:{plugins:{legend:{labels:{color:'#7a9cc0'}}},cutout:'65%'}
+    });
+
+    const tipos = {};
+    d.ativos.forEach(a => { tipos[tipoLabel(a.tipo_ativo)] = (tipos[tipoLabel(a.tipo_ativo)] || 0) + a.valor_aquisicao; });
+    chartTipos = new Chart(document.getElementById('chart-tipos'), {
+      type:'bar',
+      data:{
+        labels:Object.keys(tipos),
+        datasets:[{label:'Valor Aquisição',data:Object.values(tipos),backgroundColor:'#f5a623'}]
+      },
+      options:{plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#7a9cc0'}},y:{ticks:{color:'#7a9cc0', callback:v=>fmt(v)}}}}
+    });
+  } catch(e) { console.error(e); }
+}
+
+// ─── cadastro ─────────────────────────────────────────────────────────────────
+async function carregarAtivos() {
+  ativos = await api('/ativos');
+  const tbody = document.getElementById('tbody-cadastro');
+  document.getElementById('total-ativos-badge').textContent = `${ativos.length} ativos`;
+  tbody.innerHTML = ativos.map(a => `
+    <tr>
+      <td>${a.codigo}</td><td>${a.descricao}</td><td>${tipoLabel(a.tipo_ativo)}</td>
+      <td>${a.placa||'—'}</td><td>${fmt(a.valor_aquisicao)}</td>
+      <td>${a.data_aquisicao||'—'}</td><td>${a.vida_util_societaria_meses}m</td>
+      <td>${regimeLabel(a.regime_tributario)}</td>
+      <td><span class="badge ${a.status}">${a.status}</span></td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-secondary btn-sm" onclick="editarAtivo('${a.id}')">✏️</button>
+        <button class="btn btn-danger btn-sm" onclick="excluirAtivo('${a.id}')">🗑️</button>
+      </td>
+    </tr>`).join('') || '<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:30px">Nenhum ativo cadastrado</td></tr>';
+  populaSelects(ativos);
+}
+
+function tipoLabel(t){
+  return {cavalo_mecanico:'Cavalo Mecânico',carreta:'Carreta',implemento:'Implemento',
+          maquina:'Máquina/Equip.',veiculo:'Veículo',outro:'Outro'}[t] || t || '—';
+}
+function regimeLabel(r){
+  return {lucro_real:'Lucro Real',lucro_presumido:'L. Presumido',simples:'Simples'}[r] || r || '—';
+}
+
+function abrirModalAtivo(id = null) {
+  const campos = ['codigo','descricao','tipo','categoria','placa','chassi',
+    'dt-aq','dt-op','valor','residual','vida-fisc','vida-soc','turnos','estado',
+    'regime','aliq-icms','icms','metodo-pc','cc','filial','un','status','obs','id'];
+  campos.forEach(c => { const el=document.getElementById('f-'+c); if(el) el.value=''; });
+  document.getElementById('f-vida-fisc').value = 60;
+  document.getElementById('f-vida-soc').value = 60;
+  document.getElementById('f-turnos').value = 1;
+  document.getElementById('f-estado').value = 'bom';
+  document.getElementById('f-regime').value = 'lucro_real';
+  document.getElementById('f-status').value = 'ativo';
+  document.getElementById('f-residual').value = 0;
+  document.getElementById('modal-ativo-title').textContent = id ? 'Editar Ativo' : 'Cadastrar Ativo';
+  if (!id) { abrirModal('modal-ativo'); return; }
+  const a = ativos.find(x => x.id === id);
+  if (!a) return;
+  document.getElementById('f-id').value = a.id;
+  document.getElementById('f-codigo').value = a.codigo||'';
+  document.getElementById('f-descricao').value = a.descricao||'';
+  document.getElementById('f-tipo').value = a.tipo_ativo||'veiculo';
+  document.getElementById('f-categoria').value = a.categoria||'';
+  document.getElementById('f-placa').value = a.placa||'';
+  document.getElementById('f-chassi').value = a.chassi||'';
+  document.getElementById('f-dt-aq').value = a.data_aquisicao||'';
+  document.getElementById('f-dt-op').value = a.data_entrada_operacao||'';
+  document.getElementById('f-valor').value = a.valor_aquisicao||0;
+  document.getElementById('f-residual').value = a.valor_residual_estimado||0;
+  document.getElementById('f-vida-fisc').value = a.vida_util_fiscal_meses||60;
+  document.getElementById('f-vida-soc').value = a.vida_util_societaria_meses||60;
+  document.getElementById('f-turnos').value = a.numero_turnos||1;
+  document.getElementById('f-estado').value = a.estado_conservacao||'bom';
+  document.getElementById('f-regime').value = a.regime_tributario||'lucro_real';
+  document.getElementById('f-aliq-icms').value = a.aliquota_icms||0;
+  document.getElementById('f-icms').value = a.valor_icms_aquisicao||0;
+  document.getElementById('f-metodo-pc').value = a.metodo_credito_pis_cofins||'depreciacao';
+  document.getElementById('f-cc').value = a.centro_custo||'';
+  document.getElementById('f-filial').value = a.filial||'';
+  document.getElementById('f-un').value = a.unidade_negocio||'';
+  document.getElementById('f-status').value = a.status||'ativo';
+  document.getElementById('f-obs').value = a.observacoes||'';
+  abrirModal('modal-ativo');
+}
+
+function editarAtivo(id) { abrirModalAtivo(id); }
+
+async function salvarAtivo() {
+  const payload = {
+    codigo: document.getElementById('f-codigo').value.trim(),
+    descricao: document.getElementById('f-descricao').value.trim(),
+    tipo_ativo: document.getElementById('f-tipo').value,
+    categoria: document.getElementById('f-categoria').value.trim(),
+    placa: document.getElementById('f-placa').value.trim(),
+    chassi: document.getElementById('f-chassi').value.trim(),
+    data_aquisicao: document.getElementById('f-dt-aq').value||null,
+    data_entrada_operacao: document.getElementById('f-dt-op').value||null,
+    valor_aquisicao: parseFloat(document.getElementById('f-valor').value)||0,
+    valor_residual_estimado: parseFloat(document.getElementById('f-residual').value)||0,
+    vida_util_fiscal_meses: parseInt(document.getElementById('f-vida-fisc').value)||60,
+    vida_util_societaria_meses: parseInt(document.getElementById('f-vida-soc').value)||60,
+    numero_turnos: parseInt(document.getElementById('f-turnos').value)||1,
+    estado_conservacao: document.getElementById('f-estado').value,
+    regime_tributario: document.getElementById('f-regime').value,
+    aliquota_icms: parseFloat(document.getElementById('f-aliq-icms').value)||0,
+    valor_icms_aquisicao: parseFloat(document.getElementById('f-icms').value)||0,
+    metodo_credito_pis_cofins: document.getElementById('f-metodo-pc').value,
+    centro_custo: document.getElementById('f-cc').value.trim(),
+    filial: document.getElementById('f-filial').value.trim(),
+    unidade_negocio: document.getElementById('f-un').value.trim(),
+    status: document.getElementById('f-status').value,
+    observacoes: document.getElementById('f-obs').value.trim(),
+  };
+  if (!payload.codigo || !payload.descricao) { alert('Código e Descrição são obrigatórios.'); return; }
+  try {
+    const id = document.getElementById('f-id').value;
+    if (id) await api(`/ativos/${id}`, {method:'PUT', body:JSON.stringify(payload)});
+    else await api('/ativos', {method:'POST', body:JSON.stringify(payload)});
+    fecharModal('modal-ativo');
+    await carregarAtivos();
+  } catch(e) { alert('Erro: ' + e.message); }
+}
+
+async function excluirAtivo(id) {
+  if (!confirm('Excluir este ativo? Esta ação não pode ser desfeita.')) return;
+  await api(`/ativos/${id}`, {method:'DELETE'});
+  await carregarAtivos();
+}
+
+// ─── depreciação societária ───────────────────────────────────────────────────
+async function carregarDepSoc() {
+  const id = document.getElementById('sel-dep-soc').value;
+  const el = document.getElementById('dep-soc-content');
+  if (!id) { el.innerHTML=''; return; }
+  try {
+    const d = await api(`/ativos/${id}/depreciacao`);
+    const r = d.resumo;
+    el.innerHTML = `
+      <div class="cards-grid">
+        <div class="card"><div class="card-label">Depreciação Mensal</div><div class="card-value accent">${fmt(r.depreciacao_mensal)}</div></div>
+        <div class="card"><div class="card-label">Depreciação Anual</div><div class="card-value accent">${fmt(r.depreciacao_anual)}</div></div>
+        <div class="card"><div class="card-label">Taxa Anual</div><div class="card-value">${fmtPct(r.taxa_anual_pct)}</div></div>
+        <div class="card"><div class="card-label">Valor Aquisição</div><div class="card-value">${fmt(r.valor_aquisicao)}</div></div>
+        <div class="card"><div class="card-label">Valor Residual</div><div class="card-value">${fmt(r.valor_residual)}</div></div>
+        <div class="card"><div class="card-label">Vida Útil</div><div class="card-value">${r.vida_util_meses}m</div></div>
+      </div>
+      <div class="chart-card" style="margin-bottom:16px"><h3>Evolução do Valor Líquido Contábil</h3><canvas id="chart-dep-soc"></canvas></div>
+      <div class="table-wrap"><div class="table-header"><h3>Cronograma Anual de Depreciação</h3></div>
+        <div style="overflow-x:auto"><table>
+          <thead><tr><th>Ano</th><th>Dep. Anual</th><th>Dep. Acumulada</th><th>VLC Final</th></tr></thead>
+          <tbody>${gerarTabelaAnual(d.schedule)}</tbody>
+        </table></div>
+      </div>`;
+    destroyChart(chartDepSoc);
+    const labels = d.schedule.filter((_,i)=>i%6===0).map(x=>x.competencia);
+    const vlcs = d.schedule.filter((_,i)=>i%6===0).map(x=>x.valor_liquido_contabil);
+    chartDepSoc = new Chart(document.getElementById('chart-dep-soc'), {
+      type:'line',
+      data:{labels, datasets:[{label:'VLC',data:vlcs,borderColor:'#00bfff',fill:true,backgroundColor:'rgba(0,191,255,.1)'}]},
+      options:{plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#7a9cc0'}},y:{ticks:{color:'#7a9cc0',callback:v=>fmt(v)}}}}
+    });
+  } catch(e) { el.innerHTML=`<div class="warn-panel">Erro: ${e.message}</div>`; }
+}
+
+function gerarTabelaAnual(schedule) {
+  const anos = {};
+  schedule.forEach(d => {
+    const ano = d.competencia.substr(0,4);
+    if (!anos[ano]) anos[ano] = {dep:0, vlc:0};
+    anos[ano].dep += d.depreciacao_mensal;
+    anos[ano].vlc = d.valor_liquido_contabil;
+  });
+  return Object.entries(anos).map(([ano,v]) => `<tr>
+    <td>${ano}</td><td>${fmt(v.dep)}</td>
+    <td>${fmt(schedule.filter(d=>d.competencia.startsWith(ano)).slice(-1)[0]?.depreciacao_acumulada)}</td>
+    <td>${fmt(v.vlc)}</td>
+  </tr>`).join('');
+}
+
+// ─── depreciação fiscal ───────────────────────────────────────────────────────
+async function carregarDepFisc() {
+  const id = document.getElementById('sel-dep-fisc').value;
+  const el = document.getElementById('dep-fisc-content');
+  if (!id) { el.innerHTML=''; return; }
+  try {
+    const d = await api(`/ativos/${id}/depreciacao-fiscal`);
+    el.innerHTML = `
+      <div class="cards-grid">
+        <div class="card"><div class="card-label">Dep. Fiscal Total</div><div class="card-value accent">${fmt(d.totais.dep_fisc_total)}</div></div>
+        <div class="card"><div class="card-label">Dep. Societária Total</div><div class="card-value">${fmt(d.totais.dep_soc_total)}</div></div>
+        <div class="card"><div class="card-label">Diferença Total</div><div class="card-value ${d.totais.diferenca_total>=0?'green':'red'}">${fmt(d.totais.diferenca_total)}</div></div>
+        <div class="card"><div class="card-label">Econ. IRPJ/CSLL (acelerado)</div><div class="card-value green">${fmt(d.totais.economia_irpj_csll_acelerado)}</div></div>
+      </div>
+      <div class="chart-card" style="margin-bottom:16px"><h3>Dep. Fiscal vs Dep. Societária (mensal)</h3><canvas id="chart-dep-fisc"></canvas></div>
+      <div class="table-wrap"><div class="table-header"><h3>Diferenças Temporárias</h3></div>
+        <div style="overflow-x:auto"><table>
+          <thead><tr><th>Competência</th><th>Dep. Soc.</th><th>Dep. Fiscal</th><th>Dif. Temp.</th><th>VLC</th><th>Saldo Fiscal</th><th>Aj. IRPJ</th><th>Aj. CSLL</th></tr></thead>
+          <tbody>${d.diferencas.slice(0,120).map(x=>`<tr>
+            <td>${x.competencia}</td><td>${fmt(x.dep_societaria)}</td><td>${fmt(x.dep_fiscal)}</td>
+            <td style="color:${x.diferenca_temporaria>=0?'var(--green)':'var(--red)'}">${fmt(x.diferenca_temporaria)}</td>
+            <td>${fmt(x.vlc)}</td><td>${fmt(x.saldo_fiscal)}</td>
+            <td>${fmt(x.ajuste_irpj)}</td><td>${fmt(x.ajuste_csll)}</td>
+          </tr>`).join('')}</tbody>
+        </table></div>
+      </div>`;
+    destroyChart(chartDepFisc);
+    const MAX=36;
+    const soc = d.diferencas.slice(0,MAX).map(x=>x.dep_societaria);
+    const fisc = d.diferencas.slice(0,MAX).map(x=>x.dep_fiscal);
+    const labels = d.diferencas.slice(0,MAX).map(x=>x.competencia);
+    chartDepFisc = new Chart(document.getElementById('chart-dep-fisc'), {
+      type:'bar',
+      data:{labels, datasets:[
+        {label:'Dep. Societária',data:soc,backgroundColor:'rgba(0,191,255,.5)'},
+        {label:'Dep. Fiscal',data:fisc,backgroundColor:'rgba(245,166,35,.5)'}
+      ]},
+      options:{plugins:{legend:{labels:{color:'#7a9cc0'}}},scales:{x:{ticks:{color:'#7a9cc0',maxTicksLimit:12}},y:{ticks:{color:'#7a9cc0',callback:v=>fmt(v)}}}}
+    });
+  } catch(e) { el.innerHTML=`<div class="warn-panel">Erro: ${e.message}</div>`; }
+}
+
+// ─── diferenças ───────────────────────────────────────────────────────────────
+async function carregarDiferencas() {
+  const id = document.getElementById('sel-dif').value;
+  const el = document.getElementById('dif-content');
+  if (!id) { el.innerHTML=''; return; }
+  // reutiliza o endpoint de dep-fiscal que já retorna as diferenças
+  try {
+    const d = await api(`/ativos/${id}/depreciacao-fiscal`);
+    const tt = d.totais;
+    el.innerHTML = `
+      <div class="info-panel">
+        Diferenças temporárias geram ativos/passivos fiscais diferidos. Diferenças permanentes afetam o LALUR e e-LACS definitivamente.
+        IRPJ: 15% + 10% adicional sobre lucro &gt; R$240k/ano · CSLL: 9%
+      </div>
+      <div class="cards-grid">
+        <div class="card"><div class="card-label">Total Dep. Soc.</div><div class="card-value">${fmt(tt.dep_soc_total)}</div></div>
+        <div class="card"><div class="card-label">Total Dep. Fiscal</div><div class="card-value">${fmt(tt.dep_fisc_total)}</div></div>
+        <div class="card"><div class="card-label">Dif. Temporária Total</div><div class="card-value ${tt.diferenca_total>=0?'green':'red'}">${fmt(tt.diferenca_total)}</div></div>
+        <div class="card"><div class="card-label">Economia IRPJ/CSLL p/ Aceleração</div><div class="card-value green">${fmt(tt.economia_irpj_csll_acelerado)}</div></div>
+      </div>
+      <div class="result-box">
+        <h4>Ajustes LALUR / e-LACS</h4>
+        <div class="result-row"><span>Valor Contábil Societário</span><span class="val">${fmt(tt.dep_soc_total)}</span></div>
+        <div class="result-row"><span>Valor Fiscal (depreciação)</span><span class="val">${fmt(tt.dep_fisc_total)}</span></div>
+        <div class="result-row highlight"><span>Diferença Temporária (adições/exclusões)</span><span class="val">${fmt(tt.diferenca_total)}</span></div>
+        <div class="result-row positive"><span>Redução Base IRPJ (×15%)</span><span class="val">${fmt(tt.diferenca_total*0.15)}</span></div>
+        <div class="result-row positive"><span>Redução Base CSLL (×9%)</span><span class="val">${fmt(tt.diferenca_total*0.09)}</span></div>
+        <div class="result-row total positive"><span>Total Economia Tributária</span><span class="val">${fmt(tt.diferenca_total*0.24)}</span></div>
+      </div>`;
+  } catch(e) { el.innerHTML=`<div class="warn-panel">Erro: ${e.message}</div>`; }
+}
+
+// ─── pis/cofins ───────────────────────────────────────────────────────────────
+async function carregarPisCofins() {
+  const id = document.getElementById('sel-pc').value;
+  const el = document.getElementById('pc-content');
+  if (!id) { el.innerHTML=''; return; }
+  try {
+    const d = await api(`/ativos/${id}/creditos-pis-cofins`);
+    if (d.regime !== 'lucro_real') {
+      el.innerHTML=`<div class="warn-panel">Ativo cadastrado como <strong>${regimeLabel(d.regime)}</strong>. Créditos de PIS/COFINS na sistemática não-cumulativa são exclusivos do Lucro Real.</div>`;
+      return;
+    }
+    const creds = d.creditos;
+    el.innerHTML = `
+      <div class="cards-grid">
+        <div class="card"><div class="card-label">Crédito PIS Total</div><div class="card-value green">${fmt(d.total_pis)}</div><div class="card-sub">Alíquota 1,65%</div></div>
+        <div class="card"><div class="card-label">Crédito COFINS Total</div><div class="card-value green">${fmt(d.total_cofins)}</div><div class="card-sub">Alíquota 7,60%</div></div>
+        <div class="card"><div class="card-label">Total PIS + COFINS</div><div class="card-value green">${fmt(d.total_credito)}</div><div class="card-sub">Método: ${d.metodo}</div></div>
+      </div>
+      <div class="chart-card" style="margin-bottom:16px"><h3>Crédito Acumulado PIS/COFINS</h3><canvas id="chart-pc"></canvas></div>
+      <div class="table-wrap"><div class="table-header"><h3>Créditos Mensais</h3></div>
+        <div style="overflow-x:auto"><table>
+          <thead><tr><th>Mês</th><th>Competência</th><th>Base</th><th>Cred. PIS</th><th>Cred. COFINS</th><th>Total</th></tr></thead>
+          <tbody>${creds.slice(0,120).map(c=>`<tr>
+            <td>${c.mes}</td><td>${c.competencia}</td><td>${fmt(c.base)}</td>
+            <td style="color:var(--green)">${fmt(c.credito_pis)}</td>
+            <td style="color:var(--green)">${fmt(c.credito_cofins)}</td>
+            <td style="color:var(--green);font-weight:700">${fmt(c.credito_total)}</td>
+          </tr>`).join('')}</tbody>
+        </table></div>
+      </div>`;
+    destroyChart(chartPC);
+    let acum=0;
+    const acums = creds.slice(0,60).map(c=>{acum+=c.credito_total;return Math.round(acum*100)/100;});
+    chartPC = new Chart(document.getElementById('chart-pc'), {
+      type:'line',
+      data:{labels:creds.slice(0,60).map(c=>c.competencia), datasets:[{label:'Crédito Acumulado',data:acums,borderColor:'#22c55e',fill:true,backgroundColor:'rgba(34,197,94,.1)'}]},
+      options:{plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#7a9cc0',maxTicksLimit:12}},y:{ticks:{color:'#7a9cc0',callback:v=>fmt(v)}}}}
+    });
+  } catch(e) { el.innerHTML=`<div class="warn-panel">Erro: ${e.message}</div>`; }
+}
+
+// ─── icms ─────────────────────────────────────────────────────────────────────
+async function carregarICMS() {
+  const id = document.getElementById('sel-icms').value;
+  const el = document.getElementById('icms-content');
+  if (!id) { el.innerHTML=''; return; }
+  try {
+    const d = await api(`/ativos/${id}/icms`);
+    el.innerHTML = `
+      <div class="cards-grid">
+        <div class="card"><div class="card-label">ICMS Total da Aquisição</div><div class="card-value green">${fmt(d.valor_icms_total)}</div></div>
+        <div class="card"><div class="card-label">Alíquota</div><div class="card-value">${fmtPct(d.aliquota_pct)}</div></div>
+        <div class="card"><div class="card-label">Crédito Mensal</div><div class="card-value green">${fmt(d.credito_mensal)}</div></div>
+        <div class="card"><div class="card-label">Prazo de Apropriação</div><div class="card-value">${d.prazo_meses} meses</div></div>
+      </div>
+      <div class="info-panel">
+        Crédito de ICMS na aquisição de ativo imobilizado é apropriado em ${d.prazo_meses} meses (máx. 48 meses, conforme legislação estadual).
+        Na venda antes de 5 anos, há estorno proporcional do crédito não utilizado.
+      </div>
+      <div class="table-wrap"><div class="table-header"><h3>Cronograma de Apropriação ICMS</h3></div>
+        <div style="overflow-x:auto"><table>
+          <thead><tr><th>Mês</th><th>Competência</th><th>Crédito Mensal</th><th>Acumulado</th></tr></thead>
+          <tbody>${d.cronograma.map(c=>`<tr>
+            <td>${c.mes}</td><td>${c.competencia}</td>
+            <td style="color:var(--green)">${fmt(c.credito_mensal)}</td>
+            <td style="color:var(--green)">${fmt(c.credito_acumulado)}</td>
+          </tr>`).join('')}</tbody>
+        </table></div>
+      </div>`;
+  } catch(e) { el.innerHTML=`<div class="warn-panel">Erro: ${e.message}</div>`; }
+}
+
+// ─── reforma tributária ───────────────────────────────────────────────────────
+async function simularReforma() {
+  try {
+    const payload = {
+      valor_aquisicao: parseFloat(document.getElementById('ref-valor').value)||0,
+      vida_util_meses: parseInt(document.getElementById('ref-vida').value)||60,
+      regime_tributario: document.getElementById('ref-regime').value,
+    };
+    const d = await api('/simular/reforma-tributaria', {method:'POST', body:JSON.stringify(payload)});
+    const el = document.getElementById('reforma-content');
+    el.innerHTML = `
+      <div class="reforma-compare">
+        <div class="reforma-col atual">
+          <h4>Modelo Atual (PIS/COFINS + ICMS)</h4>
+          <div class="result-row"><span>Crédito PIS/COFINS</span><span class="val green">${fmt(d.modelo_atual.credito_pis_cofins)}</span></div>
+          <div class="result-row"><span>Econ. IRPJ/CSLL (dep.)</span><span class="val green">${fmt(d.modelo_atual.economia_irpj_csll)}</span></div>
+          <div class="result-row total"><span>Total Benefício</span><span class="val green">${fmt(d.modelo_atual.total)}</span></div>
+        </div>
+        <div class="reforma-col nova">
+          <h4>Modelo Reforma (CBS/IBS)</h4>
+          <div class="result-row"><span>Crédito CBS (~${d.aliquotas_referencia.CBS})</span><span class="val green">${fmt(d.modelo_reforma.credito_cbs)}</span></div>
+          <div class="result-row"><span>Crédito IBS (~${d.aliquotas_referencia.IBS})</span><span class="val green">${fmt(d.modelo_reforma.credito_ibs)}</span></div>
+          <div class="result-row"><span>Econ. IRPJ/CSLL (dep.)</span><span class="val green">${fmt(d.modelo_reforma.economia_irpj_csll)}</span></div>
+          <div class="result-row total"><span>Total Benefício</span><span class="val green">${fmt(d.modelo_reforma.total)}</span></div>
+        </div>
+      </div>
+      <div class="result-box" style="margin-top:16px">
+        <h4>Impacto da Reforma</h4>
+        <div class="result-row ${d.impacto==='positivo'?'positive':'negative'}">
+          <span>Variação vs. Modelo Atual</span>
+          <span class="val">${fmt(d.diferenca)} (${d.variacao_pct >= 0 ? '+' : ''}${fmtPct(d.variacao_pct)})</span>
+        </div>
+        <div class="result-row highlight"><span>Impacto</span><span class="val">${d.impacto.toUpperCase()}</span></div>
+      </div>
+      <div class="warn-panel" style="margin-top:12px">
+        ⚠️ Estimativas baseadas em textos legais em elaboração. Alíquotas definitivas do IBS e CBS ainda estão em regulamentação.
+        Na reforma, o crédito é integral na aquisição (não pela depreciação), o que impacta significativamente o fluxo de caixa.
+      </div>`;
+  } catch(e) { document.getElementById('reforma-content').innerHTML=`<div class="warn-panel">Erro: ${e.message}</div>`; }
+}
+
+// ─── financiamentos ───────────────────────────────────────────────────────────
+async function carregarFins() {
+  const fins = await api('/financiamentos');
+  const tbody = document.getElementById('tbody-fins');
+  tbody.innerHTML = fins.map(f => `<tr>
+    <td>${f.ativo_descricao||'—'} <small style="color:var(--muted)">${f.ativo_codigo||''}</small></td>
+    <td>${f.banco||'—'}</td><td>${f.numero_contrato||'—'}</td>
+    <td>${fmt(f.valor_financiado)}</td><td>${fmt(f.entrada)}</td>
+    <td>${fmtPct(f.taxa_juros_mensal)}</td><td>${f.prazo_meses}m</td>
+    <td>${f.sistema_amortizacao?.toUpperCase()}</td>
+    <td style="white-space:nowrap">
+      <button class="btn btn-blue btn-sm" onclick="verCronograma('${f.id}')">📅 Cronograma</button>
+      <button class="btn btn-danger btn-sm" onclick="excluirFin('${f.id}')">🗑️</button>
+    </td>
+  </tr>`).join('') || '<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:30px">Nenhum financiamento cadastrado</td></tr>';
+}
+
+function abrirModalFin() {
+  ['ff-ativo','ff-banco','ff-contrato','ff-valor','ff-entrada','ff-taxa','ff-prazo','ff-balao','ff-inicio'].forEach(id=>{
+    const el=document.getElementById(id); if(el){el.value='';}
+  });
+  document.getElementById('ff-taxa').value='1.2';
+  document.getElementById('ff-prazo').value='48';
+  document.getElementById('ff-entrada').value='0';
+  document.getElementById('ff-balao').value='0';
+  document.getElementById('ff-sistema').value='price';
+  populaSelects(ativos);
+  abrirModal('modal-fin');
+}
+
+async function salvarFin() {
+  const payload = {
+    ativo_id: document.getElementById('ff-ativo').value||null,
+    banco: document.getElementById('ff-banco').value.trim(),
+    numero_contrato: document.getElementById('ff-contrato').value.trim(),
+    valor_financiado: parseFloat(document.getElementById('ff-valor').value)||0,
+    entrada: parseFloat(document.getElementById('ff-entrada').value)||0,
+    taxa_juros_mensal: parseFloat(document.getElementById('ff-taxa').value)||0,
+    sistema_amortizacao: document.getElementById('ff-sistema').value,
+    prazo_meses: parseInt(document.getElementById('ff-prazo').value)||48,
+    valor_residual_balao: parseFloat(document.getElementById('ff-balao').value)||0,
+    data_inicio: document.getElementById('ff-inicio').value||null,
+  };
+  try {
+    await api('/financiamentos', {method:'POST', body:JSON.stringify(payload)});
+    fecharModal('modal-fin');
+    await carregarFins();
+  } catch(e) { alert('Erro: '+e.message); }
+}
+
+async function excluirFin(id) {
+  if (!confirm('Excluir este financiamento?')) return;
+  await api(`/financiamentos/${id}`, {method:'DELETE'});
+  await carregarFins();
+}
+
+async function verCronograma(id) {
+  const el = document.getElementById('cronograma-content');
+  try {
+    const d = await api(`/financiamentos/${id}/cronograma`);
+    const t = d.totais;
+    el.innerHTML = `
+      <div class="cards-grid" style="margin-top:16px">
+        <div class="card"><div class="card-label">Total Pago</div><div class="card-value">${fmt(t.total_pago)}</div></div>
+        <div class="card"><div class="card-label">Total de Juros</div><div class="card-value red">${fmt(t.total_juros)}</div></div>
+        <div class="card"><div class="card-label">Total Amortizado</div><div class="card-value blue">${fmt(t.total_amortizado)}</div></div>
+        <div class="card"><div class="card-label">Custo Efetivo Total</div><div class="card-value red">${fmtPct(t.custo_efetivo_pct)}</div></div>
+      </div>
+      <div class="chart-card" style="margin-bottom:16px;margin-top:0"><h3>Evolução do Saldo Devedor</h3><canvas id="chart-fin"></canvas></div>
+      <div class="table-wrap"><div class="table-header"><h3>Cronograma de Amortização — ${d.financiamento.sistema_amortizacao?.toUpperCase()}</h3></div>
+        <div style="overflow-x:auto;max-height:360px;overflow-y:auto"><table>
+          <thead style="position:sticky;top:0"><tr><th>#</th><th>Vencimento</th><th>Amortização</th><th>Juros</th><th>Parcela Total</th><th>Saldo Devedor</th></tr></thead>
+          <tbody>${d.cronograma.map(c=>`<tr>
+            <td>${c.parcela}</td><td>${c.vencimento}</td>
+            <td>${fmt(c.amortizacao)}</td>
+            <td style="color:var(--red)">${fmt(c.juros)}</td>
+            <td style="font-weight:600">${fmt(c.parcela_total)}</td>
+            <td>${fmt(c.saldo_devedor)}</td>
+          </tr>`).join('')}</tbody>
+        </table></div>
+      </div>`;
+    destroyChart(chartFin);
+    const MAX=60;
+    const sd = d.cronograma.slice(0,MAX).map(c=>c.saldo_devedor);
+    const jrs = d.cronograma.slice(0,MAX).map(c=>c.juros);
+    const ams = d.cronograma.slice(0,MAX).map(c=>c.amortizacao);
+    const lbls = d.cronograma.slice(0,MAX).map(c=>c.vencimento.substr(0,7));
+    chartFin = new Chart(document.getElementById('chart-fin'), {
+      type:'bar',
+      data:{labels:lbls, datasets:[
+        {label:'Amortização',data:ams,backgroundColor:'rgba(0,191,255,.5)'},
+        {label:'Juros',data:jrs,backgroundColor:'rgba(239,68,68,.5)'}
+      ]},
+      options:{plugins:{legend:{labels:{color:'#7a9cc0'}}},scales:{x:{ticks:{color:'#7a9cc0',maxTicksLimit:12},stacked:true},y:{ticks:{color:'#7a9cc0',callback:v=>fmt(v)},stacked:true}}}
+    });
+  } catch(e) { el.innerHTML=`<div class="warn-panel">Erro: ${e.message}</div>`; }
+}
+
+// ─── simulador compra ─────────────────────────────────────────────────────────
+async function simularCompra() {
+  const payload = {
+    valor_aquisicao: parseFloat(document.getElementById('sc-valor').value)||0,
+    vida_util_meses: parseInt(document.getElementById('sc-vida').value)||60,
+    valor_residual: parseFloat(document.getElementById('sc-residual').value)||0,
+    valor_icms: parseFloat(document.getElementById('sc-icms').value)||0,
+    regime_tributario: document.getElementById('sc-regime').value,
+    financiamento: {
+      entrada: parseFloat(document.getElementById('sc-entrada').value)||0,
+      taxa_juros_mensal: parseFloat(document.getElementById('sc-taxa').value)||1.2,
+      prazo_meses: parseInt(document.getElementById('sc-prazo').value)||48,
+    }
+  };
+  try {
+    const d = await api('/simular/compra', {method:'POST', body:JSON.stringify(payload)});
+    const el = document.getElementById('compra-result');
+    el.innerHTML = `<div class="cenarios-grid">${Object.entries(d.cenarios).map(([k,c])=>`
+      <div class="cenario-card ${k==='avista'?'best':''}">
+        <h4>${c.nome}</h4>
+        ${c.saida_inicial != null ? `<div class="result-row"><span>Saída Inicial</span><span class="val red">${fmt(c.saida_inicial)}</span></div>` : ''}
+        ${c.parcela_mensal ? `<div class="result-row"><span>Parcela Mensal</span><span class="val red">${fmt(c.parcela_mensal)}</span></div>` : ''}
+        ${c.total_juros ? `<div class="result-row"><span>Total de Juros</span><span class="val red">${fmt(c.total_juros)}</span></div>` : ''}
+        <div class="result-row"><span>Dep. Mensal</span><span class="val">${fmt(c.dep_mensal)}</span></div>
+        ${c.credito_pis_mensal != null ? `<div class="result-row"><span>Cred. PIS/COFINS Mensal</span><span class="val green">${fmt((c.credito_pis_mensal||0)+(c.credito_cofins_mensal||0))}</span></div>` : ''}
+        <div class="result-row positive"><span>Economia Tributária Total</span><span class="val">${fmt(c.economia_tributaria_total)}</span></div>
+        <div class="result-row positive"><span>Crédito ICMS</span><span class="val">${fmt(c.credito_icms)}</span></div>
+        <div class="result-row total"><span>Custo Líquido</span><span class="val ${c.custo_liquido<=0?'green':''}">${fmt(c.custo_liquido)}</span></div>
+      </div>`).join('')}</div>`;
+  } catch(e) { document.getElementById('compra-result').innerHTML=`<div class="warn-panel">Erro: ${e.message}</div>`; }
+}
+
+// ─── simulador venda ──────────────────────────────────────────────────────────
+async function simularVenda() {
+  const id = document.getElementById('sv-ativo').value;
+  if (!id) { alert('Selecione um ativo.'); return; }
+  const payload = {
+    valor_venda: parseFloat(document.getElementById('sv-valor').value)||0,
+    data_venda: document.getElementById('sv-data').value || new Date().toISOString().substr(0,10),
+  };
+  try {
+    const d = await api(`/ativos/${id}/simular-venda`, {method:'POST', body:JSON.stringify(payload)});
+    const el = document.getElementById('venda-result');
+    el.innerHTML = `
+      <div class="cards-grid">
+        <div class="card"><div class="card-label">Valor de Venda</div><div class="card-value accent">${fmt(d.valor_venda)}</div></div>
+        <div class="card"><div class="card-label">VLC na Data da Venda</div><div class="card-value">${fmt(d.valor_liquido_contabil)}</div></div>
+        <div class="card"><div class="card-label">Resultado Societário</div><div class="card-value ${d.resultado_societario>=0?'green':'red'}">${fmt(d.resultado_societario)}</div></div>
+        <div class="card"><div class="card-label">Resultado Fiscal</div><div class="card-value ${d.resultado_fiscal>=0?'green':'red'}">${fmt(d.resultado_fiscal)}</div></div>
+        <div class="card"><div class="card-label">Ganho de Capital</div><div class="card-value ${d.ganho_capital>0?'red':''}">${fmt(d.ganho_capital)}</div></div>
+        <div class="card"><div class="card-label">Tributos Totais</div><div class="card-value red">${fmt(d.tributos_totais)}</div></div>
+      </div>
+      <div class="result-box">
+        <h4>Composição dos Tributos na Venda</h4>
+        <div class="result-row"><span>Meses em Uso</span><span class="val">${d.meses_em_uso} meses (${d.anos_em_uso} anos)</span></div>
+        <div class="result-row"><span>Saldo Fiscal na Venda</span><span class="val">${fmt(d.saldo_fiscal)}</span></div>
+        <div class="result-row"><span>Dep. Soc. Acumulada</span><span class="val">${fmt(d.dep_societaria_acumulada)}</span></div>
+        <div class="result-row negative"><span>IRPJ s/ Ganho de Capital (15%)</span><span class="val">${fmt(d.irpj)}</span></div>
+        <div class="result-row negative"><span>Adicional IRPJ (10% s/ exc.)</span><span class="val">${fmt(d.adicional_irpj)}</span></div>
+        <div class="result-row negative"><span>CSLL s/ Ganho de Capital (9%)</span><span class="val">${fmt(d.csll)}</span></div>
+        <div class="result-row negative"><span>Estorno ICMS (proporcional)</span><span class="val">${fmt(d.icms_estorno)}</span></div>
+        <div class="result-row total ${d.resultado_liquido>=0?'positive':'negative'}">
+          <span>Resultado Líquido da Venda</span><span class="val">${fmt(d.resultado_liquido)}</span>
+        </div>
+      </div>`;
+  } catch(e) { document.getElementById('venda-result').innerHTML=`<div class="warn-panel">Erro: ${e.message}</div>`; }
+}
+
+// ─── comparador ───────────────────────────────────────────────────────────────
+async function calcularComparador() {
+  const payload = {
+    valor_aquisicao: parseFloat(document.getElementById('cmp-valor').value)||0,
+    vida_util_meses: parseInt(document.getElementById('cmp-vida').value)||60,
+    valor_residual: parseFloat(document.getElementById('cmp-residual').value)||0,
+    regime_tributario: document.getElementById('cmp-regime').value,
+    valor_icms: parseFloat(document.getElementById('cmp-icms').value)||0,
+    taxa_desconto_mensal: parseFloat(document.getElementById('cmp-taxa-desc').value)||1,
+  };
+  try {
+    const d = await api('/simular/comparar-cenarios', {method:'POST', body:JSON.stringify(payload)});
+    document.getElementById('comparador-result').innerHTML = `
+      <div class="cards-grid">
+        <div class="card"><div class="card-label">Benefício Mensal</div><div class="card-value green">${fmt(d.beneficio_mensal)}</div></div>
+        <div class="card"><div class="card-label">Benefício Total (vida útil)</div><div class="card-value green">${fmt(d.beneficio_total)}</div></div>
+        <div class="card"><div class="card-label">VPL (Valor Presente Líquido)</div><div class="card-value ${d.vpl>=0?'green':'red'}">${fmt(d.vpl)}</div></div>
+        <div class="card"><div class="card-label">TIR Anual</div><div class="card-value accent">${fmtPct(d.tir_anual_pct)}</div></div>
+        <div class="card"><div class="card-label">Payback</div><div class="card-value">${d.payback_meses ? d.payback_meses + ' meses' : '—'}</div></div>
+        <div class="card"><div class="card-label">ROI</div><div class="card-value ${d.roi_pct>=0?'green':'red'}">${fmtPct(d.roi_pct)}</div></div>
+        <div class="card"><div class="card-label">Custo Líquido</div><div class="card-value">${fmt(d.custo_liquido)}</div></div>
+        <div class="card"><div class="card-label">Dep. Mensal</div><div class="card-value">${fmt(d.parametros.dep_mensal)}</div></div>
+      </div>
+      <div class="info-panel">
+        <strong>TIR Mensal:</strong> ${fmtPct(d.tir_mensal_pct)} ·
+        <strong>Taxa de Desconto Usada:</strong> ${document.getElementById('cmp-taxa-desc').value}% a.m.
+        <br>VPL > 0 indica que o investimento é economicamente viável à taxa de desconto informada.
+        TIR > taxa de desconto confirma a atratividade do investimento.
+      </div>`;
+  } catch(e) { document.getElementById('comparador-result').innerHTML=`<div class="warn-panel">Erro: ${e.message}</div>`; }
+}
+
+// ─── consolidado ──────────────────────────────────────────────────────────────
+async function carregarConsolidado() {
+  const el = document.getElementById('consolidado-content');
+  try {
+    const d = await api('/resultado-consolidado');
+    el.innerHTML = `
+      <div class="consolidado-grid">
+        <div class="consolidado-box ganhos">
+          <h3>✅ O QUE A EMPRESA GANHA</h3>
+          <div class="result-row positive"><span>Crédito PIS (1,65%)</span><span class="val">${fmt(d.ganhos.credito_pis)}</span></div>
+          <div class="result-row positive"><span>Crédito COFINS (7,60%)</span><span class="val">${fmt(d.ganhos.credito_cofins)}</span></div>
+          <div class="result-row positive"><span>Benefício IRPJ (15%)</span><span class="val">${fmt(d.ganhos.beneficio_irpj)}</span></div>
+          <div class="result-row positive"><span>Benefício CSLL (9%)</span><span class="val">${fmt(d.ganhos.beneficio_csll)}</span></div>
+          <div class="result-row positive"><span>Crédito ICMS (aquisição)</span><span class="val">${fmt(d.ganhos.credito_icms)}</span></div>
+          <div class="result-row total positive"><span>TOTAL GANHOS</span><span class="val">${fmt(d.total_ganhos)}</span></div>
+        </div>
+        <div class="consolidado-box perdas">
+          <h3>❌ O QUE A EMPRESA PERDE</h3>
+          <div class="result-row negative"><span>Juros de Financiamentos</span><span class="val">${fmt(d.perdas.juros_financiamentos)}</span></div>
+          <div class="result-row total negative"><span>TOTAL PERDAS</span><span class="val">${fmt(d.total_perdas)}</span></div>
+        </div>
+      </div>
+      <div class="result-box">
+        <h4>🏆 RESULTADO ECONÔMICO LÍQUIDO</h4>
+        <div class="result-row positive"><span>Total de Ganhos Tributários</span><span class="val">${fmt(d.total_ganhos)}</span></div>
+        <div class="result-row negative"><span>Total de Perdas Financeiras</span><span class="val">${fmt(d.total_perdas)}</span></div>
+        <div class="result-row total ${d.resultado_liquido>=0?'positive':'negative'}">
+          <span>RESULTADO LÍQUIDO CONSOLIDADO</span>
+          <span class="val" style="font-size:18px">${fmt(d.resultado_liquido)}</span>
+        </div>
+      </div>
+      <div class="${d.resultado_liquido>=0?'info-panel':'warn-panel'}" style="margin-top:12px">
+        ${d.resultado_liquido>=0
+          ? `✅ O conjunto de ativos gera benefício econômico líquido de <strong>${fmt(d.resultado_liquido)}</strong> ao longo da vida útil, após descontar os custos financeiros dos financiamentos.`
+          : `⚠️ Os custos financeiros superam os benefícios tributários gerados. Avalie a estrutura de financiamento para otimizar o custo do capital.`
+        }
+      </div>`;
+  } catch(e) { el.innerHTML=`<div class="warn-panel">Erro ao carregar: ${e.message}</div>`; }
+}
+
+// ─── excel ───────────────────────────────────────────────────────────────────
+function exportarExcel() {
+  window.open(API + '/relatorio/excel', '_blank');
+}
+
+// ─── modal helpers ────────────────────────────────────────────────────────────
+function abrirModal(id) { document.getElementById(id).classList.add('open'); }
+function fecharModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(o => {
+  o.addEventListener('click', e => { if (e.target === o) o.classList.remove('open'); });
+});
+
+// ─── init ─────────────────────────────────────────────────────────────────────
+document.getElementById('sv-data').value = new Date().toISOString().substr(0,10);
+
+(async () => {
+  checkStatus();
+  setInterval(checkStatus, 30000);
+  await carregarAtivos();
+  await carregarDashboard();
+})();
+</script>
+</body>
+</html>

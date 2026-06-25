@@ -1804,6 +1804,9 @@ app.register_blueprint(societario_bp)
 from sped_contribuicoes import bp as sped_contribuicoes_bp
 app.register_blueprint(sped_contribuicoes_bp)
 
+from patrimonio import bp as patrimonio_bp
+app.register_blueprint(patrimonio_bp)
+
 # Erros sempre retornam JSON para rotas /api, HTML para o resto
 @app.errorhandler(404)
 def handle_404(e):
@@ -1861,5 +1864,6 @@ if __name__ == "__main__":
     print("  PIS/COFINS            — http://localhost:5000/piscofins.html")
     print("  Simples Nacional      — http://localhost:5000/simples-nacional.html")
     print("  PER/DCOMP Analyzer    — http://localhost:5000/perdcomp.html")
+    print("  Gestão Patrimonial    — http://localhost:5000/patrimonio.html")
     print("=" * 60)
     app.run(host="0.0.0.0", port=5000, debug=False)
